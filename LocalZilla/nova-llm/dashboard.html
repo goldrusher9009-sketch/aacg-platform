@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nova — Training Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg: #0a0a12; --surface: #111119; --surface2: #1a1a25;
+            --border: #252535; --text: #e0e0ec; --dim: #7878a0;
+            --accent: #6c5ce7; --glow: #a29bfe; --green: #00e676;
+            --red: #ff5252; --orange: #ff9100; --blue: #448aff;
+        }
+        body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--text); }
+
+        .dashboard { max-width: 1200px; margin: 0 auto; padding: 24px; }
+
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+        .header h1 { font-size: 1.6rem; font-weight: 700; }
+        .header h1 span { color: var(--glow); }
+        .live-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--green); margin-right: 8px; animation: pulse 2s infinite; }
+        @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
+        .status-tag { font-size: 0.85rem; color: var(--green); background: rgba(0,230,118,0.1); padding: 4px 12px; border-radius: 20px; }
+
+        /* KPI Cards */
+        .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px; }
+        .kpi { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+        .kpi-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: var(--dim); margin-bottom: 8px; }
+        .kpi-value { font-size: 2rem; font-weight: 700; }
+        .kpi-change { font-size: 0.8rem; margin-top: 4px; }
+        .kpi-change.up { color: var(--green); }
+        .kpi-change.down { color: var(--red); }
+
+        /* Charts */
+        .charts { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 24px; }
+        .chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+        .chart-card h3 { font-size: 0.9rem; color: var(--dim); margin-bottom: 16px; }
+
+        canvas { width: 100% !important; height: 250px !important; }
+
+        /* Worker table */
+        .workers-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 24px; }
+        .workers-card h3 { font-size: 0.9rem; color: var(--dim); margin-bottom: 16px; }
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; padding: 10px 12px; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: var(--dim); border-bottom: 1px solid var(--border); }
+        td { padding: 10px 12px; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
+        .trust-bar { width: 60px; height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; display: inline-block; vertical-align: middle; margin-left: 8px; }
+        .trust-fill { height: 100%; border-radius: 3px; transition: width 0.5s; }
+        .gpu-badge { font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; background: var(--surface2); color: var(--dim); }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+        .status-dot.active { background: var(--green); }
+        .status-dot.syncing { background: var(--orange); }
+        .status-dot.idle { background: var(--dim); }
+
+        /* Log */
+        .log-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+        .log-card h3 { font-size: 0.9rem; color: var(--dim); margin-bottom: 12px; }
+        .log-entry { font-family: 'SF Mono', monospace; font-size: 0.8rem; color: var(--dim); padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.03); }
+        .log-entry .time { color: var(--blue); margin-right: 8px; }
+        .log-entry .event { color: var(--text); }
+        .log-entry .worker-id { color: var(--glow); }
+
+        @media (max-width: 768px) {
+            .charts { grid-template-columns: 1fr; }
+            .kpi-row { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="dashboard">
+    <div class="header">
+        <h1><span>Nova</span> Training Dashboard</h1>
+        <span class="status-tag"><span class="live-dot"></span>Live</span>
+    </div>
+
+    <!-- KPI Cards -->
+    <div class="kpi-row">
+        <div class="kpi">
+            <div class="kpi-label">Active Workers</div>
+            <div class="kpi-value" id="kpi-workers" style="color:var(--glow)">0</div>
+            <div class="kpi-change up" id="kpi-workers-change"></div>
+        </div>
+        <div class="kpi">
+            <div class="kpi-label">Model Version</div>
+            <div class="kpi-value" id="kpi-version">0</div>
+            <div class="kpi-change" id="kpi-version-change"></div>
+        </div>
+        <div class="kpi">
+            <div class="kpi-label">Training Loss</div>
+            <div class="kpi-value" id="kpi-loss" style="color:var(--green)">--</div>
+            <div class="kpi-change" id="kpi-loss-change"></div>
+        </div>
+        <div class="kpi">
+            <div class="kpi-label">Tokens Processed</div>
+            <div class="kpi-value" id="kpi-tokens">0</div>
+            <div class="kpi-change up" id="kpi-tokens-change"></div>
+        </div>
+        <div class="kpi">
+            <div class="kpi-label">Avg Trust Score</div>
+            <div class="kpi-value" id="kpi-trust" style="color:var(--orange)">--</div>
+        </div>
+        <div class="kpi">
+            <div class="kpi-label">Uptime</div>
+            <div class="kpi-value" id="kpi-uptime">0h</div>
+        </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="charts">
+        <div class="chart-card">
+            <h3>Training Loss Over Time</h3>
+            <canvas id="lossChart"></canvas>
+        </div>
+        <div class="chart-card">
+            <h3>Workers by GPU Type</h3>
+            <canvas id="gpuChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Worker Table -->
+    <div class="workers-card">
+        <h3>Connected Workers</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Status</th>
+                    <th>Worker ID</th>
+                    <th>GPU</th>
+                    <th>Steps</th>
+                    <th>Loss</th>
+                    <th>Trust</th>
+                    <th>Uptime</th>
+                </tr>
+            </thead>
+            <tbody id="worker-table"></tbody>
+        </table>
+    </div>
+
+    <!-- Event Log -->
+    <div class="log-card">
+        <h3>Event Log</h3>
+        <div id="event-log"></div>
+    </div>
+</div>
+
+<script>
+// ============================================================
+// SIMULATED LIVE DATA (replace with real WebSocket connection)
+// ============================================================
+
+const state = {
+    workers: [],
+    lossHistory: [],
+    version: 0,
+    totalTokens: 0,
+    startTime: Date.now(),
+    logEntries: []
+};
+
+const gpuTypes = ['RTX 4090', 'RTX 3080', 'RTX 4070', 'RTX 3060', 'A100', 'Apple M2', 'RTX 3090', 'RTX 4060'];
+const workerNames = ['alpha', 'bravo', 'charlie', 'delta', 'echo', 'foxtrot', 'golf', 'hotel', 'india', 'juliet'];
+
+function randomId() { return Math.random().toString(36).substring(2, 10); }
+
+function addLog(msg) {
+    const time = new Date().toLocaleTimeString();
+    state.logEntries.unshift({ time, msg });
+    if (state.logEntries.length > 50) state.logEntries.pop();
+}
+
+// Initialize some workers
+for (let i = 0; i < 5; i++) {
+    const worker = {
+        id: randomId(),
+        name: workerNames[i],
+        gpu: gpuTypes[Math.floor(Math.random() * gpuTypes.length)],
+        steps: Math.floor(Math.random() * 1000),
+        loss: 4.0 + Math.random() * 2,
+        trust: 0.7 + Math.random() * 0.3,
+        status: 'active',
+        uptime: Math.floor(Math.random() * 120)
+    };
+    state.workers.push(worker);
+    addLog(`<span class="worker-id">${worker.name}</span> joined with <span class="event">${worker.gpu}</span>`);
+}
+
+// Simulate training progress
+function simulate() {
+    // Workers train
+    state.workers.forEach(w => {
+        w.steps += Math.floor(Math.random() * 10);
+        w.loss = Math.max(0.5, w.loss - (Math.random() * 0.02 - 0.005));
+        w.trust = Math.min(1.0, Math.max(0.1, w.trust + (Math.random() * 0.02 - 0.008)));
+        w.uptime += 1;
+        w.status = Math.random() > 0.9 ? 'syncing' : 'active';
+    });
+
+    // Occasional worker join/leave
+    if (Math.random() > 0.92 && state.workers.length < 12) {
+        const w = {
+            id: randomId(),
+            name: workerNames[state.workers.length % workerNames.length] + state.workers.length,
+            gpu: gpuTypes[Math.floor(Math.random() * gpuTypes.length)],
+            steps: 0, loss: 5.0, trust: 1.0, status: 'active', uptime: 0
+        };
+        state.workers.push(w);
+        addLog(`<span class="worker-id">${w.name}</span> joined with <span class="event">${w.gpu}</span>`);
+    }
+
+    if (Math.random() > 0.97 && state.workers.length > 3) {
+        const removed = state.workers.pop();
+        addLog(`<span class="worker-id">${removed.name}</span> <span class="event">disconnected</span>`);
+    }
+
+    // Global stats
+    state.version += 1;
+    state.totalTokens += state.workers.length * 1024 * 10;
+    const avgLoss = state.workers.reduce((s, w) => s + w.loss, 0) / state.workers.length;
+    state.lossHistory.push(avgLoss);
+    if (state.lossHistory.length > 100) state.lossHistory.shift();
+
+    if (state.version % 5 === 0) {
+        addLog(`Model updated to <span class="event">version ${state.version}</span> (loss: ${avgLoss.toFixed(3)})`);
+    }
+
+    updateUI();
+}
+
+function updateUI() {
+    // KPIs
+    document.getElementById('kpi-workers').textContent = state.workers.length;
+    document.getElementById('kpi-version').textContent = state.version;
+    const avgLoss = state.workers.reduce((s, w) => s + w.loss, 0) / Math.max(state.workers.length, 1);
+    document.getElementById('kpi-loss').textContent = avgLoss.toFixed(3);
+    document.getElementById('kpi-tokens').textContent = formatNumber(state.totalTokens);
+    const avgTrust = state.workers.reduce((s, w) => s + w.trust, 0) / Math.max(state.workers.length, 1);
+    document.getElementById('kpi-trust').textContent = avgTrust.toFixed(2);
+    const uptimeMin = Math.floor((Date.now() - state.startTime) / 60000);
+    document.getElementById('kpi-uptime').textContent = uptimeMin < 60 ? `${uptimeMin}m` : `${Math.floor(uptimeMin/60)}h ${uptimeMin%60}m`;
+
+    // Worker table
+    const tbody = document.getElementById('worker-table');
+    tbody.innerHTML = state.workers.map(w => {
+        const trustColor = w.trust > 0.7 ? 'var(--green)' : w.trust > 0.4 ? 'var(--orange)' : 'var(--red)';
+        return `<tr>
+            <td><span class="status-dot ${w.status}"></span>${w.status}</td>
+            <td>${w.name} <span style="color:var(--dim)">(${w.id.slice(0,6)})</span></td>
+            <td><span class="gpu-badge">${w.gpu}</span></td>
+            <td>${w.steps.toLocaleString()}</td>
+            <td>${w.loss.toFixed(3)}</td>
+            <td>${w.trust.toFixed(2)} <span class="trust-bar"><span class="trust-fill" style="width:${w.trust*100}%;background:${trustColor}"></span></span></td>
+            <td>${w.uptime}m</td>
+        </tr>`;
+    }).join('');
+
+    // Event log
+    const log = document.getElementById('event-log');
+    log.innerHTML = state.logEntries.slice(0, 15).map(e =>
+        `<div class="log-entry"><span class="time">${e.time}</span>${e.msg}</div>`
+    ).join('');
+
+    // Loss chart
+    drawLossChart();
+    drawGpuChart();
+}
+
+function formatNumber(n) {
+    if (n >= 1e9) return (n/1e9).toFixed(1) + 'B';
+    if (n >= 1e6) return (n/1e6).toFixed(1) + 'M';
+    if (n >= 1e3) return (n/1e3).toFixed(1) + 'K';
+    return n.toString();
+}
+
+// Simple canvas chart
+function drawLossChart() {
+    const canvas = document.getElementById('lossChart');
+    const ctx = canvas.getContext('2d');
+    const rect = canvas.parentElement.getBoundingClientRect();
+    canvas.width = rect.width - 40;
+    canvas.height = 250;
+
+    const data = state.lossHistory;
+    if (data.length < 2) return;
+
+    const w = canvas.width, h = canvas.height;
+    const padding = { top: 20, right: 10, bottom: 30, left: 50 };
+    const chartW = w - padding.left - padding.right;
+    const chartH = h - padding.top - padding.bottom;
+
+    ctx.clearRect(0, 0, w, h);
+
+    const minVal = Math.min(...data) * 0.95;
+    const maxVal = Math.max(...data) * 1.05;
+
+    // Grid lines
+    ctx.strokeStyle = '#1a1a2e';
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= 4; i++) {
+        const y = padding.top + (chartH / 4) * i;
+        ctx.beginPath(); ctx.moveTo(padding.left, y); ctx.lineTo(w - padding.right, y); ctx.stroke();
+        const val = maxVal - (maxVal - minVal) * (i / 4);
+        ctx.fillStyle = '#555570';
+        ctx.font = '11px system-ui';
+        ctx.textAlign = 'right';
+        ctx.fillText(val.toFixed(2), padding.left - 8, y + 4);
+    }
+
+    // Line
+    ctx.beginPath();
+    ctx.strokeStyle = '#6c5ce7';
+    ctx.lineWidth = 2;
+    data.forEach((val, i) => {
+        const x = padding.left + (i / (data.length - 1)) * chartW;
+        const y = padding.top + (1 - (val - minVal) / (maxVal - minVal)) * chartH;
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+
+    // Gradient fill
+    const gradient = ctx.createLinearGradient(0, padding.top, 0, h - padding.bottom);
+    gradient.addColorStop(0, 'rgba(108,92,231,0.3)');
+    gradient.addColorStop(1, 'rgba(108,92,231,0)');
+    ctx.lineTo(padding.left + chartW, h - padding.bottom);
+    ctx.lineTo(padding.left, h - padding.bottom);
+    ctx.closePath();
+    ctx.fillStyle = gradient;
+    ctx.fill();
+}
+
+function drawGpuChart() {
+    const canvas = document.getElementById('gpuChart');
+    const ctx = canvas.getContext('2d');
+    canvas.width = 300; canvas.height = 250;
+
+    const counts = {};
+    state.workers.forEach(w => { counts[w.gpu] = (counts[w.gpu] || 0) + 1; });
+    const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+
+    const colors = ['#6c5ce7', '#00e676', '#ff9100', '#448aff', '#ff5252', '#a29bfe', '#69f0ae', '#ffab40'];
+    const total = state.workers.length;
+    const cx = 100, cy = 120, r = 80;
+    let startAngle = -Math.PI / 2;
+
+    entries.forEach(([gpu, count], i) => {
+        const angle = (count / total) * Math.PI * 2;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.arc(cx, cy, r, startAngle, startAngle + angle);
+        ctx.closePath();
+        ctx.fillStyle = colors[i % colors.length];
+        ctx.fill();
+        startAngle += angle;
+    });
+
+    // Legend
+    let ly = 20;
+    ctx.font = '12px system-ui';
+    entries.forEach(([gpu, count], i) => {
+        ctx.fillStyle = colors[i % colors.length];
+        ctx.fillRect(210, ly, 12, 12);
+        ctx.fillStyle = '#8888a0';
+        ctx.textAlign = 'left';
+        ctx.fillText(`${gpu} (${count})`, 228, ly + 10);
+        ly += 22;
+    });
+}
+
+// Start simulation
+setInterval(simulate, 2000);
+simulate();
+
+// ============================================================
+// TO CONNECT TO REAL COORDINATOR:
+// Replace the simulate() function with a WebSocket connection:
+//
+// const ws = new WebSocket('ws://your-coordinator:8765');
+// ws.onmessage = (event) => {
+//     const data = JSON.parse(event.data);
+//     // Update state from coordinator data
+//     updateUI();
+// };
+// ============================================================
+</script>
+
+</body>
+</html>

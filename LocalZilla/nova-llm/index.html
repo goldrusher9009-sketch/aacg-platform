@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nova — Train an Open-Source LLM Together</title>
+    <meta name="description" content="Nova is an open-source language model trained by volunteers worldwide. Donate your GPU cycles and help build AI that belongs to everyone.">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg: #0a0a0f;
+            --surface: #12121a;
+            --border: #1e1e2e;
+            --text: #e0e0e8;
+            --text-dim: #8888a0;
+            --accent: #6c5ce7;
+            --accent-glow: #a29bfe;
+            --green: #00e676;
+            --orange: #ff9100;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* Header */
+        header {
+            text-align: center;
+            padding: 80px 20px 60px;
+            position: relative;
+        }
+
+        header::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 50%;
+            transform: translateX(-50%);
+            width: 600px; height: 600px;
+            background: radial-gradient(circle, rgba(108,92,231,0.15) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .logo {
+            font-size: 4rem;
+            font-weight: 800;
+            letter-spacing: -2px;
+            background: linear-gradient(135deg, var(--accent-glow), var(--green));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 16px;
+        }
+
+        .tagline {
+            font-size: 1.5rem;
+            color: var(--text-dim);
+            max-width: 600px;
+            margin: 0 auto 40px;
+        }
+
+        .cta-row {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 14px 28px;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.2s;
+            cursor: pointer;
+            border: none;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-glow);
+            box-shadow: 0 0 30px rgba(108,92,231,0.4);
+        }
+
+        .btn-secondary {
+            background: var(--surface);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--accent);
+        }
+
+        /* Live stats bar */
+        .stats-bar {
+            display: flex;
+            justify-content: center;
+            gap: 48px;
+            padding: 30px 20px;
+            margin: 40px auto;
+            max-width: 800px;
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--accent-glow);
+        }
+
+        .stat-label {
+            font-size: 0.85rem;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Sections */
+        section {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 60px 20px;
+        }
+
+        h2 {
+            font-size: 2rem;
+            margin-bottom: 16px;
+            color: var(--text);
+        }
+
+        h2 span {
+            color: var(--accent-glow);
+        }
+
+        .section-desc {
+            color: var(--text-dim);
+            font-size: 1.1rem;
+            margin-bottom: 40px;
+            max-width: 700px;
+        }
+
+        /* Feature cards */
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+        }
+
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 28px;
+            transition: border-color 0.2s;
+        }
+
+        .card:hover {
+            border-color: var(--accent);
+        }
+
+        .card-icon {
+            font-size: 2rem;
+            margin-bottom: 12px;
+        }
+
+        .card h3 {
+            font-size: 1.2rem;
+            margin-bottom: 8px;
+        }
+
+        .card p {
+            color: var(--text-dim);
+            font-size: 0.95rem;
+        }
+
+        /* How it works */
+        .steps {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .step {
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+        }
+
+        .step-num {
+            flex-shrink: 0;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--accent);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+
+        .step-content h3 {
+            margin-bottom: 4px;
+        }
+
+        .step-content p {
+            color: var(--text-dim);
+        }
+
+        /* Code block */
+        .code-block {
+            background: #1a1a2e;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 24px;
+            margin: 30px 0;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: 0.9rem;
+            overflow-x: auto;
+            position: relative;
+        }
+
+        .code-block .comment { color: #666680; }
+        .code-block .command { color: var(--green); }
+        .code-block .flag { color: var(--orange); }
+
+        .copy-btn {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: var(--border);
+            border: none;
+            color: var(--text-dim);
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+
+        .copy-btn:hover { color: var(--text); }
+
+        /* Architecture */
+        .arch-diagram {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 32px;
+            font-family: 'SF Mono', monospace;
+            font-size: 0.85rem;
+            white-space: pre;
+            overflow-x: auto;
+            line-height: 1.4;
+            color: var(--text-dim);
+            margin: 30px 0;
+        }
+
+        /* Comparison table */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 30px 0;
+        }
+
+        th, td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        th {
+            color: var(--text-dim);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        td { color: var(--text); }
+
+        .highlight { color: var(--green); font-weight: 600; }
+
+        /* CTA section */
+        .cta-section {
+            text-align: center;
+            padding: 80px 20px;
+            background: linear-gradient(180deg, transparent, rgba(108,92,231,0.05));
+            border-top: 1px solid var(--border);
+        }
+
+        .cta-section h2 {
+            font-size: 2.5rem;
+            margin-bottom: 16px;
+        }
+
+        .cta-section p {
+            color: var(--text-dim);
+            font-size: 1.1rem;
+            margin-bottom: 32px;
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-dim);
+            font-size: 0.85rem;
+            border-top: 1px solid var(--border);
+        }
+
+        footer a {
+            color: var(--accent-glow);
+            text-decoration: none;
+        }
+
+        @media (max-width: 640px) {
+            .logo { font-size: 3rem; }
+            .tagline { font-size: 1.2rem; }
+            .stats-bar { gap: 24px; flex-wrap: wrap; }
+            h2 { font-size: 1.6rem; }
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="logo">NOVA</div>
+    <p class="tagline">An open-source LLM trained by volunteers worldwide. Donate your idle GPU and help build AI that belongs to everyone.</p>
+    <div class="cta-row">
+        <a href="#join" class="btn btn-primary">Donate Your GPU</a>
+        <a href="https://github.com/YOUR_USERNAME/nova" class="btn btn-secondary">View on GitHub</a>
+    </div>
+</header>
+
+<div class="stats-bar">
+    <div class="stat">
+        <div class="stat-number" id="workers">0</div>
+        <div class="stat-label">Active Workers</div>
+    </div>
+    <div class="stat">
+        <div class="stat-number" id="params">5M</div>
+        <div class="stat-label">Parameters</div>
+    </div>
+    <div class="stat">
+        <div class="stat-number" id="tokens">0</div>
+        <div class="stat-label">Tokens Trained</div>
+    </div>
+    <div class="stat">
+        <div class="stat-number" id="countries">0</div>
+        <div class="stat-label">Countries</div>
+    </div>
+</div>
+
+<section>
+    <h2>Why <span>Nova</span>?</h2>
+    <p class="section-desc">Training a frontier AI model costs hundreds of millions of dollars. Nova proves there's another way — by combining the spare GPU cycles of thousands of volunteers into a single training run.</p>
+
+    <div class="features">
+        <div class="card">
+            <div class="card-icon">&#9889;</div>
+            <h3>Novel Training Algorithm</h3>
+            <p>Adaptive Swarm Optimization (ASO) reduces bandwidth by 50-200x while protecting against malicious participants via trust-weighted aggregation.</p>
+        </div>
+        <div class="card">
+            <div class="card-icon">&#127760;</div>
+            <h3>Train From Anywhere</h3>
+            <p>Any GPU works — NVIDIA, AMD, Apple Silicon, even CPU. One command to join. Leave anytime without breaking anything.</p>
+        </div>
+        <div class="card">
+            <div class="card-icon">&#128274;</div>
+            <h3>Byzantine Fault Tolerant</h3>
+            <p>Trust scoring automatically detects and downweights bad actors. Even with 30-40% malicious workers, training converges correctly.</p>
+        </div>
+        <div class="card">
+            <div class="card-icon">&#128218;</div>
+            <h3>Smart Data Pipeline</h3>
+            <p>Quality scoring, deduplication, and curriculum learning ensure the model trains on the right data in the right order.</p>
+        </div>
+        <div class="card">
+            <div class="card-icon">&#128640;</div>
+            <h3>Adaptive Communication</h3>
+            <p>Workers learn when to sync — no fixed schedule. Less bandwidth wasted, faster convergence on slow connections.</p>
+        </div>
+        <div class="card">
+            <div class="card-icon">&#129309;</div>
+            <h3>100% Open Source</h3>
+            <p>Every line of code — model, training, tokenizer, infrastructure — is open. MIT licensed. No strings attached.</p>
+        </div>
+    </div>
+</section>
+
+<section id="join">
+    <h2>Join the Swarm in <span>60 Seconds</span></h2>
+    <p class="section-desc">If you have a computer with a GPU (or even just a CPU), you can contribute to training Nova.</p>
+
+    <div class="code-block">
+        <button class="copy-btn" onclick="navigator.clipboard.writeText('pip install torch numpy websockets\ngit clone https://github.com/YOUR_USERNAME/nova.git\ncd nova\npython -m nova.swarm.worker --coordinator wss://nova-coordinator.example.com')">Copy</button>
+<span class="comment"># 1. Install dependencies</span>
+<span class="command">pip install</span> torch numpy websockets
+
+<span class="comment"># 2. Clone the repo</span>
+<span class="command">git clone</span> https://github.com/YOUR_USERNAME/nova.git
+<span class="command">cd</span> nova
+
+<span class="comment"># 3. Join the swarm</span>
+<span class="command">python -m nova.swarm.worker</span> <span class="flag">--coordinator</span> wss://nova-coordinator.example.com
+    </div>
+
+    <div class="steps">
+        <div class="step">
+            <div class="step-num">1</div>
+            <div class="step-content">
+                <h3>Install</h3>
+                <p>Clone the repo and install PyTorch. Takes under a minute.</p>
+            </div>
+        </div>
+        <div class="step">
+            <div class="step-num">2</div>
+            <div class="step-content">
+                <h3>Connect</h3>
+                <p>Run the worker script. It automatically connects to the coordinator and downloads the latest model.</p>
+            </div>
+        </div>
+        <div class="step">
+            <div class="step-num">3</div>
+            <div class="step-content">
+                <h3>Train</h3>
+                <p>Your GPU starts training locally. Compressed updates are sent to the swarm periodically. Leave it running as long as you want.</p>
+            </div>
+        </div>
+        <div class="step">
+            <div class="step-num">4</div>
+            <div class="step-content">
+                <h3>Earn Trust</h3>
+                <p>The more you contribute, the higher your trust score. Top contributors are featured on the leaderboard.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section>
+    <h2>How ASO <span>Works</span></h2>
+    <p class="section-desc">Adaptive Swarm Optimization is a new algorithm designed for unreliable internet connections.</p>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Feature</th>
+                <th>Standard Training</th>
+                <th>Hivemind</th>
+                <th>Nova ASO</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Communication</td>
+                <td>Every step</td>
+                <td>Fixed interval</td>
+                <td class="highlight">Adaptive (learned)</td>
+            </tr>
+            <tr>
+                <td>Compression</td>
+                <td>None (1x)</td>
+                <td>~10x</td>
+                <td class="highlight">50-200x (SVD + error feedback)</td>
+            </tr>
+            <tr>
+                <td>Malicious protection</td>
+                <td>None</td>
+                <td>None</td>
+                <td class="highlight">Trust-weighted aggregation</td>
+            </tr>
+            <tr>
+                <td>Worker dropout</td>
+                <td>Crash</td>
+                <td>Retry</td>
+                <td class="highlight">Seamless (trust adjusts)</td>
+            </tr>
+            <tr>
+                <td>Data strategy</td>
+                <td>Random shuffle</td>
+                <td>Random shuffle</td>
+                <td class="highlight">Curriculum + quality scoring</td>
+            </tr>
+        </tbody>
+    </table>
+</section>
+
+<div class="cta-section">
+    <h2>The Model That <span style="background:linear-gradient(135deg,#a29bfe,#00e676);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">Everyone</span> Trains</h2>
+    <p>No billion-dollar compute budget needed. Just people with GPUs who believe AI should be open.</p>
+    <div class="cta-row">
+        <a href="#join" class="btn btn-primary">Start Contributing</a>
+        <a href="https://github.com/YOUR_USERNAME/nova" class="btn btn-secondary">Read the Code</a>
+        <a href="https://discord.gg/YOUR_INVITE" class="btn btn-secondary">Join Discord</a>
+    </div>
+</div>
+
+<footer>
+    <p>Nova is open-source under the MIT License. Built by the community, for the community.</p>
+    <p style="margin-top:8px">
+        <a href="https://github.com/YOUR_USERNAME/nova">GitHub</a> &middot;
+        <a href="https://discord.gg/YOUR_INVITE">Discord</a> &middot;
+        <a href="https://huggingface.co/YOUR_USERNAME/nova">Hugging Face</a> &middot;
+        <a href="https://twitter.com/YOUR_HANDLE">X / Twitter</a>
+    </p>
+</footer>
+
+</body>
+</html>
