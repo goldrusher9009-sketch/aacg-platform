@@ -1,7 +1,6 @@
 {
         "name": "aacg-platform",
-        "version": "1.0.0",
-        "description": "SaaS platform for mechanics liens, photo AI, and legal workflows with 20 AI agents",
+  "version": "1.0.1",        "description": "SaaS platform for mechanics liens, photo AI, and legal workflows with 20 AI agents",
         "main": "server.js",
         "scripts": {
                   "dev": "next dev",
