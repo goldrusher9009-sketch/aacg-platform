@@ -20,8 +20,7 @@ COPY lib ./lib
 COPY components ./components
 
 # Build Next.js application
-RUN npm run build || echo "Build warning: continuing anyway"
-
+RUN npm run build
 # Production stage
 FROM node:20-alpine
 
