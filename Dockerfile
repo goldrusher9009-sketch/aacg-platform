@@ -8,8 +8,8 @@ COPY package*.json ./
 COPY tsconfig.json ./
 COPY next.config.js ./
 
-# Install dependencies
-RUN npm ci
+# Install dependencies with legacy peer deps flag for Next.js 13+
+RUN npm ci --legacy-peer-deps --no-optional
 
 # Copy application code
 COPY app ./app
