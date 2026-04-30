@@ -13,7 +13,6 @@ RUN npm ci
 
 # Copy application code
 COPY app ./app
-COPY public ./public
 COPY __tests__ ./__tests__
 COPY scripts ./scripts
 
