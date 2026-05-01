@@ -1,3 +1,4 @@
+// Fixed: Removed ApiResponse type annotation - rebuild test
 // app/api/companies/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-client';
