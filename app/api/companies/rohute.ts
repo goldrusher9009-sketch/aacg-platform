@@ -27,8 +27,7 @@ export async function GET(req: NextRequest) {
               message: 'Company not found',
               code: 'NOT_FOUND',
             },
-          } as ApiResponse<null>,
-          { status: 404 }
+          },          { status: 404 }
         );
       }
 
