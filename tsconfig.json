@@ -17,7 +17,7 @@
       "@/*": ["./app/*"],
       "@/components/*": ["./app/components/*"],
       "@/utils/*": ["./app/utils/*"],
-      "@/types/*": ["./app/types/*"]
+      "@/types/*": ["./app/types/*"],
             "@/lib/*": ["./lib/*"]
     }
   },,
