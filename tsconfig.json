@@ -18,6 +18,7 @@
       "@/components/*": ["./app/components/*"],
       "@/utils/*": ["./app/utils/*"],
       "@/types/*": ["./app/types/*"]
+            "@/lib/*": ["./lib/*"]
     }
   },
   "include": ["app", "__tests__"],
