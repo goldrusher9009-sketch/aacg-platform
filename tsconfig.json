@@ -20,7 +20,8 @@
       "@/types/*": ["./app/types/*"]
             "@/lib/*": ["./lib/*"]
     }
-  },
+  },,
   "include": ["app", "__tests__"],
   "exclude": ["node_modules"]
 }
+Page_Up
