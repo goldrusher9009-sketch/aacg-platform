@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-client';
 import { DB_TABLES } from '@/lib/supabase-client';
-import { Company, ApiResponse } from '@/lib/types';
+import { Company } from '@/lib/types';
 
 export async function GET(req: NextRequest) {
   try {
