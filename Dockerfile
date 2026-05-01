@@ -27,6 +27,7 @@ FROM node:20-alpine
 WORKDIR /app
 
 # Install dumb-init for proper signal handling
+# REBUILD_TRIGGER: 2026-05-01T04:35_force_fresh_build
 RUN apk add --no-cache dumb-init
 
 # Copy dependencies
