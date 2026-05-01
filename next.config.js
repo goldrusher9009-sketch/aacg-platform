@@ -1,11 +1,5 @@
-
-// Build fix v2
-/** @type {import('next').NextConfig} */
 const nextConfig = {
-  reactStrictMode: true,
-  swcMinify: true,
-  experimental: {
-    esmExternals: true,
-  },
+    reactStrictMode: true,
+};
 
 module.exports = nextConfig;
