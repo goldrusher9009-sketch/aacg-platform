@@ -12,6 +12,30 @@ export interface Company {
   createdAt: Date
 }
 
+export interface Project {
+  id: string
+  name: string
+  company_id: string
+  status: 'active' | 'completed' | 'archived'
+  created_at: string
+  updated_at?: string
+}
+
+export interface MechanicsLien {
+  id: string
+  project_id: string
+  company_id: string
+  contractor_id: string
+  property_address: string
+  lien_amount: number
+  status: 'draft' | 'filed' | 'satisfied' | 'expired' | 'disputed'
+  filing_date: string
+  expiration_date?: string
+  description?: string
+  created_at: string
+  updated_at?: string
+}
+
 export interface LienRecord {
   id: string
   companyId: string
@@ -22,29 +46,53 @@ export interface LienRecord {
 
 export interface PhotoAnalysis {
   id: string
-  userId: string
-  imageUrl: string
-  analysisResult: Record<string, unknown>
-  createdAt: Date
+  project_id: string
+  photo_url: string
+  analysis_type: 'damage' | 'progress' | 'compliance' | 'safety'
+  status: 'pending' | 'processing' | 'completed' | 'failed'
+  ai_results?: Record<string, any>
+  created_at: string
+  updated_at?: string
 }
 
 export interface Transaction {
   id: string
-  userId: string
+  companyId: string
   amount: number
-  type: 'payment' | 'refund'
-  status: 'pending' | 'completed' | 'failed'
+  type: string
+  status: string
   createdAt: Date
 }
 
 export interface HealthCheckResponse {
-  status: 'healthy' | 'unhealthy'
+  status: 'ok' | 'error'
   timestamp: string
-  environment: string
-  checks: {
-    api: 'operational' | 'degraded' | 'down'
-    database?: 'connected' | 'disconnected'
-    stripe?: 'connected' | 'disconnected'
-    supabase?: 'connected' | 'disconnected'
+}
+
+export interface ApiResponse<T> {
+  success: boolean
+  data?: T
+  error?: {
+    message: string
+    code: string
+  }
+  meta?: {
+    timestamp: string
+    request_id?: string
+  }
+}
+
+export interface PaginatedResponse<T> {
+  success: boolean
+  data: T[]
+  pagination: {
+    page: number
+    limit: number
+    total: number
+    pages: number
+  }
+  meta?: {
+    timestamp: string
+    request_id?: string
   }
 }

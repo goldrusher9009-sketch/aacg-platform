@@ -4,31 +4,27 @@ import { DB_TABLES } from '@/lib/supabase-client';
 import { MechanicsLien } from '@/lib/types';
 
 export class LienService {
-  static async createLien(
-    projectId: string,
-    companyId: string,
-    data: {
-      contractorId: string;
-      propertyAddress: string;
-      lienAmount: number;
-      filingDate: string;
-      expirationDate?: string;
-      description?: string;
-    }
-  ): Promise<MechanicsLien> {
+  static async createLien(data: {
+    contractor_id: string;
+    property_address: string;
+    lien_amount: number;
+    filing_date: string;
+    company_id?: string;
+    expiration_date?: string;
+    description?: string;
+  }): Promise<MechanicsLien> {
     const lienId = this.generateLienId();
 
     const { data: lien, error } = await supabaseAdmin
       .from(DB_TABLES.MECHANICS_LIENS)
       .insert({
         id: lienId,
-        project_id: projectId,
-        company_id: companyId,
-        contractor_id: data.contractorId,
-        property_address: data.propertyAddress,
-        lien_amount: data.lienAmount,
-        filing_date: data.filingDate,
-        expiration_date: data.expirationDate,
+        contractor_id: data.contractor_id,
+        property_address: data.property_address,
+        lien_amount: data.lien_amount,
+        filing_date: data.filing_date,
+        company_id: data.company_id || 'default',
+        expiration_date: data.expiration_date,
         description: data.description,
         status: 'draft',
         created_at: new Date().toISOString(),

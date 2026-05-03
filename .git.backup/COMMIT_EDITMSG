@@ -1,0 +1,1 @@
+Fix: Add legacy-peer-deps flag to Dockerfile for npm ci compatibility

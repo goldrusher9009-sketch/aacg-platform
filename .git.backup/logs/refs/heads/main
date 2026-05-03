@@ -1,0 +1,6 @@
+0000000000000000000000000000000000000000 6f92d89072b4b7a964621ce107ff8722c7a0a827 Scott <goldrusher9009@gmail.com> 1777349343 -0400	commit (initial): Initial commit: AACG Platform with 20 AI agents
+6f92d89072b4b7a964621ce107ff8722c7a0a827 6f92d89072b4b7a964621ce107ff8722c7a0a827 Scott <goldrusher9009@gmail.com> 1777349343 -0400	Branch: renamed refs/heads/master to refs/heads/main
+6f92d89072b4b7a964621ce107ff8722c7a0a827 1ed16c42282b7e28effb5bf5416009cddbc36f54 Scott <goldrusher9009@gmail.com> 1777522761 -0400	reset: moving to origin/main
+1ed16c42282b7e28effb5bf5416009cddbc36f54 e719a548c980be4ffd1624cf95f49fdedab88c32 Scott <goldrusher9009@gmail.com> 1777522809 -0400	commit: Deploy complete AACG Platform Next.js application with full source code
+e719a548c980be4ffd1624cf95f49fdedab88c32 c30f7976c770fe35acc5cf228931f1d78148759c Scott <goldrusher9009@gmail.com> 1777523827 -0400	commit: Fix: Regenerate package-lock.json and add missing source files
+c30f7976c770fe35acc5cf228931f1d78148759c a87e36a6430e1bbbf41446b1de0b54224c7b71e3 Scott <goldrusher9009@gmail.com> 1777524233 -0400	commit: Fix: Complete npm regeneration with legacy-peer-deps

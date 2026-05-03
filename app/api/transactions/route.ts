@@ -67,13 +67,15 @@ export async function GET(req: NextRequest) {
       {
         success: true,
         data: data as Transaction[],
+        pagination: {
+          page,
+          limit,
+          total: count || 0,
+          pages: Math.ceil((count || 0) / limit),
+        },
         meta: {
           timestamp: new Date().toISOString(),
           request_id: generateRequestId(),
-          total: count || 0,
-          page,
-          limit,
-          total_pages: Math.ceil((count || 0) / limit),
         },
       } as PaginatedResponse<Transaction>,
       { status: 200 }

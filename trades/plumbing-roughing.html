@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>All American Construction Plumbing Rough | AACG Platform</title>
+<style>
+
+  :root {
+    --navy: #0a0f1e;
+    --navy2: #111827;
+    --gold: #c9a84c;
+    --text: #e2e8f0;
+    --text2: #94a3b8;
+    --border: rgba(201,168,76,0.12);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background: var(--navy); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; }
+  a { text-decoration: none; color: inherit; }
+
+  /* NAV */
+  .site-nav { position: sticky; top:0; z-index:100; background: rgba(10,15,30,0.96); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); }
+  .nav-inner { max-width: 1280px; margin: 0 auto; padding: 0 24px; height: 64px; display:flex; align-items:center; gap:24px; }
+  .nav-logo { display:flex; align-items:center; gap:10px; }
+  .logo-mark { width:38px; height:38px; background: linear-gradient(135deg,#c9a84c,#e8c76a); border-radius:9px; display:flex; align-items:center; justify-content:center; font-weight:900; font-size:18px; color:var(--navy); flex-shrink:0; }
+  .logo-name { font-size:15px; font-weight:800; color:var(--gold); line-height:1.2; }
+  .logo-tag { font-size:10px; color:var(--text2); }
+  .nav-links { display:flex; align-items:center; gap:8px; margin-left:auto; }
+  .nav-link { padding:6px 14px; border-radius:6px; font-size:13px; color:var(--text2); cursor:pointer; transition:all 0.2s; }
+  .nav-link:hover, .nav-link.active { color:var(--gold); background:rgba(201,168,76,0.08); }
+  .nav-dropdown { position:relative; }
+  .dropdown-menu { display:none; position:absolute; top:100%; left:0; background:var(--navy2); border:1px solid var(--border); border-radius:12px; padding:12px; min-width:220px; z-index:200; max-height:400px; overflow-y:auto; }
+  .nav-dropdown:hover .dropdown-menu { display:grid; grid-template-columns:1fr 1fr; gap:4px; }
+  .dropdown-item { padding:7px 12px; border-radius:6px; font-size:12px; color:var(--text2); cursor:pointer; display:block; }
+  .dropdown-item:hover { background:rgba(201,168,76,0.1); color:var(--gold); }
+  .nav-cta { margin-left:12px; padding:8px 20px; background:linear-gradient(135deg,var(--gold),#e8c76a); color:var(--navy); border-radius:8px; font-size:13px; font-weight:700; }
+
+  /* TOP BAR */
+  .top-bar { display:flex; align-items:center; gap:12px; padding:8px 32px; font-size:12px; font-weight:600; color:#fff; }
+
+  /* HERO */
+  .hero { padding: 100px 24px 80px; }
+  .container { max-width: 1100px; margin: 0 auto; }
+  .hero-badge { display:inline-flex; align-items:center; gap:8px; padding:6px 16px; border-radius:20px; border:1px solid var(--border); background:rgba(255,255,255,0.04); font-size:13px; color:var(--gold); font-weight:600; margin-bottom:20px; }
+  .hero-title { font-size: clamp(36px,5vw,64px); font-weight:900; line-height:1.1; margin-bottom:20px; }
+  .hero-desc { font-size:18px; color:var(--text2); line-height:1.7; max-width:680px; margin-bottom:32px; }
+  .hero-actions { display:flex; gap:16px; flex-wrap:wrap; margin-bottom:20px; }
+  .sector-tag { font-size:12px; color:var(--text2); padding:4px 12px; border:1px solid var(--border); border-radius:20px; display:inline-block; }
+  .cta-btn { padding:14px 28px; border-radius:10px; font-size:15px; font-weight:700; transition:all 0.2s; display:inline-block; }
+  .cta-btn-outline { padding:14px 28px; border-radius:10px; font-size:15px; font-weight:700; border:2px solid var(--gold); color:var(--gold); transition:all 0.2s; display:inline-block; }
+  .cta-btn-outline:hover { background:var(--gold); color:var(--navy); }
+
+  /* SECTIONS */
+  .section { padding: 80px 24px; }
+  .dark-section { background: rgba(255,255,255,0.02); }
+  .section-title { font-size:clamp(26px,3vw,40px); font-weight:800; margin-bottom:12px; }
+  .section-sub { font-size:16px; color:var(--text2); margin-bottom:36px; max-width:700px; }
+
+  /* SERVICES LIST */
+  .services-list { list-style:none; display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .services-list li { padding:10px 16px; background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:8px; font-size:14px; }
+
+  /* AGENTS */
+  .agents-row { display:flex; flex-wrap:wrap; gap:12px; margin-bottom:32px; }
+  .agent-chip { padding:10px 18px; border-radius:20px; background:rgba(201,168,76,0.1); border:1px solid rgba(201,168,76,0.2); color:var(--gold); font-size:13px; font-weight:600; }
+  .agent-explainer { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  .ae-item { display:flex; gap:14px; padding:16px; background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:12px; }
+  .ae-icon { font-size:24px; }
+  .ae-item strong { display:block; margin-bottom:4px; }
+  .ae-item span { font-size:13px; color:var(--text2); }
+
+  /* WHY */
+  .why-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:20px; }
+  .why-card { padding:24px; background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:14px; }
+  .why-icon { font-size:32px; margin-bottom:12px; }
+  .why-card h3 { font-size:16px; font-weight:700; margin-bottom:8px; }
+  .why-card p { font-size:13px; color:var(--text2); line-height:1.6; }
+
+  /* STATS */
+  .stats-bar { display:grid; grid-template-columns:repeat(4,1fr); gap:24px; }
+  .stat-item { text-align:center; padding:24px; background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:12px; }
+  .stat-val { font-size:36px; font-weight:900; margin-bottom:4px; }
+  .stat-lbl { font-size:13px; color:var(--text2); }
+
+  /* TWO COL */
+  .two-col { display:grid; grid-template-columns:1fr 1fr; gap:40px; }
+  .trades-chips { display:flex; flex-wrap:wrap; gap:10px; }
+  .trade-chip { padding:8px 16px; border-radius:20px; background:rgba(255,255,255,0.05); border:1px solid var(--border); font-size:13px; }
+
+  /* CTA SECTION */
+  .cta-section { background:linear-gradient(135deg,var(--navy2),rgba(201,168,76,0.08)); border-top:1px solid var(--border); padding:80px 24px; text-align:center; }
+  .cta-section h2 { font-size:clamp(28px,4vw,48px); font-weight:900; margin-bottom:12px; }
+  .cta-section p { font-size:16px; color:var(--text2); margin-bottom:32px; }
+  .cta-row { display:flex; gap:16px; justify-content:center; flex-wrap:wrap; }
+
+  /* FOOTER */
+  footer { background:var(--navy2); border-top:1px solid var(--border); padding:40px 24px 24px; }
+  .footer-inner { max-width:1100px; margin:0 auto; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; }
+  .footer-brand { font-size:16px; font-weight:700; color:var(--gold); }
+  .footer-links { display:flex; gap:20px; }
+  .footer-links a { font-size:13px; color:var(--text2); }
+  .footer-links a:hover { color:var(--gold); }
+  .footer-copy { font-size:12px; color:var(--text2); margin-top:16px; text-align:center; }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width:6px; }
+  ::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+
+.hero { background: linear-gradient(135deg, var(--navy) 0%, #1e40af22 100%); }
+.accent { color: #1e40af; }
+.cta-btn { background: #1e40af; color: #fff; }
+.cta-btn:hover { background: #1e40afdd; }
+.service-icon { background: #1e40af22; color: #1e40af; }
+.top-bar { background: #1e40af; }
+</style>
+<script src="../../config.js"></script>
+</head>
+<body>
+
+<nav class="site-nav">
+  <div class="nav-inner">
+    <a href="../aacg-website.html" class="nav-logo">
+      <div class="logo-mark">A</div>
+      <div><div class="logo-name">AACG Platform</div><div class="logo-tag">All American Construction Group</div></div>
+    </a>
+    <div class="nav-links">
+      <div class="nav-dropdown">
+        <span class="nav-link active">Trades ▾</span>
+        <div class="dropdown-menu trades-dropdown" id="tradesDD"></div>
+      </div>
+      <div class="nav-dropdown">
+        <span class="nav-link ">Sectors ▾</span>
+        <div class="dropdown-menu sectors-dropdown" id="sectorsDD"></div>
+      </div>
+      <a href="../admin/index.html" class="nav-link">Admin</a>
+      <a href="../aacg-website.html#agents" class="nav-link">AI Agents</a>
+    </div>
+    <a href="../aacg-website.html#contact" class="nav-cta">Get a Quote</a>
+  </div>
+</nav>
+
+<div class="top-bar">
+  <span>AACPR</span>
+  <span>·</span>
+  <span>All American Construction Plumbing Rough</span>
+</div>
+
+<section class="hero">
+  <div class="container">
+    <div class="hero-badge">🔩 AACPR</div>
+    <h1 class="hero-title">Plumbing Roughing</h1>
+    <p class="hero-desc">Get the rough right, and everything after is easy. Our dedicated rough-in crews coordinate with concrete, framing, and electrical to place every pipe perfectly before close-in.</p>
+    <div class="hero-actions">
+      <a href="../aacg-website.html#contact" class="cta-btn">Request a Quote</a>
+      <a href="../admin/index.html" class="cta-btn-outline">View Admin Dashboard</a>
+    </div>
+    <div class="sector-tag">Sectors: All Commercial & Residential</div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <h2 class="section-title">Our <span class="accent">Plumbing Roughing Services</span></h2>
+    <p class="section-sub">Comprehensive plumbing roughing capabilities backed by licensed crews, AI project management, and full lien protection.</p>
+    <ul class="services-list"><li>✓ Underground Drainage</li><li>✓ Slab Penetrations</li><li>✓ Above-Ceiling Supply Lines</li><li>✓ Waste & Vent Rough-In</li><li>✓ Gas Rough-In</li><li>✓ Sleeve & Blockout Coordination</li></ul>
+  </div>
+</section>
+
+<section class="section dark-section">
+  <div class="container">
+    <h2 class="section-title">🤖 AI Agents Working for <span class="accent">This Trade</span></h2>
+    <p class="section-sub">These agents run 24/7 on every plumbing roughing project — automating deadlines, documentation, and compliance so your team focuses on the work.</p>
+    <div class="agents-row"><div class="agent-chip">🤖 Permit Tracker</div><div class="agent-chip">🤖 Schedule Optimizer</div><div class="agent-chip">🤖 Crew Dispatcher</div><div class="agent-chip">🤖 Photo AI Analyzer</div></div>
+    <div class="agent-explainer">
+      <div class="ae-item"><div class="ae-icon">⚖️</div><div><strong>Lien Protection</strong><br><span>Preliminary notices sent automatically. Deadlines monitored. Filing triggered if needed.</span></div></div>
+      <div class="ae-item"><div class="ae-icon">📸</div><div><strong>Photo AI</strong><br><span>Every site photo analyzed for progress, safety, and compliance issues.</span></div></div>
+      <div class="ae-item"><div class="ae-icon">💰</div><div><strong>Auto Invoicing</strong><br><span>Work order completion triggers invoice generation and delivery within minutes.</span></div></div>
+      <div class="ae-item"><div class="ae-icon">✅</div><div><strong>Permit Tracking</strong><br><span>Permits applied for, tracked, and inspections scheduled automatically.</span></div></div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <h2 class="section-title">Why Choose <span class="accent">AACPR</span>?</h2>
+    <div class="why-grid">
+      <div class="why-card"><div class="why-icon">🏆</div><h3>Licensed & Insured</h3><p>All licenses current in every state we operate. Full GL, workers comp, and umbrella coverage on every project.</p></div>
+      <div class="why-card"><div class="why-icon">🤖</div><h3>AI-Powered</h3><p>20 specialized AI agents automate project management, lien protection, billing, and compliance — no manual chasing.</p></div>
+      <div class="why-card"><div class="why-icon">⚖️</div><h3>Lien Protected</h3><p>Your money is protected. Preliminary notices and lien rights preserved on every job, automatically.</p></div>
+      <div class="why-card"><div class="why-icon">📊</div><h3>Full Transparency</h3><p>Real-time dashboard access. See every project, every invoice, every photo, every deadline — 24/7.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="cta-section">
+  <div class="container">
+    <h2>Ready to Start Your <span class="accent">Plumbing Roughing</span> Project?</h2>
+    <p>Get a detailed estimate within 24 hours. Our plumbing roughing team is ready.</p>
+    <div class="cta-row">
+      <a href="../aacg-website.html#contact" class="cta-btn">Request a Quote</a>
+      <a href="tel:+19298882848" class="cta-btn-outline">📞 929-888-2848</a>
+    </div>
+  </div>
+</section>
+
+
+<footer>
+  <div class="footer-inner">
+    <div class="footer-brand">AACG Platform</div>
+    <div class="footer-links">
+      <a href="../aacg-website.html">Home</a>
+      <a href="../admin/index.html">Admin</a>
+      <a href="../aacg-website.html#agents">AI Agents</a>
+      <a href="../aacg-website.html#contact">Contact</a>
+    </div>
+  </div>
+  <div class="footer-copy">© 2026 All American Construction Group. All rights reserved. Powered by AACG Platform AI.</div>
+</footer>
+
+<script>
+// Build dropdowns
+const TRADES_NAV = [{"slug": "demolition", "name": "Demolition", "icon": "\ud83d\udd28"}, {"slug": "framing", "name": "Framing", "icon": "\ud83e\udeb5"}, {"slug": "plumbing", "name": "Plumbing", "icon": "\ud83d\udebf"}, {"slug": "plumbing-roughing", "name": "Plumbing Roughing", "icon": "\ud83d\udd29"}, {"slug": "plumbing-final", "name": "Plumbing Final", "icon": "\ud83d\udeb0"}, {"slug": "electrical", "name": "Electrical", "icon": "\u26a1"}, {"slug": "electrical-roughing", "name": "Electrical Roughing", "icon": "\ud83d\udd0c"}, {"slug": "electrical-final", "name": "Electrical Final", "icon": "\ud83d\udca1"}, {"slug": "low-voltage", "name": "Low Voltage", "icon": "\ud83d\udce1"}, {"slug": "hvac", "name": "HVAC", "icon": "\u2744\ufe0f"}, {"slug": "hvac-walkins", "name": "HVAC Walk-Ins", "icon": "\ud83e\udd76"}, {"slug": "hood-makeup-air", "name": "Hood & Makeup Air", "icon": "\ud83c\udf2c\ufe0f"}, {"slug": "sheetrock", "name": "Sheetrock / Drywall", "icon": "\ud83c\udfe0"}, {"slug": "compound", "name": "Compound / Taping", "icon": "\ud83d\udd8c\ufe0f"}, {"slug": "painting", "name": "Painting", "icon": "\ud83c\udfa8"}, {"slug": "tiling", "name": "Tiling", "icon": "\ud83d\udd32"}, {"slug": "wallpaper", "name": "Wallpaper", "icon": "\ud83c\udfdb\ufe0f"}, {"slug": "millwork", "name": "Millwork", "icon": "\ud83e\ude91"}, {"slug": "equipment-install", "name": "Equipment Install", "icon": "\u2699\ufe0f"}, {"slug": "furniture-install", "name": "Furniture Install", "icon": "\ud83e\ude91"}, {"slug": "finishes", "name": "Finishes", "icon": "\u2728"}, {"slug": "blacktop-striping", "name": "Blacktop & Striping", "icon": "\ud83d\udee3\ufe0f"}, {"slug": "concrete", "name": "Concrete", "icon": "\ud83c\udfd7\ufe0f"}, {"slug": "roofing", "name": "Roofing", "icon": "\ud83c\udfe0"}, {"slug": "foundation", "name": "Foundation", "icon": "\u2b07\ufe0f"}, {"slug": "excavation", "name": "Excavation", "icon": "\ud83d\ude9c"}, {"slug": "backfill", "name": "Backfill", "icon": "\u2b06\ufe0f"}, {"slug": "sitework", "name": "Site Work", "icon": "\ud83c\udf0d"}, {"slug": "maintenance", "name": "Maintenance", "icon": "\ud83d\udd27"}, {"slug": "waterproofing", "name": "Waterproofing", "icon": "\ud83d\udca7"}, {"slug": "flooring", "name": "Flooring", "icon": "\ud83c\udfe2"}, {"slug": "fire-protection", "name": "Fire Protection", "icon": "\ud83d\udd25"}, {"slug": "insulation", "name": "Insulation", "icon": "\ud83c\udf21\ufe0f"}, {"slug": "glazing", "name": "Glazing & Glass", "icon": "\ud83e\ude9f"}];
+const SECTORS_NAV = [{"slug": "residential", "name": "Residential", "icon": "\ud83c\udfe1"}, {"slug": "commercial", "name": "Commercial", "icon": "\ud83c\udfe2"}, {"slug": "government", "name": "Government Work", "icon": "\ud83c\udfdb\ufe0f"}, {"slug": "restaurants-qsr", "name": "Restaurants & QSR", "icon": "\ud83c\udf54"}, {"slug": "offices", "name": "Office & Corporate", "icon": "\ud83d\udcbc"}, {"slug": "data-centers", "name": "Data Centers", "icon": "\ud83d\udda5\ufe0f"}, {"slug": "retail", "name": "Retail", "icon": "\ud83d\udecd\ufe0f"}, {"slug": "healthcare", "name": "Healthcare", "icon": "\ud83c\udfe5"}, {"slug": "hospitality", "name": "Hospitality & Hotels", "icon": "\ud83c\udfe8"}, {"slug": "industrial", "name": "Industrial & Manufacturing", "icon": "\ud83c\udfed"}, {"slug": "education", "name": "Education", "icon": "\ud83c\udf93"}, {"slug": "entertainment", "name": "Entertainment & Venues", "icon": "\ud83c\udfad"}];
+
+document.getElementById('tradesDD').innerHTML = TRADES_NAV.map(t =>
+  `<a class="dropdown-item" href="../trades/${t.slug}.html">${t.icon} ${t.name}</a>`).join('');
+document.getElementById('sectorsDD').innerHTML = SECTORS_NAV.map(s =>
+  `<a class="dropdown-item" href="../sectors/${s.slug}.html">${s.icon} ${s.name}</a>`).join('');
+
+// Scroll reveal
+const obs = new IntersectionObserver(entries => {
+  entries.forEach(e => { if(e.isIntersecting) { e.target.style.opacity='1'; e.target.style.transform='translateY(0)'; } });
+}, {threshold:0.1});
+document.querySelectorAll('.why-card,.ae-item,.stat-item').forEach(el => {
+  el.style.opacity='0'; el.style.transform='translateY(20px)'; el.style.transition='all 0.5s ease';
+  obs.observe(el);
+});
+</script>
+</body>
+</html>
