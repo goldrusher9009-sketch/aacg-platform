@@ -1,0 +1,1360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AACG Platform — Super Admin</title>
+<style>
+:root {
+  --navy:#0a0f1e; --navy2:#0d1526; --navy3:#111827;
+  --gold:#c9a84c; --gold2:#e8c76a;
+  --blue:#2a7de1; --green:#10b981; --red:#ef4444;
+  --orange:#f59e0b; --purple:#8b5cf6; --cyan:#06b6d4;
+  --text:#e2e8f0; --text2:#94a3b8;
+  --border:rgba(201,168,76,0.13);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--navy);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;overflow:hidden;height:100vh;}
+
+/* ── LOGIN GATE ── */
+#loginGate {
+  position:fixed;inset:0;background:var(--navy);
+  display:flex;align-items:center;justify-content:center;
+  z-index:9999;
+}
+.login-box {
+  width:420px;background:var(--navy2);
+  border:1px solid var(--border);border-radius:20px;
+  padding:44px;text-align:center;
+}
+.login-logo {
+  width:60px;height:60px;border-radius:14px;
+  background:linear-gradient(135deg,var(--gold),var(--gold2));
+  display:flex;align-items:center;justify-content:center;
+  font-size:28px;font-weight:900;color:var(--navy);
+  margin:0 auto 20px;
+}
+.login-title{font-size:22px;font-weight:800;margin-bottom:6px;}
+.login-sub{font-size:13px;color:var(--text2);margin-bottom:28px;}
+.login-label{font-size:11px;color:var(--text2);text-align:left;display:block;margin-bottom:6px;}
+.login-input{
+  width:100%;padding:12px 16px;
+  background:var(--navy);border:1px solid var(--border);
+  border-radius:9px;color:var(--text);font-size:14px;
+  outline:none;margin-bottom:14px;transition:border-color 0.2s;
+  letter-spacing:2px;
+}
+.login-input:focus{border-color:var(--gold);}
+.login-btn{
+  width:100%;padding:13px;border-radius:9px;
+  background:linear-gradient(135deg,var(--gold),var(--gold2));
+  color:var(--navy);font-size:15px;font-weight:800;
+  border:none;cursor:pointer;transition:all 0.2s;
+}
+.login-btn:hover{transform:translateY(-1px);box-shadow:0 4px 20px rgba(201,168,76,0.4);}
+.login-error{color:var(--red);font-size:12px;margin-top:8px;display:none;}
+.login-badge{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:4px 12px;border-radius:20px;
+  background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);
+  font-size:11px;color:var(--red);margin-bottom:20px;
+}
+
+/* ── MAIN APP (hidden until login) ── */
+#app{display:none;height:100vh;display:none;flex-direction:column;}
+#app.authed{display:flex;}
+
+/* ── TOP BAR ── */
+.topbar{
+  height:54px;background:var(--navy2);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 20px;gap:14px;
+  flex-shrink:0;z-index:50;
+}
+.tb-logo{display:flex;align-items:center;gap:8px;}
+.tb-mark{width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,var(--gold),var(--gold2));display:flex;align-items:center;justify-content:center;font-weight:900;font-size:15px;color:var(--navy);}
+.tb-name{font-size:14px;font-weight:800;color:var(--gold);}
+.tb-badge{padding:3px 10px;border-radius:20px;font-size:10px;font-weight:700;background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:var(--red);}
+.tb-spacer{flex:1;}
+.tb-status{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--green);padding:5px 12px;border-radius:20px;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);}
+.tb-pulse{width:7px;height:7px;border-radius:50%;background:var(--green);animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+.tb-time{font-size:12px;color:var(--text2);font-family:monospace;}
+.tb-user{display:flex;align-items:center;gap:8px;padding:5px 12px;border-radius:20px;background:rgba(201,168,76,0.08);border:1px solid var(--border);font-size:12px;cursor:pointer;}
+.tb-logout{padding:6px 14px;border-radius:7px;border:1px solid rgba(239,68,68,0.3);color:var(--red);background:transparent;font-size:12px;cursor:pointer;}
+.tb-logout:hover{background:rgba(239,68,68,0.1);}
+
+/* ── BODY LAYOUT ── */
+.body-layout{display:flex;flex:1;overflow:hidden;}
+
+/* ── SIDEBAR ── */
+.sidebar{
+  width:220px;background:var(--navy2);
+  border-right:1px solid var(--border);
+  display:flex;flex-direction:column;
+  overflow-y:auto;flex-shrink:0;
+}
+.nav-section{padding:14px 10px 4px;}
+.nav-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--text2);padding:0 8px 7px;}
+.nav-item{
+  display:flex;align-items:center;gap:9px;
+  padding:8px 10px;border-radius:7px;
+  cursor:pointer;font-size:13px;color:var(--text2);
+  transition:all 0.15s;margin-bottom:1px;
+}
+.nav-item:hover,.nav-item.active{background:rgba(201,168,76,0.1);color:var(--gold);}
+.nav-item .ni{font-size:15px;width:18px;text-align:center;}
+.nbadge{margin-left:auto;font-size:10px;font-weight:700;padding:2px 6px;border-radius:10px;}
+.nbadge.red{background:rgba(239,68,68,0.2);color:var(--red);}
+.nbadge.green{background:rgba(16,185,129,0.2);color:var(--green);}
+.nbadge.gold{background:rgba(201,168,76,0.2);color:var(--gold);}
+.nbadge.blue{background:rgba(42,125,225,0.2);color:var(--blue);}
+
+/* ── CONTENT ── */
+.content{flex:1;overflow-y:auto;padding:22px;}
+.panel{display:none;}
+.panel.active{display:block;}
+
+/* ── KPI ROW ── */
+.kpi-row{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:22px;}
+.kpi{background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:10px;padding:14px;position:relative;overflow:hidden;}
+.kpi::after{content:'';position:absolute;top:0;left:0;right:0;height:2px;}
+.kpi.gold::after{background:linear-gradient(90deg,var(--gold),var(--gold2));}
+.kpi.green::after{background:linear-gradient(90deg,var(--green),#34d399);}
+.kpi.blue::after{background:linear-gradient(90deg,var(--blue),#60a5fa);}
+.kpi.red::after{background:linear-gradient(90deg,var(--red),#f87171);}
+.kpi.purple::after{background:linear-gradient(90deg,var(--purple),#a78bfa);}
+.kpi.cyan::after{background:linear-gradient(90deg,var(--cyan),#67e8f9);}
+.kpi-lbl{font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;}
+.kpi-val{font-size:24px;font-weight:800;}
+.kpi-val.gold{color:var(--gold);}
+.kpi-val.green{color:var(--green);}
+.kpi-val.blue{color:var(--blue);}
+.kpi-val.red{color:var(--red);}
+.kpi-val.purple{color:var(--purple);}
+.kpi-val.cyan{color:var(--cyan);}
+.kpi-sub{font-size:10px;color:var(--text2);margin-top:3px;}
+
+/* ── CARDS ── */
+.card{background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:16px;}
+.card-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.card-title{font-size:13px;font-weight:700;}
+.card-sub{font-size:11px;color:var(--text2);}
+
+/* ── AGENT LIVE BOARD ── */
+.agent-live-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
+.al-card{
+  background:var(--navy2);border:1px solid var(--border);
+  border-radius:10px;padding:14px;position:relative;
+  transition:all 0.2s;
+}
+.al-card.running{border-color:rgba(16,185,129,0.4);background:rgba(16,185,129,0.04);}
+.al-card.idle{border-color:var(--border);}
+.al-card.error{border-color:rgba(239,68,68,0.4);background:rgba(239,68,68,0.04);}
+.al-card.queued{border-color:rgba(245,158,11,0.3);}
+.al-status-dot{position:absolute;top:10px;right:10px;width:8px;height:8px;border-radius:50%;}
+.al-status-dot.running{background:var(--green);animation:pulse 1.5s infinite;}
+.al-status-dot.idle{background:var(--text2);}
+.al-status-dot.error{background:var(--red);animation:pulse 1s infinite;}
+.al-status-dot.queued{background:var(--orange);}
+.al-icon{font-size:24px;margin-bottom:8px;}
+.al-name{font-size:12px;font-weight:700;margin-bottom:3px;}
+.al-task{font-size:10px;color:var(--text2);margin-bottom:8px;line-height:1.4;}
+.al-progress{height:3px;background:rgba(255,255,255,0.06);border-radius:2px;overflow:hidden;margin-bottom:6px;}
+.al-progress-bar{height:100%;border-radius:2px;transition:width 0.5s;}
+.al-progress-bar.running{background:var(--green);}
+.al-progress-bar.queued{background:var(--orange);}
+.al-meta{display:flex;justify-content:space-between;font-size:10px;color:var(--text2);}
+.al-status-label{font-size:10px;font-weight:600;}
+.al-status-label.running{color:var(--green);}
+.al-status-label.idle{color:var(--text2);}
+.al-status-label.error{color:var(--red);}
+.al-status-label.queued{color:var(--orange);}
+
+/* ── USERS TABLE ── */
+.users-toolbar{display:flex;gap:10px;margin-bottom:14px;align-items:center;}
+.search-input{
+  flex:1;padding:8px 14px;background:var(--navy2);
+  border:1px solid var(--border);border-radius:8px;
+  color:var(--text);font-size:13px;outline:none;
+}
+.search-input:focus{border-color:var(--gold);}
+.filter-btn{
+  padding:8px 14px;border-radius:8px;border:1px solid var(--border);
+  background:transparent;color:var(--text2);font-size:12px;cursor:pointer;
+}
+.filter-btn.active{border-color:var(--gold);color:var(--gold);background:rgba(201,168,76,0.08);}
+table{width:100%;border-collapse:collapse;}
+th{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text2);padding:8px 10px;text-align:left;border-bottom:1px solid var(--border);}
+td{padding:10px 10px;font-size:12.5px;border-bottom:1px solid rgba(255,255,255,0.03);vertical-align:middle;}
+tr:hover td{background:rgba(255,255,255,0.015);}
+.tier-badge{display:inline-block;padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700;}
+.tier-starter{background:rgba(148,163,184,0.12);color:var(--text2);}
+.tier-pro{background:rgba(201,168,76,0.15);color:var(--gold);}
+.tier-enterprise{background:rgba(139,92,246,0.15);color:var(--purple);}
+.status-online{color:var(--green);font-size:11px;}
+.status-offline{color:var(--text2);font-size:11px;}
+.action-btn{
+  padding:4px 10px;border-radius:6px;font-size:11px;
+  cursor:pointer;border:1px solid var(--border);
+  background:transparent;color:var(--text2);margin-right:4px;
+}
+.action-btn:hover{border-color:var(--gold);color:var(--gold);}
+.action-btn.danger:hover{border-color:var(--red);color:var(--red);}
+.action-btn.promote:hover{border-color:var(--green);color:var(--green);}
+.avatar{width:28px;height:28px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;margin-right:8px;}
+
+/* ── MODERATION ── */
+.mod-queue{display:flex;flex-direction:column;gap:10px;}
+.mod-item{
+  background:var(--navy2);border:1px solid var(--border);
+  border-radius:10px;padding:14px;
+  display:flex;align-items:flex-start;gap:14px;
+}
+.mod-item.critical{border-left:3px solid var(--red);}
+.mod-item.warning{border-left:3px solid var(--orange);}
+.mod-item.info{border-left:3px solid var(--blue);}
+.mod-icon{font-size:22px;flex-shrink:0;}
+.mod-body{flex:1;}
+.mod-title{font-size:13px;font-weight:700;margin-bottom:3px;}
+.mod-desc{font-size:11px;color:var(--text2);margin-bottom:8px;}
+.mod-meta{display:flex;gap:12px;font-size:10px;color:var(--text2);}
+.mod-actions{display:flex;gap:6px;flex-shrink:0;}
+.mod-btn{padding:6px 12px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;border:none;}
+.mod-btn.approve{background:rgba(16,185,129,0.15);color:var(--green);}
+.mod-btn.reject{background:rgba(239,68,68,0.15);color:var(--red);}
+.mod-btn.review{background:rgba(245,158,11,0.15);color:var(--orange);}
+.mod-btn:hover{opacity:0.8;}
+
+/* ── LIVE LOG ── */
+.log-feed{font-family:'Courier New',monospace;font-size:11px;line-height:1.9;max-height:320px;overflow-y:auto;}
+.log-line{padding:1px 0;display:flex;gap:8px;}
+.log-time{color:var(--text2);flex-shrink:0;}
+.log-type{flex-shrink:0;font-weight:700;}
+.log-type.success{color:var(--green);}
+.log-type.info{color:var(--blue);}
+.log-type.warn{color:var(--orange);}
+.log-type.error{color:var(--red);}
+.log-msg{color:var(--text);}
+
+/* ── SESSION VIEWER ── */
+.session-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+.session-card{
+  background:var(--navy2);border:1px solid var(--border);
+  border-radius:10px;padding:14px;
+}
+.sc-header{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.sc-avatar{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;}
+.sc-name{font-size:13px;font-weight:700;}
+.sc-email{font-size:10px;color:var(--text2);}
+.sc-activity{font-size:11px;color:var(--text2);margin-bottom:8px;}
+.sc-page{font-size:12px;color:var(--blue);}
+.sc-meta{display:flex;justify-content:space-between;font-size:10px;color:var(--text2);margin-top:8px;padding-top:8px;border-top:1px solid var(--border);}
+.sc-online-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--green);animation:pulse 2s infinite;margin-right:5px;}
+
+/* ── SUBSCRIPTION PANEL ── */
+.sub-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:20px;}
+.sub-tier-card{
+  border-radius:12px;padding:20px;
+  background:rgba(255,255,255,0.03);border:1px solid var(--border);
+  text-align:center;
+}
+.sub-tier-card.pro{border-color:rgba(201,168,76,0.3);}
+.sub-tier-card.enterprise{border-color:rgba(139,92,246,0.3);}
+.stc-icon{font-size:36px;margin-bottom:10px;}
+.stc-name{font-size:16px;font-weight:800;margin-bottom:4px;}
+.stc-count{font-size:32px;font-weight:900;margin-bottom:4px;}
+.stc-rev{font-size:13px;color:var(--text2);}
+
+/* ── PERMISSIONS MATRIX ── */
+.perm-table{width:100%;border-collapse:collapse;}
+.perm-table th{font-size:11px;padding:8px 12px;background:rgba(255,255,255,0.03);border-bottom:1px solid var(--border);text-align:center;}
+.perm-table th:first-child{text-align:left;}
+.perm-table td{padding:9px 12px;border-bottom:1px solid rgba(255,255,255,0.03);font-size:12px;text-align:center;}
+.perm-table td:first-child{text-align:left;font-weight:600;}
+.pcheck{color:var(--green);font-size:16px;}
+.pno{color:var(--text2);font-size:16px;}
+
+/* ── ANALYTICS ── */
+.chart-bars{display:flex;align-items:flex-end;gap:6px;height:100px;margin-top:10px;}
+.cb-wrap{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;}
+.cb-bar{width:100%;border-radius:4px 4px 0 0;transition:height 0.8s;}
+.cb-lbl{font-size:9px;color:var(--text2);}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar{width:5px;}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+
+/* ── GRID UTILS ── */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;}
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════════
+     LOGIN GATE — Password Protected
+════════════════════════════════════════════════ -->
+<div id="loginGate">
+  <div class="login-box">
+    <div class="login-logo">🔐</div>
+    <div class="login-badge">🔴 OWNER ACCESS ONLY</div>
+    <div class="login-title">Super Admin Portal</div>
+    <div class="login-sub">AACG Platform — Master Control Center<br>This portal is restricted to platform owner only.</div>
+    <label class="login-label">Platform Owner Password</label>
+    <input type="password" class="login-input" id="pwdInput" placeholder="Enter owner password" onkeydown="if(event.key==='Enter')tryLogin()">
+    <button class="login-btn" onclick="tryLogin()">🔓 Access Command Center</button>
+    <div class="login-error" id="loginError">❌ Incorrect password. Access denied.</div>
+    <div style="font-size:11px;color:var(--text2);margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
+      Unauthorized access attempts are logged and reported.<br>
+      <span style="color:var(--gold)">© 2026 AACG Platform — All Rights Reserved</span>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════
+     MAIN APP
+════════════════════════════════════════════════ -->
+<div id="app">
+
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <div class="tb-logo">
+      <div class="tb-mark">A</div>
+      <span class="tb-name">AACG Super Admin</span>
+    </div>
+    <div class="tb-badge">⚡ OWNER PORTAL</div>
+    <div class="tb-spacer"></div>
+    <div class="tb-status"><div class="tb-pulse"></div> All Systems Live</div>
+    <div class="tb-time" id="liveClock">--:--:--</div>
+    <div class="tb-user" id="ownerName">👑 Platform Owner</div>
+    <button class="tb-logout" onclick="logout()">Logout</button>
+  </div>
+
+  <div class="body-layout">
+
+    <!-- SIDEBAR -->
+    <nav class="sidebar">
+      <div class="nav-section">
+        <div class="nav-label">Overview</div>
+        <div class="nav-item active" onclick="showPanel('overview',this)"><span class="ni">📊</span> Overview</div>
+        <div class="nav-item" onclick="showPanel('analytics',this)"><span class="ni">📈</span> Analytics</div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">AI Agents</div>
+        <div class="nav-item" onclick="showPanel('agents-live',this)"><span class="ni">🤖</span> Live Agent Status <span class="nbadge green" id="runningCount">6</span></div>
+        <div class="nav-item" onclick="showPanel('agent-logs',this)"><span class="ni">📋</span> Agent Logs</div>
+        <div class="nav-item" onclick="showPanel('agent-config',this)"><span class="ni">⚙️</span> Agent Config</div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">Moderation</div>
+        <div class="nav-item" onclick="showPanel('mod-queue',this)"><span class="ni">🚨</span> Mod Queue <span class="nbadge red" id="modCount">7</span></div>
+        <div class="nav-item" onclick="showPanel('live-sessions',this)"><span class="ni">👁️</span> Live Sessions <span class="nbadge green" id="sessCount">12</span></div>
+        <div class="nav-item" onclick="showPanel('activity-feed',this)"><span class="ni">⚡</span> Activity Feed</div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">Users</div>
+        <div class="nav-item" onclick="showPanel('all-users',this)"><span class="ni">👥</span> All Users <span class="nbadge gold" id="userCount">248</span></div>
+        <div class="nav-item" onclick="showPanel('subscriptions',this)"><span class="ni">💳</span> Subscriptions</div>
+        <div class="nav-item" onclick="showPanel('permissions',this)"><span class="ni">🔑</span> Access Control</div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">Platform</div>
+        <div class="nav-item" onclick="showPanel('projects-all',this)"><span class="ni">🏗️</span> All Projects</div>
+        <div class="nav-item" onclick="showPanel('liens-all',this)"><span class="ni">⚖️</span> All Liens</div>
+        <div class="nav-item" onclick="showPanel('revenue',this)"><span class="ni">💰</span> Revenue</div>
+        <div class="nav-item" onclick="showPanel('settings',this)"><span class="ni">🛡️</span> Security & Settings</div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">Links</div>
+        <div class="nav-item" onclick="window.open('../admin/index.html')"><span class="ni">🔧</span> Subscriber Admin</div>
+        <div class="nav-item" onclick="window.open('../aacg-website.html')"><span class="ni">🌐</span> Main Website</div>
+      </div>
+    </nav>
+
+    <!-- CONTENT -->
+    <div class="content">
+
+      <!-- ── OVERVIEW ── -->
+      <div class="panel active" id="panel-overview">
+        <div class="kpi-row">
+          <div class="kpi gold"><div class="kpi-lbl">Total Users</div><div class="kpi-val gold" id="kpiUsers">248</div><div class="kpi-sub">↑ +12 this week</div></div>
+          <div class="kpi green"><div class="kpi-lbl">Monthly Revenue</div><div class="kpi-val green">$24.8K</div><div class="kpi-sub">↑ +18% MoM</div></div>
+          <div class="kpi blue"><div class="kpi-lbl">Active Projects</div><div class="kpi-val blue">847</div><div class="kpi-sub">Across all subscribers</div></div>
+          <div class="kpi purple"><div class="kpi-lbl">Agents Running</div><div class="kpi-val purple" id="kpiAgents">6</div><div class="kpi-sub">Of 20 agents</div></div>
+          <div class="kpi cyan"><div class="kpi-lbl">Live Sessions</div><div class="kpi-val cyan" id="kpiSessions">12</div><div class="kpi-sub">Users online now</div></div>
+          <div class="kpi red"><div class="kpi-lbl">Mod Queue</div><div class="kpi-val red" id="kpiMod">7</div><div class="kpi-sub">Need attention</div></div>
+        </div>
+
+        <div class="g2">
+          <div class="card">
+            <div class="card-hdr">
+              <div><div class="card-title">🤖 Agent Activity (Live)</div><div class="card-sub">All 20 agents — current status</div></div>
+              <span onclick="showPanel('agents-live',document.querySelector('.nav-item:nth-child(2)'))" style="font-size:12px;color:var(--gold);cursor:pointer">Full view →</span>
+            </div>
+            <div id="overviewAgentMini"></div>
+          </div>
+          <div class="card">
+            <div class="card-hdr">
+              <div><div class="card-title">👥 Recent User Activity</div><div class="card-sub">Last 10 user events</div></div>
+            </div>
+            <div class="log-feed" id="userActivityLog"></div>
+          </div>
+        </div>
+
+        <div class="g3">
+          <div class="card">
+            <div class="card-hdr"><div class="card-title">💳 Subscription Breakdown</div></div>
+            <div id="subBreakdown"></div>
+          </div>
+          <div class="card">
+            <div class="card-hdr"><div class="card-title">🚨 Top Mod Alerts</div></div>
+            <div id="topAlerts"></div>
+          </div>
+          <div class="card">
+            <div class="card-hdr"><div class="card-title">📊 Revenue (30 days)</div></div>
+            <div class="chart-bars" id="revenueChart"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── AGENTS LIVE ── -->
+      <div class="panel" id="panel-agents-live">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
+          <div>
+            <h2 style="font-size:20px;font-weight:800;">🤖 Live Agent Status Board</h2>
+            <p style="color:var(--text2);font-size:12px;margin-top:4px">Real-time status of all 20 AI agents across all subscriber accounts</p>
+          </div>
+          <div style="display:flex;gap:10px;">
+            <div style="font-size:12px;color:var(--green);display:flex;align-items:center;gap:5px;"><div style="width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 2s infinite"></div> Running</div>
+            <div style="font-size:12px;color:var(--orange);display:flex;align-items:center;gap:5px;"><div style="width:8px;height:8px;border-radius:50%;background:var(--orange)"></div> Queued</div>
+            <div style="font-size:12px;color:var(--text2);display:flex;align-items:center;gap:5px;"><div style="width:8px;height:8px;border-radius:50%;background:var(--text2)"></div> Idle</div>
+            <div style="font-size:12px;color:var(--red);display:flex;align-items:center;gap:5px;"><div style="width:8px;height:8px;border-radius:50%;background:var(--red);animation:pulse 1s infinite"></div> Error</div>
+          </div>
+        </div>
+        <div class="agent-live-grid" id="agentLiveGrid"></div>
+      </div>
+
+      <!-- ── AGENT LOGS ── -->
+      <div class="panel" id="panel-agent-logs">
+        <h2 style="font-size:20px;font-weight:800;margin-bottom:18px;">📋 Full Agent Execution Log</h2>
+        <div class="card">
+          <div class="log-feed" id="fullAgentLog" style="max-height:500px;overflow-y:auto;"></div>
+        </div>
+      </div>
+
+      <!-- ── AGENT CONFIG ── -->
+      <div class="panel" id="panel-agent-config">
+        <h2 style="font-size:20px;font-weight:800;margin-bottom:18px;">⚙️ Agent Configuration</h2>
+        <div class="card">
+          <table>
+            <thead><tr><th>Agent</th><th>Status</th><th>Schedule</th><th>Runs Today</th><th>Avg Runtime</th><th>Error Rate</th><th>Controls</th></tr></thead>
+            <tbody id="agentConfigTable"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ── MOD QUEUE ── -->
+      <div class="panel" id="panel-mod-queue">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
+          <div>
+            <h2 style="font-size:20px;font-weight:800;">🚨 Moderation Queue</h2>
+            <p style="color:var(--text2);font-size:12px;margin-top:4px">All flagged events, suspicious activity, and items requiring owner review</p>
+          </div>
+          <div style="font-size:12px;color:var(--text2)">Auto-refreshing every 30s</div>
+        </div>
+        <div class="mod-queue" id="modQueue"></div>
+      </div>
+
+      <!-- ── LIVE SESSIONS ── -->
+      <div class="panel" id="panel-live-sessions">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
+          <div>
+            <h2 style="font-size:20px;font-weight:800;">👁️ Live User Sessions</h2>
+            <p style="color:var(--text2);font-size:12px;margin-top:4px">Every active user on the platform right now — what they're doing, where they are</p>
+          </div>
+          <div class="tb-status"><div class="tb-pulse"></div> <span id="liveSessionCount">12</span> online</div>
+        </div>
+        <div class="session-grid" id="sessionGrid"></div>
+      </div>
+
+      <!-- ── ACTIVITY FEED ── -->
+      <div class="panel" id="panel-activity-feed">
+        <h2 style="font-size:20px;font-weight:800;margin-bottom:18px;">⚡ Platform Activity Feed</h2>
+        <div class="card">
+          <div class="log-feed" id="platformFeed" style="max-height:600px;overflow-y:auto;"></div>
+        </div>
+      </div>
+
+      <!-- ── ALL USERS ── -->
+      <div class="panel" id="panel-all-users">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+          <h2 style="font-size:20px;font-weight:800;">👥 All Platform Users</h2>
+          <button onclick="showAddUser()" style="padding:8px 18px;background:linear-gradient(135deg,var(--gold),var(--gold2));color:var(--navy);border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;">+ Invite User</button>
+        </div>
+        <div class="users-toolbar">
+          <input type="text" class="search-input" placeholder="🔍 Search by name, email, company..." id="userSearch" oninput="filterUsers()">
+          <button class="filter-btn active" onclick="filterByTier('all',this)">All</button>
+          <button class="filter-btn" onclick="filterByTier('starter',this)">Starter</button>
+          <button class="filter-btn" onclick="filterByTier('pro',this)">Pro</button>
+          <button class="filter-btn" onclick="filterByTier('enterprise',this)">Enterprise</button>
+          <button class="filter-btn" onclick="filterByTier('online',this)">🟢 Online</button>
+        </div>
+        <div class="card" style="padding:0;overflow:hidden;">
+          <table>
+            <thead><tr><th>User</th><th>Company</th><th>Tier</th><th>Status</th><th>Last Active</th><th>Projects</th><th>Revenue</th><th>Actions</th></tr></thead>
+            <tbody id="usersTable"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ── SUBSCRIPTIONS ── -->
+      <div class="panel" id="panel-subscriptions">
+        <h2 style="font-size:20px;font-weight:800;margin-bottom:18px;">💳 Subscription Management</h2>
+        <div class="sub-grid" id="subTierCards"></div>
+        <div class="card">
+          <div class="card-hdr"><div class="card-title">Recent Subscription Events</div></div>
+          <table>
+            <thead><tr><th>Date</th><th>User</th><th>Event</th><th>From</th><th>To</th><th>MRR Impact</th></tr></thead>
+            <tbody id="subEvents"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ── PERMISSIONS ── -->
+      <div class="panel" id="panel-permissions">
+        <h2 style="font-size:20px;font-weight:800;margin-bottom:18px;">🔑 Access Control & Permissions Matrix</h2>
+        <div class="card">
+          <p style="color:var(--text2);font-size:13px;margin-bottom:16px;">Features available per subscription tier. Toggle any cell to override for individual users.</p>
+          <table class="perm-table">
+            <thead>
+              <tr>
+                <th style="text-align:left">Feature</th>
+                <th>Starter</th>
+                <th>Professional</th>
+                <th>Enterprise</th>
+                <th>Super Admin</th>
+              </tr>
+            </thead>
+            <tbody id="permMatrix"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ── ALL PROJECTS ── -->
+      <div class="panel" id="panel-projects-all">
+        <h2 style="font-size:20px;font-weight:800;margin-bottom:18px;">🏗️ All Projects — Platform-Wide</h2>
+        <div class="card" style="padding:0;overflow:hidden;">
+          <table>
+            <thead><tr><th>Project</th><th>Owner</th><th>Trade</th><th>Value</th><th>Status</th><th>Agents Active</th><th>Lien Status</th></tr></thead>
+            <tbody id="allProjectsTable"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ── ALL LIENS ── -->
+      <div class="panel" id="panel-liens-all">
+        <h2 style="font-size:20px;font-weight:800;margin-bottom:18px;">⚖️ All Liens — Platform-Wide</h2>
+        <div class="card" style="padding:0;overflow:hidden;">
+          <table>
+            <thead><tr><th>Project</th><th>Subscriber</th><th>Amount</th><th>Stage</th><th>Deadline</th><th>Days Left</th><th>Action</th></tr></thead>
+            <tbody id="allLiensTable"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ── REVENUE ── -->
+      <div class="panel" id="panel-revenue">
+        <h2 style="font-size:20px;font-weight:800;margin-bottom:18px;">💰 Platform Revenue</h2>
+        <div class="kpi-row" style="grid-template-columns:repeat(4,1fr)">
+          <div class="kpi gold"><div class="kpi-lbl">MRR</div><div class="kpi-val gold">$24,800</div><div class="kpi-sub">Monthly Recurring</div></div>
+          <div class="kpi green"><div class="kpi-lbl">ARR</div><div class="kpi-val green">$297K</div><div class="kpi-sub">Annual Run Rate</div></div>
+          <div class="kpi blue"><div class="kpi-lbl">Avg Revenue/User</div><div class="kpi-val blue">$100</div><div class="kpi-sub">ARPU</div></div>
+          <div class="kpi purple"><div class="kpi-lbl">Churn Rate</div><div class="kpi-val purple">2.1%</div><div class="kpi-sub">Monthly churn</div></div>
+        </div>
+        <div class="g2">
+          <div class="card">
+            <div class="card-hdr"><div class="card-title">Revenue by Tier</div></div>
+            <div id="revByTier"></div>
+          </div>
+          <div class="card">
+            <div class="card-hdr"><div class="card-title">New MRR This Month</div></div>
+            <div class="chart-bars" id="mrrChart"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── SETTINGS ── -->
+      <div class="panel" id="panel-settings">
+        <h2 style="font-size:20px;font-weight:800;margin-bottom:18px;">🛡️ Security & Platform Settings</h2>
+        <div class="g2">
+          <div class="card">
+            <div class="card-hdr"><div class="card-title">🔐 Change Owner Password</div></div>
+            <div class="input-group" style="margin-bottom:12px">
+              <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:6px">Current Password</label>
+              <input type="password" class="search-input" id="currPwd" placeholder="Current password">
+            </div>
+            <div class="input-group" style="margin-bottom:12px">
+              <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:6px">New Password</label>
+              <input type="password" class="search-input" id="newPwd" placeholder="Min 12 characters">
+            </div>
+            <div class="input-group" style="margin-bottom:16px">
+              <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:6px">Confirm New Password</label>
+              <input type="password" class="search-input" id="confPwd" placeholder="Confirm new password">
+            </div>
+            <button onclick="changePwd()" style="padding:10px 20px;background:linear-gradient(135deg,var(--gold),var(--gold2));color:var(--navy);border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;">Update Password</button>
+            <div id="pwdMsg" style="font-size:12px;margin-top:8px;"></div>
+          </div>
+          <div class="card">
+            <div class="card-hdr"><div class="card-title">🌐 Platform Config</div></div>
+            <div style="display:flex;flex-direction:column;gap:12px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)">
+                <div><div style="font-size:13px;font-weight:600">Auto-deploy agents on new project</div><div style="font-size:11px;color:var(--text2)">Prelim notice + compliance check fires automatically</div></div>
+                <div class="toggle-switch active" onclick="this.classList.toggle('active')">ON</div>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)">
+                <div><div style="font-size:13px;font-weight:600">Email alerts on lien deadline</div><div style="font-size:11px;color:var(--text2)">Owner gets CC on all 7-day deadline alerts</div></div>
+                <div class="toggle-switch active" onclick="this.classList.toggle('active')">ON</div>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)">
+                <div><div style="font-size:13px;font-weight:600">New user moderation required</div><div style="font-size:11px;color:var(--text2)">All new sign-ups go to moderation queue</div></div>
+                <div class="toggle-switch" onclick="this.classList.toggle('active')">OFF</div>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0">
+                <div><div style="font-size:13px;font-weight:600">Maintenance mode</div><div style="font-size:11px;color:var(--text2)">Lock all subscriber access (owner only)</div></div>
+                <div class="toggle-switch" onclick="this.classList.toggle('active');alert('Maintenance mode toggled')">OFF</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-hdr"><div class="card-title">🔑 API Keys & Integrations</div></div>
+          <table>
+            <thead><tr><th>Service</th><th>Status</th><th>Key (masked)</th><th>Last Used</th><th>Actions</th></tr></thead>
+            <tbody>
+              <tr><td>OpenAI API</td><td><span style="color:var(--green)">✓ Active</span></td><td style="font-family:monospace;font-size:11px">sk-...a84c</td><td>2 min ago</td><td><button class="action-btn">Rotate</button></td></tr>
+              <tr><td>Supabase</td><td><span style="color:var(--green)">✓ Active</span></td><td style="font-family:monospace;font-size:11px">eyJ...b2F9</td><td>1 min ago</td><td><button class="action-btn">Rotate</button></td></tr>
+              <tr><td>Stripe</td><td><span style="color:var(--green)">✓ Active</span></td><td style="font-family:monospace;font-size:11px">sk_live...7f4a</td><td>5 min ago</td><td><button class="action-btn">Rotate</button></td></tr>
+              <tr><td>SendGrid</td><td><span style="color:var(--green)">✓ Active</span></td><td style="font-family:monospace;font-size:11px">SG....c9d1</td><td>12 min ago</td><td><button class="action-btn">Rotate</button></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ── ANALYTICS ── -->
+      <div class="panel" id="panel-analytics">
+        <h2 style="font-size:20px;font-weight:800;margin-bottom:18px;">📈 Platform Analytics</h2>
+        <div class="kpi-row">
+          <div class="kpi gold"><div class="kpi-lbl">Total Signups</div><div class="kpi-val gold">248</div><div class="kpi-sub">All time</div></div>
+          <div class="kpi green"><div class="kpi-lbl">Active Today</div><div class="kpi-val green">47</div><div class="kpi-sub">Unique logins</div></div>
+          <div class="kpi blue"><div class="kpi-lbl">Agent Tasks Today</div><div class="kpi-val blue">1,847</div><div class="kpi-sub">Across platform</div></div>
+          <div class="kpi purple"><div class="kpi-lbl">Liens Protected</div><div class="kpi-val purple">3,412</div><div class="kpi-sub">Total automated</div></div>
+          <div class="kpi cyan"><div class="kpi-lbl">Photos Analyzed</div><div class="kpi-val cyan">28K+</div><div class="kpi-sub">Total AI processed</div></div>
+          <div class="kpi red"><div class="kpi-lbl">Invoices Sent</div><div class="kpi-val red">9,200</div><div class="kpi-sub">Via platform</div></div>
+        </div>
+        <div class="g2">
+          <div class="card"><div class="card-hdr"><div class="card-title">Daily Active Users (30d)</div></div><div class="chart-bars" id="dauChart"></div></div>
+          <div class="card"><div class="card-hdr"><div class="card-title">Agent Tasks Per Day</div></div><div class="chart-bars" id="taskChart"></div></div>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </div><!-- /body-layout -->
+</div><!-- /app -->
+
+<style>
+.toggle-switch {
+  padding:5px 14px;border-radius:20px;font-size:11px;font-weight:700;
+  cursor:pointer;background:rgba(148,163,184,0.1);color:var(--text2);
+  border:1px solid var(--border);
+}
+.toggle-switch.active {background:rgba(16,185,129,0.15);color:var(--green);border-color:rgba(16,185,129,0.3);}
+</style>
+
+<!-- Supabase SDK -->
+<script src="../config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+// ═══════════════════════════════════════════════════════════
+//  IRONFORGE SUPERADMIN — Supabase Live Data Wiring
+//  Set credentials to connect live subscriber data
+// ═══════════════════════════════════════════════════════════
+const SB_URL  = window.SUPABASE_URL  || '';
+const SB_KEY  = window.SUPABASE_ANON || '';
+const USE_SB  = SB_URL.startsWith('https://') && SB_KEY.length > 10;
+const sbAdmin = USE_SB ? supabase.createClient(SB_URL, SB_KEY) : null;
+
+// Fetch all subscribers from Supabase
+async function sbGetSubscribers() {
+  if (!sbAdmin) return null;
+  try {
+    const { data, error } = await sbAdmin.from('profiles').select('*').order('created_at', { ascending: false });
+    if (error) throw error;
+    return data;
+  } catch(e) { console.error('[SA Supabase]', e); return null; }
+}
+
+// Fetch platform metrics from Supabase
+async function sbGetMetrics() {
+  if (!sbAdmin) return null;
+  try {
+    const [users, agents, invoices] = await Promise.all([
+      sbAdmin.from('profiles').select('id, plan, status, created_at'),
+      sbAdmin.from('agent_logs').select('id, created_at').gte('created_at', new Date(Date.now()-86400000).toISOString()),
+      sbAdmin.from('invoices').select('amount, status')
+    ]);
+    return {
+      totalUsers: users.data?.length || 0,
+      agentRunsToday: agents.data?.length || 0,
+      totalRevenue: invoices.data?.filter(i=>i.status==='paid').reduce((s,i)=>s+Number(i.amount),0) || 0,
+      trialUsers: users.data?.filter(u=>u.status==='trial').length || 0,
+      activeUsers: users.data?.filter(u=>u.status==='active').length || 0,
+      planBreakdown: {
+        starter: users.data?.filter(u=>u.plan==='starter').length || 0,
+        pro: users.data?.filter(u=>u.plan==='pro').length || 0,
+        enterprise: users.data?.filter(u=>u.plan==='enterprise').length || 0,
+      }
+    };
+  } catch(e) { return null; }
+}
+
+// Update a subscriber's plan (superadmin action)
+async function sbUpdatePlan(userId, plan) {
+  if (!sbAdmin) return;
+  await sbAdmin.from('profiles').update({ plan }).eq('id', userId);
+}
+
+// Suspend a subscriber
+async function sbSuspendUser(userId) {
+  if (!sbAdmin) return;
+  await sbAdmin.from('profiles').update({ status: 'suspended' }).eq('id', userId);
+}
+
+// Load live metrics into dashboard if Supabase is configured
+async function loadLiveMetrics() {
+  if (!USE_SB) return; // Stay on mock data
+  const m = await sbGetMetrics();
+  if (!m) return;
+  // Patch the stat cards if they exist
+  const statEls = document.querySelectorAll('[data-live-stat]');
+  statEls.forEach(function(el) {
+    const key = el.dataset.liveStat;
+    if (m[key] !== undefined) el.textContent = m[key].toLocaleString();
+  });
+}
+
+// Load live subscriber list
+async function loadLiveSubscribers() {
+  if (!USE_SB) return null;
+  return await sbGetSubscribers();
+}
+</script>
+<script>
+// ══════════════════════════════════════════════
+// PASSWORD SYSTEM
+// ══════════════════════════════════════════════
+// The master password is stored as a SHA-256 hash.
+// Default: AACG2026!Owner — change via Settings panel
+const MASTER_HASH = '7b96e54b75db45be5b3d46f6b03ebf4f8f41d5c2a8fbc74f2af42fc7b3d7e9a1'; // AACG2026!Owner
+
+async function sha256(msg) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(msg));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+async function tryLogin() {
+  const pwd = document.getElementById('pwdInput').value;
+  if(!pwd) return;
+  const hash = await sha256(pwd);
+  // Also accept the raw password check for demo (stored in sessionStorage after first hash match)
+  const storedPwd = sessionStorage.getItem('aacg_owner_pwd') || 'AACG2026!Owner';
+  if(pwd === storedPwd || hash === MASTER_HASH) {
+    sessionStorage.setItem('aacg_authed', '1');
+    sessionStorage.setItem('aacg_owner_pwd', storedPwd);
+    document.getElementById('loginGate').style.display = 'none';
+    document.getElementById('app').classList.add('authed');
+    initApp();
+  } else {
+    const err = document.getElementById('loginError');
+    err.style.display = 'block';
+    document.getElementById('pwdInput').style.borderColor = 'var(--red)';
+    setTimeout(()=>{ err.style.display='none'; document.getElementById('pwdInput').style.borderColor=''; }, 3000);
+  }
+}
+
+function logout() {
+  sessionStorage.removeItem('aacg_authed');
+  location.reload();
+}
+
+// Auto-restore session
+if(sessionStorage.getItem('aacg_authed')) {
+  document.getElementById('loginGate').style.display = 'none';
+  document.getElementById('app').classList.add('authed');
+  // init after DOM ready
+  window.addEventListener('DOMContentLoaded', function(){
+  initApp();
+  setTimeout(loadLiveMetrics, 1200);
+});
+}
+
+// ══════════════════════════════════════════════
+// DATA
+// ══════════════════════════════════════════════
+const AGENTS = [
+  {id:'lien-drafter',icon:'⚖️',name:'Lien Drafter',status:'running',task:'Drafting lien for PRJ-004 DataCenter UPS',progress:72,runs:8,errRate:'0%',schedule:'On-demand + payment trigger'},
+  {id:'lien-monitor',icon:'🔔',name:'Lien Monitor',status:'running',task:'Scanning 12 active liens for deadline alerts',progress:45,runs:48,errRate:'0%',schedule:'Every 4 hours'},
+  {id:'photo-analyzer',icon:'📸',name:'Photo AI Analyzer',status:'running',task:'Processing 6 new photos — Metro Diner PRJ-001',progress:60,runs:142,errRate:'0.7%',schedule:'On upload'},
+  {id:'invoice-generator',icon:'💰',name:'Invoice Generator',status:'idle',task:'Waiting for work order completions',progress:0,runs:24,errRate:'0%',schedule:'On work order close'},
+  {id:'bid-estimator',icon:'📊',name:'Bid Estimator',status:'queued',task:'Queued: RFP from Acme Corp pending analysis',progress:15,runs:12,errRate:'2.1%',schedule:'On RFP receipt'},
+  {id:'schedule-optimizer',icon:'📅',name:'Schedule Optimizer',status:'idle',task:'Last run: 06:00 — all crews assigned',progress:0,runs:1,errRate:'0%',schedule:'6:00 AM daily'},
+  {id:'compliance-checker',icon:'✅',name:'Compliance Checker',status:'running',task:'Verifying permits for PRJ-003 School HVAC',progress:88,runs:18,errRate:'0%',schedule:'Daily + on-demand'},
+  {id:'change-order',icon:'📝',name:'Change Order Agent',status:'idle',task:'No pending scope changes',progress:0,runs:5,errRate:'0%',schedule:'On field submission'},
+  {id:'payment-chaser',icon:'💸',name:'Payment Chaser',status:'running',task:'Day-45 notice: Kohl Properties $165K overdue',progress:55,runs:31,errRate:'0%',schedule:'Daily + escalation'},
+  {id:'material-tracker',icon:'📦',name:'Material Tracker',status:'idle',task:'All materials on schedule',progress:0,runs:24,errRate:'0%',schedule:'Every 6 hours'},
+  {id:'safety-reporter',icon:'🦺',name:'Safety Reporter',status:'idle',task:'Weekly report generated at 07:00',progress:0,runs:7,errRate:'0%',schedule:'Daily 07:00'},
+  {id:'client-communicator',icon:'📧',name:'Client Communicator',status:'queued',task:'Queued: 3 milestone updates pending',progress:20,runs:19,errRate:'0%',schedule:'On milestone'},
+  {id:'prelim-notice',icon:'📬',name:'Preliminary Notice',status:'running',task:'Sending notices for 2 new projects',progress:80,runs:38,errRate:'0%',schedule:'Within 24h of project'},
+  {id:'subcontractor-mgr',icon:'🔗',name:'Subcontractor Mgr',status:'idle',task:'All lien waivers current',progress:0,runs:14,errRate:'0%',schedule:'Weekly + on payment'},
+  {id:'permit-tracker',icon:'📋',name:'Permit Tracker',status:'idle',task:'6 permits active, all on schedule',progress:0,runs:24,errRate:'0%',schedule:'Daily check'},
+  {id:'crew-dispatcher',icon:'📡',name:'Crew Dispatcher',status:'idle',task:'47 technicians dispatched at 08:00',progress:0,runs:1,errRate:'0%',schedule:'6:30 AM daily'},
+  {id:'quality-inspector',icon:'🔍',name:'Quality Inspector',status:'error',task:'ERROR: Photo API timeout on PRJ-002',progress:0,runs:9,errRate:'11.1%',schedule:'On inspection submit'},
+  {id:'document-manager',icon:'📁',name:'Document Manager',status:'idle',task:'All documents current and distributed',progress:0,runs:22,errRate:'0%',schedule:'On upload/update'},
+  {id:'rfp-responder',icon:'🎯',name:'RFP Responder',status:'idle',task:'2 RFPs in review queue',progress:0,runs:6,errRate:'0%',schedule:'On RFP receipt'},
+  {id:'weather-risk',icon:'🌤️',name:'Weather Risk Agent',status:'idle',task:'No weather alerts for next 48h',progress:0,runs:2,errRate:'0%',schedule:'6:00 AM daily'},
+];
+
+const USERS = [
+  {id:'USR001',name:'Scott G.',email:'goldrusher9009@gmail.com',company:'AACG Platform',tier:'enterprise',online:true,lastSeen:'Now',projects:47,revenue:'$2,400',avatar:'SG',color:'#c9a84c',role:'owner'},
+  {id:'USR002',name:'James T.',email:'james@metro-foods.com',company:'Metro Foods LLC',tier:'pro',online:true,lastSeen:'3 min',projects:4,revenue:'$99',avatar:'JT',color:'#2a7de1'},
+  {id:'USR003',name:'Maria R.',email:'maria@cloudcore.io',company:'CloudCore Inc',tier:'enterprise',online:true,lastSeen:'1 min',projects:8,revenue:'$499',avatar:'MR',color:'#8b5cf6'},
+  {id:'USR004',name:'David K.',email:'david@kohlprop.com',company:'Kohl Properties',tier:'pro',online:false,lastSeen:'2 hrs',projects:12,revenue:'$99',avatar:'DK',color:'#ef4444'},
+  {id:'USR005',name:'Amy C.',email:'amy@stfrancis.org',company:'St. Francis Health',tier:'enterprise',online:true,lastSeen:'8 min',projects:6,revenue:'$499',avatar:'AC',color:'#10b981'},
+  {id:'USR006',name:'Tyler M.',email:'tyler@logistics-plus.com',company:'Logistics Plus',tier:'starter',online:false,lastSeen:'1 day',projects:2,revenue:'$0',avatar:'TM',color:'#64748b'},
+  {id:'USR007',name:'Sarah B.',email:'sarah@blackstone.com',company:'Blackstone RE',tier:'enterprise',online:true,lastSeen:'12 min',projects:22,revenue:'$499',avatar:'SB',color:'#7c3aed'},
+  {id:'USR008',name:'Mike D.',email:'mike@shakep.com',company:'Shake Palace',tier:'pro',online:true,lastSeen:'5 min',projects:3,revenue:'$99',avatar:'MD',color:'#f59e0b'},
+  {id:'USR009',name:'Lisa H.',email:'lisa@chicagousd.edu',company:'Chicago USD',tier:'enterprise',online:false,lastSeen:'3 hrs',projects:5,revenue:'$499',avatar:'LH',color:'#3b82f6'},
+  {id:'USR010',name:'Robert N.',email:'robert@acme-corp.com',company:'Acme Corp',tier:'starter',online:true,lastSeen:'Now',projects:1,revenue:'$0',avatar:'RN',color:'#06b6d4'},
+];
+
+const MOD_ITEMS = [
+  {type:'critical',icon:'🚨',title:'Failed Login Attempts — IP: 185.220.101.47',desc:'14 failed login attempts in 5 minutes from same IP. Possible brute force attack on subscriber account.',time:'2 min ago',user:'Unknown',action:['Block IP','Dismiss']},
+  {type:'critical',icon:'⚠️',title:'Overdue Payment — Lien Risk Escalation',desc:'David K. (Kohl Properties) — $165,000 invoice 45 days overdue. AI has triggered lien filing. Owner review required.',time:'8 min ago',user:'David K.',action:['Review Lien','Notify']},
+  {type:'warning',icon:'🔍',title:'Quality Inspector Agent Error',desc:'Photo API timeout caused quality inspector to fail on PRJ-002 Office Tower. 3 consecutive failures.',time:'15 min ago',user:'System',action:['Restart Agent','Investigate']},
+  {type:'warning',icon:'👤',title:'New Enterprise Signup — Verification Needed',desc:'New Enterprise account registered: "Build-Pro LLC" (john@buildpro.com). Manual verification required before activation.',time:'32 min ago',user:'john@buildpro.com',action:['Approve','Reject']},
+  {type:'info',icon:'📊',title:'Bid Estimator — Unusual High Volume',desc:'Bid Estimator ran 18 times today vs. average of 3. Subscriber "Acme Corp" generated 12 bids. Review activity.',time:'1 hr ago',user:'Robert N.',action:['Review','Dismiss']},
+  {type:'warning',icon:'💳',title:'Stripe Payment Failed — Retry Needed',desc:'Pro subscription payment failed for Mike D. (Shake Palace). Card declined. 2nd retry scheduled in 24h.',time:'2 hrs ago',user:'Mike D.',action:['Contact User','Retry']},
+  {type:'info',icon:'📬',title:'Preliminary Notice Sent to Wrong State Format',desc:'State of Texas notice format mismatch detected by compliance checker. Notice resent automatically.',time:'3 hrs ago',user:'System',action:['Confirm Fix','Review']},
+];
+
+const LOG_LINES = [
+  {time:'09:14:33',type:'success',msg:'[Lien Drafter] Filed lien — PRJ-004 DataCenter, $120,000 — Subscriber: CloudCore Inc'},
+  {time:'09:13:11',type:'info',msg:'[Photo Analyzer] Processing batch: 6 photos, PRJ-001 Metro Diner — Subscriber: Metro Foods'},
+  {time:'09:12:08',type:'info',msg:'[Prelim Notice] 2 notices sent — PRJ-012, PRJ-013 — Subscriber: Blackstone RE'},
+  {time:'09:11:55',type:'success',msg:'[Compliance Checker] All permits verified — PRJ-003 School HVAC — Subscriber: Chicago USD'},
+  {time:'09:10:42',type:'warn',msg:'[Quality Inspector] API timeout on PRJ-002 — retrying in 60s'},
+  {time:'09:09:17',type:'success',msg:'[Payment Chaser] Day-45 notice sent — Kohl Properties $165,000'},
+  {time:'09:08:04',type:'info',msg:'[Client Communicator] Progress update queued for 3 projects'},
+  {time:'09:07:31',type:'error',msg:'[Quality Inspector] 3rd consecutive failure — PRJ-002 — escalated to mod queue'},
+  {time:'09:05:22',type:'success',msg:'[Invoice Generator] Invoice #2847 sent — $28,400 — Blackstone RE'},
+  {time:'09:04:01',type:'info',msg:'[Material Tracker] PO-8842 delivery confirmed — PRJ-007 Warehouse'},
+  {time:'09:02:48',type:'success',msg:'[Lien Monitor] 12 liens scanned — 2 alerts sent — 30-day and 7-day warnings'},
+  {time:'09:01:15',type:'info',msg:'[Crew Dispatcher] 47 technicians dispatched — 12 job sites — Avg ETA 28min'},
+  {time:'09:00:03',type:'success',msg:'[Weather Risk] No weather alerts — all 8 outdoor sites clear for 48h'},
+  {time:'08:58:42',type:'info',msg:'[Schedule Optimizer] Daily schedule optimized — 0 conflicts — runs started'},
+];
+
+// ══════════════════════════════════════════════
+// APP INIT
+// ══════════════════════════════════════════════
+function initApp() {
+  startClock();
+  renderOverview();
+  renderAgentLiveGrid();
+  renderModQueue();
+  renderLiveSessions();
+  renderAllUsers();
+  renderSubscriptions();
+  renderPermissions();
+  renderProjectsAll();
+  renderLiensAll();
+  renderAgentLogs();
+  renderAgentConfig();
+  renderAnalytics();
+  renderRevenue();
+  startLiveUpdates();
+}
+
+function startClock() {
+  setInterval(()=>{
+    document.getElementById('liveClock').textContent = new Date().toTimeString().substr(0,8);
+  },1000);
+  document.getElementById('liveClock').textContent = new Date().toTimeString().substr(0,8);
+}
+
+// ══════════════════════════════════════════════
+// PANEL NAVIGATION
+// ══════════════════════════════════════════════
+function showPanel(id, navEl) {
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('panel-'+id).classList.add('active');
+  if(navEl) navEl.classList.add('active');
+}
+
+// ══════════════════════════════════════════════
+// RENDER: OVERVIEW
+// ══════════════════════════════════════════════
+function renderOverview() {
+  // Agent mini
+  const running = AGENTS.filter(a=>a.status==='running'||a.status==='queued');
+  document.getElementById('overviewAgentMini').innerHTML = running.map(a=>`
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04)">
+      <span style="font-size:16px">${a.icon}</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:700">${a.name}</div>
+        <div style="font-size:10px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${a.task}</div>
+      </div>
+      <div style="width:60px">
+        <div style="height:3px;background:rgba(255,255,255,0.06);border-radius:2px;overflow:hidden">
+          <div style="width:${a.progress}%;height:100%;background:${a.status==='running'?'var(--green)':'var(--orange)'};border-radius:2px"></div>
+        </div>
+        <div style="font-size:9px;color:var(--text2);margin-top:2px;text-align:right">${a.progress}%</div>
+      </div>
+    </div>`).join('');
+
+  // User activity log
+  document.getElementById('userActivityLog').innerHTML = [
+    {t:'09:14',type:'info',m:'James T. opened admin dashboard'},
+    {t:'09:12',type:'success',m:'Maria R. ran Photo AI on 6 photos'},
+    {t:'09:10',type:'info',m:'Robert N. viewed Plumbing trade page'},
+    {t:'09:08',type:'warn',m:'David K. login from new device (Chicago, IL)'},
+    {t:'09:05',type:'success',m:'Amy C. approved change order #CO-044'},
+    {t:'09:02',type:'info',m:'Sarah B. downloaded lien waiver package'},
+    {t:'08:58',type:'info',m:'Mike D. updated project PRJ-019'},
+    {t:'08:54',type:'success',m:'Lisa H. submitted 3 permit applications'},
+  ].map(l=>`<div class="log-line"><span class="log-time">[${l.t}]</span><span class="log-type ${l.type}">[${l.type.toUpperCase()}]</span><span class="log-msg">${l.m}</span></div>`).join('');
+
+  // Sub breakdown
+  const tiers = [{label:'Starter',count:89,color:'var(--text2)',rev:'$0'},{label:'Professional',count:121,color:'var(--gold)',rev:'$11,979'},{label:'Enterprise',count:38,color:'var(--purple)',rev:'$18,962'}];
+  document.getElementById('subBreakdown').innerHTML = tiers.map(t=>`
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04)">
+      <div style="width:8px;height:8px;border-radius:50%;background:${t.color}"></div>
+      <div style="flex:1;font-size:13px">${t.label}</div>
+      <div style="font-size:16px;font-weight:800;color:${t.color}">${t.count}</div>
+      <div style="font-size:11px;color:var(--text2)">${t.rev}/mo</div>
+    </div>`).join('');
+
+  // Top alerts
+  document.getElementById('topAlerts').innerHTML = MOD_ITEMS.slice(0,4).map(m=>`
+    <div style="display:flex;gap:8px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04);cursor:pointer" onclick="showPanel('mod-queue',null)">
+      <span>${m.icon}</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${m.title}</div>
+        <div style="font-size:10px;color:var(--text2)">${m.time}</div>
+      </div>
+    </div>`).join('');
+
+  // Revenue chart
+  const months = ['Nov','Dec','Jan','Feb','Mar','Apr'];
+  const vals = [55,62,58,75,85,100];
+  document.getElementById('revenueChart').innerHTML = months.map((m,i)=>`
+    <div class="cb-wrap">
+      <div class="cb-bar" style="height:${vals[i]}%;background:linear-gradient(180deg,var(--gold),rgba(201,168,76,0.3))"></div>
+      <div class="cb-lbl">${m}</div>
+    </div>`).join('');
+}
+
+// ══════════════════════════════════════════════
+// RENDER: AGENTS LIVE
+// ══════════════════════════════════════════════
+function renderAgentLiveGrid() {
+  document.getElementById('agentLiveGrid').innerHTML = AGENTS.map(a=>`
+    <div class="al-card ${a.status}">
+      <div class="al-status-dot ${a.status}"></div>
+      <div class="al-icon">${a.icon}</div>
+      <div class="al-name">${a.name}</div>
+      <div class="al-task">${a.task}</div>
+      ${a.progress>0 ? `<div class="al-progress"><div class="al-progress-bar ${a.status}" style="width:${a.progress}%"></div></div>` : '<div style="height:11px"></div>'}
+      <div class="al-meta">
+        <span class="al-status-label ${a.status}">${a.status.toUpperCase()}</span>
+        <span>${a.progress>0?a.progress+'%':''}</span>
+      </div>
+    </div>`).join('');
+}
+
+// ══════════════════════════════════════════════
+// RENDER: MODERATION QUEUE
+// ══════════════════════════════════════════════
+function renderModQueue() {
+  document.getElementById('modQueue').innerHTML = MOD_ITEMS.map((m,i)=>`
+    <div class="mod-item ${m.type}" id="mod-${i}">
+      <div class="mod-icon">${m.icon}</div>
+      <div class="mod-body">
+        <div class="mod-title">${m.title}</div>
+        <div class="mod-desc">${m.desc}</div>
+        <div class="mod-meta">
+          <span>🕐 ${m.time}</span>
+          <span>👤 ${m.user}</span>
+          <span style="text-transform:uppercase;color:${m.type==='critical'?'var(--red)':m.type==='warning'?'var(--orange)':'var(--blue)'};font-weight:700">${m.type}</span>
+        </div>
+      </div>
+      <div class="mod-actions">
+        ${m.action.map((a,ai)=>`<button class="mod-btn ${ai===0?'approve':'reject'}" onclick="resolveModItem(${i},'${a}')">${a}</button>`).join('')}
+      </div>
+    </div>`).join('');
+}
+
+function resolveModItem(i, action) {
+  const el = document.getElementById('mod-'+i);
+  if(el) { el.style.opacity='0.4'; el.style.pointerEvents='none'; }
+  const count = parseInt(document.getElementById('modCount').textContent) - 1;
+  document.getElementById('modCount').textContent = Math.max(0,count);
+  document.getElementById('kpiMod').textContent = Math.max(0,count);
+}
+
+// ══════════════════════════════════════════════
+// RENDER: LIVE SESSIONS
+// ══════════════════════════════════════════════
+function renderLiveSessions() {
+  const sessions = USERS.filter(u=>u.online).map(u=>({
+    ...u,
+    page: ['Admin Dashboard','Project PRJ-001','Lien Tracker','Photo AI','Trade Page: Plumbing','Bid Estimator','Agent Runner','Compliance Dashboard'][Math.floor(Math.random()*8)],
+    duration: Math.floor(Math.random()*45+2)+'m',
+  }));
+  document.getElementById('liveSessionCount').textContent = sessions.length;
+  document.getElementById('sessCount').textContent = sessions.length;
+  document.getElementById('kpiSessions').textContent = sessions.length;
+  document.getElementById('sessionGrid').innerHTML = sessions.map(s=>`
+    <div class="session-card">
+      <div class="sc-header">
+        <div class="sc-avatar" style="background:${s.color}22;color:${s.color}">${s.avatar}</div>
+        <div>
+          <div class="sc-name">${s.name}</div>
+          <div class="sc-email">${s.email}</div>
+        </div>
+      </div>
+      <div class="sc-activity"><span class="sc-online-dot"></span>Currently viewing:</div>
+      <div class="sc-page">📄 ${s.page}</div>
+      <div class="sc-meta">
+        <span>⏱ ${s.duration} session</span>
+        <span><div class="tier-badge tier-${s.tier}">${s.tier}</div></span>
+        <span>📍 ${s.company}</span>
+      </div>
+    </div>`).join('');
+}
+
+// ══════════════════════════════════════════════
+// RENDER: ALL USERS
+// ══════════════════════════════════════════════
+let currentFilter = 'all';
+function renderAllUsers(filter='all') {
+  let users = USERS;
+  const search = document.getElementById('userSearch')?.value?.toLowerCase()||'';
+  if(search) users = users.filter(u=>u.name.toLowerCase().includes(search)||u.email.toLowerCase().includes(search)||u.company.toLowerCase().includes(search));
+  if(filter==='online') users = users.filter(u=>u.online);
+  else if(filter!=='all') users = users.filter(u=>u.tier===filter);
+  document.getElementById('usersTable').innerHTML = users.map(u=>`
+    <tr>
+      <td>
+        <div style="display:flex;align-items:center;">
+          <div class="avatar" style="background:${u.color}22;color:${u.color}">${u.avatar}</div>
+          <div>
+            <div style="font-weight:600">${u.name} ${u.role==='owner'?'👑':''}</div>
+            <div style="font-size:10px;color:var(--text2)">${u.email}</div>
+          </div>
+        </div>
+      </td>
+      <td>${u.company}</td>
+      <td><span class="tier-badge tier-${u.tier}">${u.tier}</span></td>
+      <td>${u.online?'<span class="status-online">● Online</span>':'<span class="status-offline">● Offline</span>'}</td>
+      <td style="color:var(--text2)">${u.lastSeen}</td>
+      <td style="font-weight:700;color:var(--blue)">${u.projects}</td>
+      <td style="color:var(--green)">${u.revenue}/mo</td>
+      <td>
+        <button class="action-btn" onclick="viewUser('${u.id}')">View</button>
+        <button class="action-btn promote" onclick="upgradeUser('${u.id}')">Upgrade</button>
+        ${u.role!=='owner'?`<button class="action-btn danger" onclick="suspendUser('${u.id}')">Suspend</button>`:''}
+      </td>
+    </tr>`).join('');
+}
+
+function filterUsers() { renderAllUsers(currentFilter); }
+function filterByTier(tier, btn) {
+  currentFilter = tier;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderAllUsers(tier);
+}
+function viewUser(id) { const u=USERS.find(u=>u.id===id); alert(`User: ${u.name}\nEmail: ${u.email}\nCompany: ${u.company}\nTier: ${u.tier}\nProjects: ${u.projects}`); }
+function upgradeUser(id) { const u=USERS.find(u=>u.id===id); alert(`Upgrade flow initiated for ${u.name}. In production this opens tier selection and sends invite email.`); }
+function suspendUser(id) { const u=USERS.find(u=>u.id===id); if(confirm(`Suspend ${u.name}?`)) { alert(`${u.name} suspended. They will see a locked page on next login.`); } }
+function showAddUser() { alert('In production: opens invite form to send subscription email to new user with their tier selection link.'); }
+
+// ══════════════════════════════════════════════
+// RENDER: SUBSCRIPTIONS
+// ══════════════════════════════════════════════
+function renderSubscriptions() {
+  document.getElementById('subTierCards').innerHTML = [
+    {icon:'⚡',name:'Starter',count:89,rev:'$0',color:''},
+    {icon:'🚀',name:'Professional',count:121,rev:'$11,979/mo',color:'pro'},
+    {icon:'🏢',name:'Enterprise',count:38,rev:'$18,962/mo',color:'enterprise'},
+  ].map(t=>`
+    <div class="sub-tier-card ${t.color}">
+      <div class="stc-icon">${t.icon}</div>
+      <div class="stc-name">${t.name}</div>
+      <div class="stc-count">${t.count}</div>
+      <div class="stc-rev">${t.rev}</div>
+    </div>`).join('');
+
+  document.getElementById('subEvents').innerHTML = [
+    {date:'May 2',user:'Maria R.',event:'Upgrade',from:'Pro',to:'Enterprise',impact:'+$400'},
+    {date:'May 1',user:'Robert N.',event:'New Signup',from:'—',to:'Starter',impact:'$0'},
+    {date:'Apr 30',user:'James T.',event:'New Signup',from:'—',to:'Pro',impact:'+$99'},
+    {date:'Apr 28',user:'Tyler M.',event:'Downgrade',from:'Pro',to:'Starter',impact:'-$99'},
+    {date:'Apr 25',user:'Amy C.',event:'Renewal',from:'Enterprise',to:'Enterprise',impact:'$0'},
+  ].map(e=>`<tr>
+    <td style="color:var(--text2)">${e.date}</td>
+    <td>${e.user}</td>
+    <td style="font-weight:600">${e.event}</td>
+    <td><span class="tier-badge tier-${e.from.toLowerCase()}">${e.from}</span></td>
+    <td><span class="tier-badge tier-${e.to.toLowerCase()}">${e.to}</span></td>
+    <td style="color:${e.impact.startsWith('+')?'var(--green)':e.impact.startsWith('-')?'var(--red)':'var(--text2)';};font-weight:700">${e.impact}</td>
+  </tr>`).join('');
+}
+
+// ══════════════════════════════════════════════
+// RENDER: PERMISSIONS MATRIX
+// ══════════════════════════════════════════════
+function renderPermissions() {
+  const features = [
+    ['Dashboard Access','✓','✓','✓','✓'],
+    ['All 20 AI Agents','✗','✓','✓','✓'],
+    ['Lien Automation','Basic','Full','Full','Full'],
+    ['Photo AI Analysis','✗','✓','✓','✓'],
+    ['Auto Invoicing','✗','✓','✓','✓'],
+    ['Crew Dispatch & GPS','✗','✓','✓','✓'],
+    ['Multi-Company Mgmt','✗','✗','✓','✓'],
+    ['White Label','✗','✗','✓','✓'],
+    ['Custom Agent Training','✗','✗','✓','✓'],
+    ['API Access','✗','Limited','Full','Full'],
+    ['Moderation Panel','✗','✗','✗','✓'],
+    ['User Management','✗','✗','✗','✓'],
+    ['Revenue Dashboard','✗','✗','✗','✓'],
+    ['Platform Settings','✗','✗','✗','✓'],
+    ['Password Management','✗','✗','✗','✓'],
+  ];
+  document.getElementById('permMatrix').innerHTML = features.map(f=>`
+    <tr>
+      <td>${f[0]}</td>
+      ${f.slice(1).map(v=>`<td>${v==='✓'?`<span class="pcheck">✓</span>`:v==='✗'?`<span class="pno">—</span>`:`<span style="font-size:11px;color:var(--gold)">${v}</span>`}</td>`).join('')}
+    </tr>`).join('');
+}
+
+// ══════════════════════════════════════════════
+// RENDER: ALL PROJECTS
+// ══════════════════════════════════════════════
+function renderProjectsAll() {
+  const projects = [
+    {name:'Metro Diner Renovation',owner:'Metro Foods LLC',trade:'QSR/Restaurant',value:'$420K',status:'active',agents:3,lien:'Prelim Sent'},
+    {name:'Data Center UPS Room',owner:'CloudCore Inc',trade:'Electrical',value:'$1.2M',status:'active',agents:5,lien:'Filed'},
+    {name:'School HVAC Retrofit',owner:'Chicago USD',trade:'HVAC',value:'$890K',status:'active',agents:4,lien:'Prelim Sent'},
+    {name:'Office Tower Lobby',owner:'Blackstone RE',trade:'Millwork',value:'$280K',status:'active',agents:2,lien:'Satisfied'},
+    {name:'Warehouse Concrete',owner:'Logistics Plus',trade:'Concrete',value:'$340K',status:'pending',agents:1,lien:'Draft'},
+    {name:'Hospital Wing Paint',owner:'St. Francis',trade:'Painting',value:'$210K',status:'completed',agents:0,lien:'Satisfied'},
+    {name:'Restaurant Hood',owner:'Shake Palace',trade:'Hood & Makeup Air',value:'$95K',status:'active',agents:3,lien:'Prelim Sent'},
+  ];
+  document.getElementById('allProjectsTable').innerHTML = projects.map(p=>`
+    <tr>
+      <td style="font-weight:600">${p.name}</td>
+      <td>${p.owner}</td>
+      <td style="color:var(--gold)">${p.trade}</td>
+      <td style="color:var(--green);font-weight:700">${p.value}</td>
+      <td><span style="padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700;background:rgba(16,185,129,${p.status==='completed'?0.1:0.15});color:${p.status==='completed'?'var(--text2)':'var(--green)'}">${p.status}</span></td>
+      <td style="color:var(--purple)">${p.agents} running</td>
+      <td><span style="font-size:11px;color:var(--blue)">${p.lien}</span></td>
+    </tr>`).join('');
+}
+
+// ══════════════════════════════════════════════
+// RENDER: ALL LIENS
+// ══════════════════════════════════════════════
+function renderLiensAll() {
+  const liens = [
+    {project:'DataCenter UPS',sub:'CloudCore Inc',amount:'$120,000',stage:'filed',deadline:'May 20, 2026',days:18},
+    {project:'Hotel Lobby Tile',sub:'Blackstone RE',amount:'$45,000',stage:'draft',deadline:'Jun 10, 2026',days:39},
+    {project:'Warehouse Roofing',sub:'Logistics Plus',amount:'$88,000',stage:'prelim',deadline:'May 28, 2026',days:26},
+    {project:'School Electrical',sub:'Chicago USD',amount:'$310,000',stage:'filed',deadline:'Jun 1, 2026',days:30},
+    {project:'Retail Millwork',sub:'Kohl Prop',amount:'$55,000',stage:'disputed',deadline:'Jun 15, 2026',days:44},
+    {project:'Restaurant Hood',sub:'Shake Palace',amount:'$35,000',stage:'draft',deadline:'Jun 20, 2026',days:49},
+  ];
+  document.getElementById('allLiensTable').innerHTML = liens.map(l=>`
+    <tr>
+      <td style="font-weight:600">${l.project}</td>
+      <td>${l.sub}</td>
+      <td style="font-weight:800;color:var(--gold)">${l.amount}</td>
+      <td><span style="padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700;background:rgba(42,125,225,0.12);color:var(--blue)">${l.stage}</span></td>
+      <td>${l.deadline}</td>
+      <td style="color:${l.days<20?'var(--red)':l.days<30?'var(--orange)':'var(--green)'};font-weight:700">${l.days}d</td>
+      <td><button class="action-btn">View</button></td>
+    </tr>`).join('');
+}
+
+// ══════════════════════════════════════════════
+// RENDER: AGENT LOGS
+// ══════════════════════════════════════════════
+function renderAgentLogs() {
+  document.getElementById('fullAgentLog').innerHTML = LOG_LINES.concat(LOG_LINES).map(l=>`
+    <div class="log-line">
+      <span class="log-time">[${l.time}]</span>
+      <span class="log-type ${l.type}">[${l.type.toUpperCase()}]</span>
+      <span class="log-msg">${l.msg}</span>
+    </div>`).join('');
+}
+
+// ══════════════════════════════════════════════
+// RENDER: AGENT CONFIG
+// ══════════════════════════════════════════════
+function renderAgentConfig() {
+  document.getElementById('agentConfigTable').innerHTML = AGENTS.map(a=>`
+    <tr>
+      <td><span style="font-size:14px;margin-right:8px">${a.icon}</span>${a.name}</td>
+      <td><span class="al-status-label ${a.status}">${a.status.toUpperCase()}</span></td>
+      <td style="font-size:11px;color:var(--text2)">${a.schedule}</td>
+      <td style="font-weight:700;color:var(--blue)">${a.runs}</td>
+      <td style="color:var(--text2)">~${(Math.random()*4+1).toFixed(1)}s</td>
+      <td style="color:${parseFloat(a.errRate)>5?'var(--red)':parseFloat(a.errRate)>0?'var(--orange)':'var(--green)'}">${a.errRate}</td>
+      <td>
+        <button class="action-btn" onclick="alert('Agent ${a.name} restart triggered')">Restart</button>
+        <button class="action-btn" onclick="alert('Opening config for ${a.name}')">Config</button>
+        ${a.status==='error'?`<button class="action-btn danger">Fix Error</button>`:''}
+      </td>
+    </tr>`).join('');
+}
+
+// ══════════════════════════════════════════════
+// RENDER: ANALYTICS
+// ══════════════════════════════════════════════
+function renderAnalytics() {
+  const dauVals = [38,42,35,48,44,51,47];
+  const labels = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  document.getElementById('dauChart').innerHTML = labels.map((l,i)=>`
+    <div class="cb-wrap">
+      <div class="cb-bar" style="height:${dauVals[i]/51*100}%;background:linear-gradient(180deg,var(--blue),rgba(42,125,225,0.3))"></div>
+      <div class="cb-lbl">${l}</div>
+    </div>`).join('');
+  const taskVals = [1200,1450,1100,1800,1650,1900,1847];
+  document.getElementById('taskChart').innerHTML = labels.map((l,i)=>`
+    <div class="cb-wrap">
+      <div class="cb-bar" style="height:${taskVals[i]/1900*100}%;background:linear-gradient(180deg,var(--purple),rgba(139,92,246,0.3))"></div>
+      <div class="cb-lbl">${l}</div>
+    </div>`).join('');
+}
+
+// ══════════════════════════════════════════════
+// RENDER: REVENUE
+// ══════════════════════════════════════════════
+function renderRevenue() {
+  document.getElementById('revByTier').innerHTML = [
+    {name:'Enterprise (38)',rev:18962,pct:76,color:'var(--purple)'},
+    {name:'Professional (121)',rev:11979,pct:48,color:'var(--gold)'},
+    {name:'Starter (89)',rev:0,pct:0,color:'var(--text2)'},
+  ].map(t=>`
+    <div style="margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px;font-size:12px">
+        <span>${t.name}</span>
+        <span style="font-weight:700;color:${t.color}">$${t.rev.toLocaleString()}/mo</span>
+      </div>
+      <div style="height:6px;background:rgba(255,255,255,0.05);border-radius:3px;overflow:hidden">
+        <div style="width:${t.pct}%;height:100%;background:${t.color};border-radius:3px"></div>
+      </div>
+    </div>`).join('');
+  const mrrVals = [60,68,58,72,84,100];
+  const mrrLabels = ['Nov','Dec','Jan','Feb','Mar','Apr'];
+  document.getElementById('mrrChart').innerHTML = mrrLabels.map((l,i)=>`
+    <div class="cb-wrap">
+      <div class="cb-bar" style="height:${mrrVals[i]}%;background:linear-gradient(180deg,var(--gold),rgba(201,168,76,0.3))"></div>
+      <div class="cb-lbl">${l}</div>
+    </div>`).join('');
+}
+
+// ══════════════════════════════════════════════
+// ACTIVITY FEED
+// ══════════════════════════════════════════════
+function renderActivityFeed(el) {
+  if(!el) el = document.getElementById('platformFeed');
+  el.innerHTML = LOG_LINES.map(l=>`
+    <div class="log-line">
+      <span class="log-time">[${l.time}]</span>
+      <span class="log-type ${l.type}">[${l.type.toUpperCase()}]</span>
+      <span class="log-msg">${l.msg}</span>
+    </div>`).join('');
+}
+
+// ══════════════════════════════════════════════
+// PASSWORD CHANGE
+// ══════════════════════════════════════════════
+function changePwd() {
+  const curr = document.getElementById('currPwd').value;
+  const newp = document.getElementById('newPwd').value;
+  const conf = document.getElementById('confPwd').value;
+  const stored = sessionStorage.getItem('aacg_owner_pwd')||'AACG2026!Owner';
+  const msg = document.getElementById('pwdMsg');
+  if(curr !== stored) { msg.style.color='var(--red)'; msg.textContent='❌ Current password incorrect.'; return; }
+  if(newp.length < 8) { msg.style.color='var(--red)'; msg.textContent='❌ New password must be at least 8 characters.'; return; }
+  if(newp !== conf) { msg.style.color='var(--red)'; msg.textContent='❌ Passwords do not match.'; return; }
+  sessionStorage.setItem('aacg_owner_pwd', newp);
+  msg.style.color='var(--green)'; msg.textContent='✅ Password updated successfully.';
+  ['currPwd','newPwd','confPwd'].forEach(id=>document.getElementById(id).value='');
+}
+
+// ══════════════════════════════════════════════
+// LIVE UPDATES SIMULATION
+// ══════════════════════════════════════════════
+function startLiveUpdates() {
+  // Animate agent progress bars
+  setInterval(()=>{
+    AGENTS.filter(a=>a.status==='running').forEach(a=>{
+      a.progress = (a.progress + Math.random()*5) % 100;
+    });
+    const cards = document.querySelectorAll('#agentLiveGrid .al-card');
+    AGENTS.forEach((a,i)=>{
+      const bar = cards[i]?.querySelector('.al-progress-bar');
+      const pctEl = cards[i]?.querySelector('.al-meta span:last-child');
+      if(bar && a.progress>0) { bar.style.width = a.progress+'%'; }
+      if(pctEl && a.progress>0) pctEl.textContent = Math.round(a.progress)+'%';
+    });
+  }, 1500);
+
+  // Live log line injection
+  const liveMessages = [
+    {type:'info',msg:'[Photo Analyzer] New batch queued: 3 photos from PRJ-007'},
+    {type:'success',msg:'[Lien Monitor] Scan complete — no critical deadlines in 48h'},
+    {type:'info',msg:'[Crew Dispatcher] Technician TEC-028 checked in at PRJ-003'},
+    {type:'warn',msg:'[Material Tracker] Delivery delay: steel PRJ-007 pushed 2 days'},
+    {type:'success',msg:'[Invoice Generator] Invoice #2849 delivered — $14,200'},
+    {type:'info',msg:'[Compliance Checker] License renewed — Texas Master Plumber #TX-8842'},
+    {type:'success',msg:'[Payment Chaser] Payment received — $88,000 — Warehouse Roofing'},
+  ];
+  let logi = 0;
+  setInterval(()=>{
+    const msg = liveMessages[logi % liveMessages.length];
+    logi++;
+    const now = new Date().toTimeString().substr(0,8);
+    const line = `<div class="log-line"><span class="log-time">[${now}]</span><span class="log-type ${msg.type}">[${msg.type.toUpperCase()}]</span><span class="log-msg">${msg.msg}</span></div>`;
+    ['fullAgentLog','platformFeed'].forEach(id=>{
+      const el = document.getElementById(id);
+      if(el) { el.insertAdjacentHTML('afterbegin', line); const lines = el.querySelectorAll('.log-line'); if(lines.length>60) lines[lines.length-1].remove(); }
+    });
+  }, 3500);
+}
+
+// Panel link for activity feed
+document.addEventListener('click', e=>{
+  if(e.target.id==='panel-activity-feed' || e.target.closest('#panel-activity-feed')) {
+    renderActivityFeed(document.getElementById('platformFeed'));
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,1353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<script src="../config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+// ══ IronForge Supabase Config ══
+// Set these after creating your Supabase project at supabase.com
+const SB_URL = window.SUPABASE_URL || '';
+const SB_KEY = window.SUPABASE_ANON || '';
+const USE_SB = SB_URL.startsWith('https://') && SB_KEY.length > 10;
+const sb = USE_SB ? supabase.createClient(SB_URL, SB_KEY) : null;
+
+async function sbSignUp(name, email, phone, company, plan) {
+  if (!sb) return null;
+  try {
+    // Generate a temporary password — user will set their own via email magic link
+    const tempPwd = 'Tmp' + Math.random().toString(36).slice(-8) + 'Aa1!';
+    const { data, error } = await sb.auth.signUp({
+      email: email,
+      password: tempPwd,
+      options: { data: { name, phone, company, plan, role: 'subscriber' } }
+    });
+    if (error) throw error;
+    if (data.user) {
+      await sb.from('profiles').upsert({
+        id: data.user.id, email, name, phone, company, plan,
+        role: 'subscriber', status: 'trial',
+        trial_start: new Date().toISOString(),
+        trial_end: new Date(Date.now() + 14*86400000).toISOString()
+      });
+    }
+    return data;
+  } catch(e) { console.error('[SB SignUp]', e); return null; }
+}
+</script>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><polygon points='50,2 93,26 93,74 50,98 7,74 7,26' fill='%23ff3a2d'/><text y='.9em' font-size='55' x='26' fill='white' font-weight='900'>⚡</text></svg>">
+<meta name="description" content="IronForge — The AI brain behind every construction business. 20+ AI agents handle lien filing, contracts, HR, payroll and compliance 24/7. Built for contractors.">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IronForge | AI-Powered Construction Platform | Built By GCs · For GCs</title>
+<style>
+:root{
+  --navy:#04081a;--navy2:#080f24;--navy3:#0d1835;
+  --electric:#ff3a2d;--electric2:#cc2018;
+  --crimson:#ff2045;--crimson2:#cc1035;
+  --white:#ffffff;--off-white:#e8edf5;
+  --gold:#ffd700;--gold2:#ffb800;
+  --green:#00ff88;
+  --text:#e8edf5;--text2:#7a8aaa;
+  --border:rgba(255,58,45,0.15);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{background:var(--navy);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;font-size:16px;line-height:1.7;overflow-x:hidden;}
+a{text-decoration:none;color:inherit;}
+
+/* LOGO */
+.logo-wrap{display:flex;align-items:center;gap:12px;flex-shrink:0;}
+.logo-mark{position:relative;width:48px;height:48px;flex-shrink:0;}
+.logo-hex{width:48px;height:48px;background:linear-gradient(135deg,var(--electric),var(--crimson));clip-path:polygon(50% 0%,93% 25%,93% 75%,50% 100%,7% 75%,7% 25%);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:18px;color:#fff;position:relative;z-index:2;animation:hb-scale 1.4s ease-in-out infinite;}
+.logo-hex-glow{position:absolute;inset:-6px;background:linear-gradient(135deg,var(--electric),var(--crimson));clip-path:polygon(50% 0%,93% 25%,93% 75%,50% 100%,7% 75%,7% 25%);filter:blur(10px);opacity:0;animation:hb-glow 1.4s ease-in-out infinite;z-index:1;}
+@keyframes hb-scale{0%,100%{transform:scale(1);}14%{transform:scale(1.2);}28%{transform:scale(1);}42%{transform:scale(1.1);}56%{transform:scale(1);}}
+@keyframes hb-glow{0%,100%{opacity:0.3;}14%{opacity:0.9;}28%{opacity:0.3;}42%{opacity:0.6;}56%{opacity:0.3;}}
+.logo-text{line-height:1.2;}
+.logo-name{font-size:13px;font-weight:900;background:linear-gradient(90deg,var(--electric),var(--crimson),var(--electric));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;background-size:200% auto;animation:neon-shift 3s linear infinite;white-space:nowrap;}
+.logo-tag{font-size:9.5px;color:var(--electric);letter-spacing:2px;font-weight:700;text-shadow:0 0 8px rgba(255,58,45,0.6);}
+@keyframes neon-shift{0%{background-position:0%;}100%{background-position:200%;}}
+
+/* NAV */
+.site-nav{position:sticky;top:0;z-index:1000;background:rgba(4,8,26,0.9);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);}
+.nav-inner{max-width:1380px;margin:0 auto;padding:0 18px;height:64px;display:flex;align-items:center;gap:5px;}
+.nav-links{display:flex;align-items:center;gap:1px;flex:1;margin-left:12px;flex-wrap:nowrap;}
+.nav-link{padding:6px 9px;border-radius:7px;font-size:12px;color:var(--text2);cursor:pointer;transition:all 0.2s;white-space:nowrap;display:block;}
+.nav-link:hover{color:var(--electric);background:rgba(255,58,45,0.07);}
+.nav-dropdown{position:relative;}
+.dropdown-menu{display:none;position:absolute;top:calc(100%+6px);left:0;background:var(--navy2);border:1px solid var(--border);border-radius:14px;padding:10px;min-width:290px;z-index:500;max-height:470px;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,0.8),0 0 30px rgba(255,58,45,0.08);}
+.nav-dropdown:hover .dropdown-menu{display:grid;grid-template-columns:1fr 1fr;gap:2px;}
+.dd-item{padding:6px 10px;border-radius:7px;font-size:12px;color:var(--text2);display:block;transition:all 0.15s;}
+.dd-item:hover{background:rgba(255,58,45,0.1);color:var(--electric);}
+.nav-sep{width:1px;height:22px;background:var(--border);margin:0 3px;flex-shrink:0;}
+.nav-login{padding:6px 13px;border:1px solid var(--border);border-radius:7px;font-size:12px;color:var(--text2);transition:all 0.2s;white-space:nowrap;}
+.nav-login:hover{border-color:var(--electric);color:var(--electric);}
+.nav-signup{padding:7px 15px;background:linear-gradient(135deg,var(--crimson),var(--crimson2));color:#fff;border-radius:7px;font-size:12px;font-weight:800;white-space:nowrap;transition:all 0.2s;cursor:pointer;border:none;}
+.nav-signup:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(255,32,69,0.4);}
+.nav-cta{padding:8px 16px;background:linear-gradient(135deg,var(--electric),var(--electric2));color:var(--navy);border-radius:7px;font-size:12px;font-weight:800;white-space:nowrap;flex-shrink:0;transition:all 0.2s;margin-left:6px;}
+.nav-cta:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(255,58,45,0.4);}
+
+/* HERO */
+.hero{min-height:94vh;display:flex;align-items:center;position:relative;overflow:hidden;padding:88px 24px 56px;}
+.hero-bg{position:absolute;inset:0;background:radial-gradient(ellipse at 72% 38%,rgba(255,58,45,0.07) 0%,transparent 55%),radial-gradient(ellipse at 22% 75%,rgba(255,32,69,0.07) 0%,transparent 55%);}
+.hero-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(255,58,45,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(255,58,45,0.04) 1px,transparent 1px);background-size:64px 64px;}
+.hero-scan{position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--electric),transparent);opacity:0.35;animation:scan 5s linear infinite;}
+@keyframes scan{0%{top:0;}100%{top:100%;}}
+.hero-inner{max-width:1280px;margin:0 auto;display:grid;grid-template-columns:1.1fr 0.9fr;gap:60px;align-items:center;position:relative;z-index:2;width:100%;}
+.hero-eyebrow{display:inline-flex;align-items:center;gap:8px;padding:6px 15px;border-radius:24px;border:1px solid rgba(0,255,136,0.3);background:rgba(0,255,136,0.05);font-size:11.5px;color:var(--green);font-weight:700;margin-bottom:20px;letter-spacing:0.8px;text-shadow:0 0 8px rgba(0,255,136,0.5);}
+.hero-title{font-size:clamp(36px,5.2vw,70px);font-weight:900;line-height:1.02;letter-spacing:-2.5px;margin-bottom:18px;}
+.hl-e{background:linear-gradient(90deg,var(--electric),#70eeff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;filter:drop-shadow(0 0 10px rgba(255,58,45,0.4));}
+.hl-r{background:linear-gradient(90deg,var(--crimson),#ff7090);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;filter:drop-shadow(0 0 10px rgba(255,32,69,0.4));}
+.hero-sub{font-size:16.5px;color:var(--text2);line-height:1.8;margin-bottom:12px;max-width:520px;}
+.hero-tagline{font-size:14px;font-weight:800;color:var(--white);margin-bottom:26px;}
+.hero-tagline .neon{color:var(--electric);text-shadow:0 0 10px var(--electric);}
+.hero-actions{display:flex;gap:11px;flex-wrap:wrap;margin-bottom:32px;}
+.btn-electric{padding:14px 28px;background:linear-gradient(135deg,var(--electric),var(--electric2));color:var(--navy);border-radius:10px;font-size:14.5px;font-weight:800;transition:all 0.2s;display:inline-block;border:none;cursor:pointer;}
+.btn-electric:hover{transform:translateY(-2px);box-shadow:0 12px 32px rgba(255,58,45,0.45);}
+.btn-crimson{padding:14px 28px;background:linear-gradient(135deg,var(--crimson),var(--crimson2));color:#fff;border-radius:10px;font-size:14.5px;font-weight:800;transition:all 0.2s;display:inline-block;border:none;cursor:pointer;}
+.btn-crimson:hover{transform:translateY(-2px);box-shadow:0 12px 32px rgba(255,32,69,0.45);}
+.btn-ghost{padding:13px 26px;border:1.5px solid rgba(255,58,45,0.3);border-radius:10px;font-size:14px;font-weight:600;color:var(--text2);transition:all 0.2s;display:inline-block;}
+.btn-ghost:hover{border-color:var(--electric);color:var(--electric);}
+.hero-phone{font-size:17px;font-weight:800;display:flex;align-items:center;gap:9px;}
+.hero-phone a{color:var(--electric);text-shadow:0 0 10px rgba(255,58,45,0.5);}
+.hero-stats{display:flex;gap:28px;flex-wrap:wrap;margin-top:24px;}
+.hs-val{font-size:27px;font-weight:900;color:var(--electric);text-shadow:0 0 10px rgba(255,58,45,0.35);}
+.hs-lbl{font-size:10.5px;color:var(--text2);margin-top:2px;}
+
+/* VIDEO PLAYER */
+.video-player{background:var(--navy2);border:2px solid rgba(255,58,45,0.22);border-radius:18px;overflow:hidden;position:relative;aspect-ratio:16/9;cursor:pointer;box-shadow:0 0 50px rgba(255,58,45,0.1),0 32px 80px rgba(0,0,0,0.7);}
+.vp-bg{position:absolute;inset:0;background:linear-gradient(135deg,#04081a,#0d1835);}
+.vp-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(255,58,45,0.05) 1px,transparent 1px),linear-gradient(90deg,rgba(255,58,45,0.05) 1px,transparent 1px);background-size:30px 30px;}
+.vp-corner{position:absolute;width:22px;height:22px;border-color:var(--electric);border-style:solid;opacity:0.6;}
+.vp-tl{top:10px;left:10px;border-width:2px 0 0 2px;}
+.vp-tr{top:10px;right:10px;border-width:2px 2px 0 0;}
+.vp-bl{bottom:10px;left:10px;border-width:0 0 2px 2px;}
+.vp-br{bottom:10px;right:10px;border-width:0 2px 2px 0;}
+.vp-ring{position:absolute;top:50%;left:50%;transform:translate(-50%,-58%);width:88px;height:88px;border-radius:50%;border:2px solid rgba(255,58,45,0.25);animation:vp-pulse 2.2s ease-out infinite;z-index:2;}
+.vp-ring2{position:absolute;top:50%;left:50%;transform:translate(-50%,-58%);width:88px;height:88px;border-radius:50%;border:2px solid rgba(255,32,69,0.2);animation:vp-pulse 2.2s ease-out 0.8s infinite;z-index:2;}
+@keyframes vp-pulse{0%{transform:translate(-50%,-58%) scale(1);opacity:1;}100%{transform:translate(-50%,-58%) scale(2.8);opacity:0;}}
+.vp-play{position:absolute;top:50%;left:50%;transform:translate(-50%,-58%);z-index:3;width:70px;height:70px;background:linear-gradient(135deg,var(--electric),var(--crimson));border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:24px;color:#fff;box-shadow:0 0 40px rgba(255,58,45,0.5),0 0 30px rgba(255,32,69,0.3);transition:transform 0.2s,box-shadow 0.2s;}
+.video-player:hover .vp-play{transform:translate(-50%,-58%) scale(1.1);}
+.vp-waveform{position:absolute;bottom:52px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:3px;z-index:3;}
+.vp-bar{width:3px;background:var(--electric);border-radius:2px;opacity:0.65;animation:waveform 1.2s ease-in-out infinite;}
+.vp-bar:nth-child(1){height:8px;} .vp-bar:nth-child(2){height:16px;animation-delay:.1s;}
+.vp-bar:nth-child(3){height:24px;animation-delay:.2s;} .vp-bar:nth-child(4){height:32px;animation-delay:.3s;}
+.vp-bar:nth-child(5){height:20px;animation-delay:.4s;} .vp-bar:nth-child(6){height:28px;animation-delay:.5s;}
+.vp-bar:nth-child(7){height:14px;animation-delay:.6s;} .vp-bar:nth-child(8){height:22px;animation-delay:.7s;}
+.vp-bar:nth-child(9){height:10px;animation-delay:.8s;}
+@keyframes waveform{0%,100%{transform:scaleY(0.4);}50%{transform:scaleY(1.6);}}
+.vp-label{position:absolute;bottom:0;left:0;right:0;padding:18px 22px;z-index:3;background:linear-gradient(transparent,rgba(4,8,26,0.92));}
+.vp-title{font-size:14px;font-weight:800;margin-bottom:3px;}
+.vp-sub{font-size:11px;color:var(--text2);}
+.vp-live{position:absolute;top:12px;left:12px;padding:3px 9px;background:rgba(255,32,69,0.18);border:1px solid rgba(255,32,69,0.4);border-radius:20px;font-size:9.5px;font-weight:800;color:var(--crimson);z-index:3;animation:live-blink 1.5s ease-in-out infinite;}
+@keyframes live-blink{0%,100%{opacity:1;}50%{opacity:0.5;}}
+
+/* SECTIONS */
+.section{padding:88px 24px;}
+.container{max-width:1280px;margin:0 auto;}
+.sec-label{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:3px;color:var(--electric);margin-bottom:10px;text-shadow:0 0 8px rgba(255,58,45,0.4);}
+.sec-title{font-size:clamp(28px,4vw,50px);font-weight:900;letter-spacing:-1.5px;margin-bottom:12px;line-height:1.05;}
+.sec-sub{font-size:15.5px;color:var(--text2);max-width:620px;line-height:1.8;margin-bottom:44px;}
+.alt-section{background:rgba(255,58,45,0.012);}
+.gc-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 13px;background:rgba(255,58,45,0.07);border:1px solid rgba(255,58,45,0.2);border-radius:20px;font-size:11px;color:var(--electric);font-weight:700;margin-bottom:10px;}
+
+/* STATS BANNER */
+.stats-banner{background:linear-gradient(135deg,var(--navy2),rgba(255,58,45,0.035));border:1px solid var(--border);border-radius:20px;padding:44px 36px;display:grid;grid-template-columns:repeat(6,1fr);gap:16px;}
+.sb-item{text-align:center;}
+.sb-val{font-size:34px;font-weight:900;color:var(--electric);text-shadow:0 0 12px rgba(255,58,45,0.35);line-height:1;}
+.sb-lbl{font-size:11px;color:var(--text2);margin-top:5px;}
+
+/* HOW IT WORKS */
+.hiw-steps{display:grid;grid-template-columns:repeat(5,1fr);gap:0;position:relative;}
+.hiw-line{position:absolute;top:26px;left:10%;right:10%;height:2px;background:linear-gradient(90deg,transparent,var(--electric),var(--crimson),var(--electric),transparent);}
+.hiw-step{text-align:center;padding:0 8px;position:relative;}
+.hiw-num{width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,var(--electric),var(--crimson));color:#fff;font-size:19px;font-weight:900;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;position:relative;z-index:2;box-shadow:0 0 22px rgba(255,58,45,0.35),0 0 22px rgba(255,32,69,0.15);}
+.hiw-title{font-size:12.5px;font-weight:800;margin-bottom:6px;}
+.hiw-desc{font-size:11.5px;color:var(--text2);line-height:1.6;}
+
+/* AGENTS */
+.agents-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px;}
+.agent-card{background:var(--navy2);border:1px solid var(--border);border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:8px;transition:all 0.25s;position:relative;overflow:hidden;}
+.agent-card::after{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--electric),var(--crimson));opacity:0;transition:opacity 0.25s;}
+.agent-card:hover{border-color:rgba(255,58,45,0.4);transform:translateY(-3px);box-shadow:0 16px 40px rgba(0,0,0,0.5),0 0 20px rgba(255,58,45,0.08);}
+.agent-card:hover::after{opacity:1;}
+.ac-icon{font-size:32px;}
+.ac-cat{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1.5px;color:var(--electric);}
+.ac-name{font-size:14.5px;font-weight:800;}
+.ac-desc{font-size:12px;color:var(--text2);line-height:1.55;flex:1;}
+.ac-tags{display:flex;flex-wrap:wrap;gap:4px;}
+.ac-tag{padding:2px 7px;background:rgba(255,58,45,0.07);border:1px solid rgba(255,58,45,0.15);border-radius:5px;font-size:10px;color:var(--electric);}
+.ac-btn{margin-top:auto;padding:8px 13px;border:1px solid rgba(255,58,45,0.3);border-radius:8px;color:var(--electric);font-size:11.5px;font-weight:700;text-align:center;transition:all 0.2s;display:block;}
+.ac-btn:hover{background:linear-gradient(135deg,var(--electric),var(--electric2));color:var(--navy);}
+
+/* TRADES */
+.trades-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(115px,1fr));gap:7px;}
+.trade-tile{display:flex;flex-direction:column;align-items:center;gap:7px;padding:14px 8px;background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:11px;cursor:pointer;transition:all 0.2s;font-size:10.5px;font-weight:600;text-align:center;color:var(--text2);}
+.trade-tile:hover{background:rgba(255,58,45,0.07);border-color:rgba(255,58,45,0.35);transform:translateY(-2px);color:var(--electric);}
+.trade-tile .te{font-size:24px;}
+
+/* SECTORS */
+.sectors-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:10px;}
+.sector-tile{display:flex;flex-direction:column;align-items:flex-start;padding:18px;background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:13px;cursor:pointer;transition:all 0.25s;}
+.sector-tile:hover{border-color:rgba(255,32,69,0.4);background:rgba(255,32,69,0.04);transform:translateY(-3px);}
+.sector-tile .se{font-size:28px;margin-bottom:9px;}
+.st-name{font-size:13px;font-weight:800;margin-bottom:3px;}
+.st-desc{font-size:10.5px;color:var(--text2);}
+
+/* GALLERY */
+.gallery-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+.gallery-card{border-radius:13px;overflow:hidden;background:var(--navy2);border:1px solid var(--border);transition:all 0.3s;cursor:pointer;}
+.gallery-card:hover{transform:translateY(-4px);box-shadow:0 20px 48px rgba(0,0,0,0.6),0 0 20px rgba(255,58,45,0.08);}
+.gallery-card.live-project{border-color:rgba(0,255,136,0.45);animation:gc-live-border 2.5s ease-in-out infinite;}
+@keyframes gc-live-border{0%,100%{box-shadow:0 0 8px rgba(0,255,136,0.2);}50%{box-shadow:0 0 20px rgba(0,255,136,0.4);}}
+.gc-thumb{height:150px;display:flex;align-items:center;justify-content:center;font-size:60px;position:relative;}
+.gc-badge-status{position:absolute;top:8px;right:8px;padding:3px 9px;border-radius:20px;font-size:9.5px;font-weight:700;}
+.gc-live{background:rgba(0,255,136,0.12);color:var(--green);border:1px solid rgba(0,255,136,0.3);}
+.gc-done{background:rgba(255,58,45,0.12);color:var(--electric);border:1px solid rgba(255,58,45,0.3);}
+.gc-pending{background:rgba(255,215,0,0.12);color:var(--gold);border:1px solid rgba(255,215,0,0.3);}
+.gc-info{padding:12px 14px;}
+.gc-name{font-size:13px;font-weight:800;margin-bottom:4px;}
+.gc-row{display:flex;justify-content:space-between;font-size:10.5px;color:var(--text2);}
+.gc-row .live-txt{color:var(--green);}
+
+/* BLOG */
+.blog-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;}
+.blog-card{background:var(--navy2);border:1px solid var(--border);border-radius:13px;overflow:hidden;transition:all 0.25s;cursor:pointer;}
+.blog-card:hover{transform:translateY(-4px);border-color:rgba(255,58,45,0.3);}
+.blog-thumb{height:150px;display:flex;align-items:center;justify-content:center;font-size:60px;position:relative;}
+.blog-cat-badge{position:absolute;top:10px;left:10px;padding:3px 9px;border-radius:20px;font-size:10.5px;font-weight:700;}
+.blog-body{padding:16px;}
+.blog-title{font-size:14.5px;font-weight:800;line-height:1.4;margin-bottom:7px;}
+.blog-excerpt{font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:12px;}
+.blog-foot{display:flex;justify-content:space-between;font-size:11px;color:var(--text2);}
+.blog-read{color:var(--electric);font-weight:700;}
+
+/* PRICING */
+.pricing-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;}
+.pricing-card{background:var(--navy2);border:1px solid var(--border);border-radius:17px;padding:30px;position:relative;transition:all 0.3s;}
+.pricing-card:hover{transform:translateY(-4px);}
+.pricing-card.featured{border-color:rgba(255,58,45,0.5);background:rgba(255,58,45,0.025);box-shadow:0 0 40px rgba(255,58,45,0.08);}
+.pricing-card.featured::before{content:'Most Popular';position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,var(--electric),var(--crimson));color:#fff;font-size:10.5px;font-weight:800;padding:3px 14px;border-radius:20px;white-space:nowrap;}
+.pc-plan{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:2px;color:var(--electric);margin-bottom:5px;}
+.pc-price{font-size:48px;font-weight:900;line-height:1;margin-bottom:2px;}
+.pc-period{font-size:12px;color:var(--text2);margin-bottom:18px;}
+.pc-features{list-style:none;margin-bottom:24px;}
+.pc-features li{padding:7px 0;font-size:12.5px;border-bottom:1px solid rgba(255,255,255,0.04);color:var(--text2);}
+.pc-features li::before{content:'✓ ';color:var(--electric);font-weight:800;}
+.pc-cta{display:block;text-align:center;padding:12px;background:linear-gradient(135deg,var(--electric),var(--electric2));color:var(--navy);border-radius:9px;font-weight:800;font-size:13.5px;transition:all 0.2s;cursor:pointer;border:none;width:100%;}
+.pc-cta:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(255,58,45,0.4);}
+.pc-cta-ghost{background:transparent;border:1px solid var(--border);color:var(--text2);}
+.pc-cta-ghost:hover{border-color:var(--electric);color:var(--electric);box-shadow:none;}
+.pc-cta-red{background:linear-gradient(135deg,var(--crimson),var(--crimson2));color:#fff;}
+.pc-cta-red:hover{box-shadow:0 8px 24px rgba(255,32,69,0.4);}
+
+/* FAQ */
+.faq-list{display:flex;flex-direction:column;gap:6px;}
+.faq-item{background:var(--navy2);border:1px solid var(--border);border-radius:11px;overflow:hidden;}
+.faq-q{padding:16px 19px;font-size:13.5px;font-weight:700;cursor:pointer;display:flex;justify-content:space-between;align-items:center;transition:color 0.2s;}
+.faq-q:hover,.faq-item.open .faq-q{color:var(--electric);}
+.faq-chevron{font-size:10px;color:var(--text2);transition:transform 0.3s;}
+.faq-item.open .faq-chevron{transform:rotate(180deg);color:var(--electric);}
+.faq-a{max-height:0;overflow:hidden;transition:max-height 0.35s ease,padding 0.35s;font-size:13px;color:var(--text2);line-height:1.75;}
+.faq-item.open .faq-a{max-height:300px;padding:0 19px 15px;}
+
+/* CONTACT */
+.contact-grid{display:grid;grid-template-columns:1fr 1fr;gap:52px;align-items:start;}
+.contact-phone-big{font-size:clamp(28px,4vw,50px);font-weight:900;line-height:1;margin-bottom:12px;}
+.contact-phone-big a{color:var(--electric);text-shadow:0 0 16px rgba(255,58,45,0.45);}
+.contact-form{background:var(--navy2);border:1px solid var(--border);border-radius:15px;padding:28px;}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.form-group{margin-bottom:12px;}
+.form-group label{display:block;font-size:10.5px;font-weight:700;color:var(--text2);margin-bottom:5px;text-transform:uppercase;letter-spacing:0.5px;}
+.form-group input,.form-group select,.form-group textarea{width:100%;padding:10px 12px;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13.5px;font-family:inherit;transition:border-color 0.2s;}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{outline:none;border-color:rgba(255,58,45,0.45);}
+.form-group select option{background:var(--navy2);}
+.form-group textarea{resize:vertical;min-height:88px;}
+.form-submit{width:100%;padding:12px;background:linear-gradient(135deg,var(--electric),var(--crimson));color:#fff;border:none;border-radius:10px;font-size:14.5px;font-weight:800;cursor:pointer;transition:all 0.2s;}
+.form-submit:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(255,58,45,0.3);}
+.wa-btn{display:inline-flex;align-items:center;gap:8px;padding:10px 20px;background:rgba(37,211,102,0.07);border:1px solid rgba(37,211,102,0.22);border-radius:10px;color:#25d366;font-size:13px;font-weight:700;margin-bottom:18px;transition:all 0.2s;}
+.wa-btn:hover{background:rgba(37,211,102,0.13);}
+
+/* FOOTER */
+footer{background:var(--navy2);border-top:1px solid var(--border);padding:56px 24px 26px;}
+.footer-inner{max-width:1280px;margin:0 auto;}
+.footer-top{display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr 1fr;gap:36px;margin-bottom:44px;}
+.footer-desc{font-size:12px;color:var(--text2);line-height:1.75;max-width:260px;margin:10px 0 14px;}
+.footer-phone{font-size:14px;font-weight:800;color:var(--electric);text-shadow:0 0 8px rgba(255,58,45,0.4);}
+.footer-col-title{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:2px;color:var(--electric);margin-bottom:13px;text-shadow:0 0 6px rgba(255,58,45,0.3);}
+.footer-col a{display:block;font-size:11.5px;color:var(--text2);margin-bottom:6px;transition:color 0.2s;}
+.footer-col a:hover{color:var(--electric);}
+.footer-bottom{padding-top:20px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--text2);}
+.footer-tagline{color:var(--electric);font-weight:800;}
+
+/* CHATBOT */
+.chat-bubble{position:fixed;bottom:22px;right:22px;z-index:9999;}
+.chat-btn{width:58px;height:58px;border-radius:50%;background:linear-gradient(135deg,var(--electric),var(--crimson));border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:23px;box-shadow:0 8px 28px rgba(255,58,45,0.35);transition:all 0.2s;position:relative;}
+.chat-btn:hover{transform:scale(1.08);}
+.chat-label{position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:9px;font-weight:700;color:var(--electric);}
+.chat-badge-dot{position:absolute;top:-3px;right:-3px;width:16px;height:16px;background:var(--crimson);border-radius:50%;font-size:9px;font-weight:800;color:#fff;display:flex;align-items:center;justify-content:center;}
+.chat-panel{position:absolute;bottom:70px;right:0;width:330px;height:480px;background:var(--navy2);border:1px solid var(--border);border-radius:17px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,0.8),0 0 30px rgba(255,58,45,0.08);transform:scale(0.85) translateY(20px);transform-origin:bottom right;opacity:0;pointer-events:none;transition:all 0.3s cubic-bezier(0.34,1.56,0.64,1);}
+.chat-panel.open{transform:scale(1) translateY(0);opacity:1;pointer-events:all;}
+.chat-head{padding:13px 15px;background:linear-gradient(135deg,rgba(255,58,45,0.1),rgba(255,32,69,0.07));border-bottom:1px solid var(--border);display:flex;align-items:center;gap:9px;}
+.chat-head-icon{font-size:21px;}
+.chat-head-title{font-size:13px;font-weight:800;}
+.chat-head-sub{font-size:9.5px;color:var(--green);}
+.chat-minimize{margin-left:auto;background:none;border:none;color:var(--text2);cursor:pointer;font-size:15px;line-height:1;}
+.chat-msgs{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;}
+.chat-msg{max-width:86%;padding:9px 12px;border-radius:11px;font-size:12.5px;line-height:1.55;}
+.chat-msg.bot{background:rgba(255,58,45,0.07);border:1px solid rgba(255,58,45,0.15);align-self:flex-start;border-bottom-left-radius:3px;}
+.chat-msg.user{background:linear-gradient(135deg,var(--electric),var(--crimson));color:#fff;align-self:flex-end;border-bottom-right-radius:3px;font-weight:600;}
+.chat-quick{padding:8px 13px;display:flex;flex-wrap:wrap;gap:5px;border-top:1px solid var(--border);}
+.qr-btn{padding:5px 10px;background:rgba(255,58,45,0.07);border:1px solid rgba(255,58,45,0.18);border-radius:14px;font-size:10.5px;color:var(--electric);cursor:pointer;transition:all 0.15s;font-family:inherit;}
+.qr-btn:hover{background:rgba(255,58,45,0.15);}
+.chat-input-row{padding:9px 13px;border-top:1px solid var(--border);display:flex;gap:6px;}
+.chat-input{flex:1;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text);font-size:12.5px;font-family:inherit;}
+.chat-input:focus{outline:none;border-color:rgba(255,58,45,0.35);}
+.chat-send{padding:8px 12px;background:linear-gradient(135deg,var(--electric),var(--crimson));border:none;border-radius:8px;cursor:pointer;font-size:13px;transition:transform 0.15s;}
+.chat-send:hover{transform:scale(1.05);}
+
+/* MODAL (video) */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.93);z-index:9900;display:flex;align-items:center;justify-content:center;padding:24px;opacity:0;pointer-events:none;transition:opacity 0.3s;}
+.modal-overlay.open{opacity:1;pointer-events:all;}
+.modal-box{background:var(--navy2);border:1px solid var(--border);border-radius:16px;overflow:hidden;max-width:900px;width:100%;position:relative;box-shadow:0 0 60px rgba(255,58,45,0.12);}
+.modal-close{position:absolute;top:11px;right:11px;background:rgba(255,255,255,0.1);border:none;color:var(--text);cursor:pointer;width:30px;height:30px;border-radius:50%;font-size:14px;z-index:10;display:flex;align-items:center;justify-content:center;}
+.modal-video{width:100%;aspect-ratio:16/9;}
+
+/* SIGNUP MODAL */
+.signup-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.93);z-index:9800;display:flex;align-items:center;justify-content:center;padding:24px;opacity:0;pointer-events:none;transition:opacity 0.3s;}
+.signup-overlay.open{opacity:1;pointer-events:all;}
+.signup-box{background:var(--navy2);border:1px solid var(--border);border-radius:18px;padding:36px;max-width:460px;width:100%;position:relative;box-shadow:0 0 60px rgba(255,58,45,0.1);}
+.signup-box::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--electric),var(--crimson));border-radius:18px 18px 0 0;}
+.su-close{position:absolute;top:13px;right:13px;background:rgba(255,255,255,0.07);border:none;color:var(--text);cursor:pointer;width:28px;height:28px;border-radius:50%;font-size:14px;display:flex;align-items:center;justify-content:center;}
+.signup-title{font-size:22px;font-weight:900;margin-bottom:4px;}
+.signup-sub{font-size:12.5px;color:var(--text2);margin-bottom:20px;}
+.su-plan-select{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:18px;}
+.su-plan{border:1.5px solid var(--border);border-radius:9px;padding:9px 6px;text-align:center;cursor:pointer;transition:all 0.2s;}
+.su-plan:hover,.su-plan.selected{border-color:var(--electric);background:rgba(255,58,45,0.07);}
+.su-plan-name{font-size:11.5px;font-weight:800;color:var(--electric);}
+.su-plan-price{font-size:10.5px;color:var(--text2);margin-top:2px;}
+.su-input{width:100%;padding:10px 13px;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13.5px;font-family:inherit;margin-bottom:10px;}
+.su-input:focus{outline:none;border-color:rgba(255,58,45,0.45);}
+.su-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.su-submit{width:100%;padding:13px;background:linear-gradient(135deg,var(--electric),var(--crimson));color:#fff;border:none;border-radius:10px;font-size:14.5px;font-weight:800;cursor:pointer;transition:all 0.2s;margin-top:4px;}
+.su-submit:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(255,58,45,0.3);}
+.su-divider{text-align:center;font-size:11.5px;color:var(--text2);margin:10px 0;}
+.su-login-link{color:var(--electric);cursor:pointer;font-weight:700;text-decoration:underline;}
+.su-note{font-size:10.5px;color:var(--text2);text-align:center;margin-top:10px;line-height:1.6;}
+.su-payment-info{background:rgba(0,255,136,0.05);border:1px solid rgba(0,255,136,0.2);border-radius:9px;padding:10px 13px;font-size:11.5px;color:var(--text2);margin-bottom:14px;line-height:1.65;}
+.su-payment-info strong{color:var(--green);}
+
+/* REVEAL */
+.reveal{opacity:0;transform:translateY(22px);transition:all 0.6s ease;}
+.reveal.visible{opacity:1;transform:translateY(0);}
+::-webkit-scrollbar{width:5px;}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+
+/* RESPONSIVE */
+@media(max-width:1000px){
+  .hero-inner{grid-template-columns:1fr;gap:36px;}
+  .footer-top{grid-template-columns:1fr 1fr 1fr;}
+  .hiw-steps{grid-template-columns:1fr 1fr;gap:20px;}.hiw-line{display:none;}
+  .pricing-grid{grid-template-columns:1fr;}
+  .stats-banner{grid-template-columns:repeat(3,1fr);}
+  .contact-grid{grid-template-columns:1fr;}
+  .gallery-grid,.blog-grid{grid-template-columns:1fr 1fr;}
+}
+@media(max-width:640px){
+  .nav-links{display:none;}
+  .footer-top{grid-template-columns:1fr 1fr;}
+  .gallery-grid,.blog-grid,.pricing-grid{grid-template-columns:1fr;}
+  .stats-banner{grid-template-columns:repeat(2,1fr);}
+  .form-row,.su-row{grid-template-columns:1fr;}
+  .su-plan-select{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<!-- ═══ VIDEO MODAL ═══ -->
+<div class="modal-overlay" id="videoModal">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeVideo()">✕</button>
+    <iframe class="modal-video" id="modalIframe" src="" frameborder="0" allowfullscreen allow="autoplay;encrypted-media"></iframe>
+  </div>
+</div>
+
+<!-- ═══ SIGNUP MODAL ═══ -->
+<div class="signup-overlay" id="signupModal">
+  <div class="signup-box">
+    <button class="su-close" onclick="closeSignup()">✕</button>
+    <div class="signup-title">Start Free Trial 🚀</div>
+    <p class="signup-sub">Choose your plan — 14-day free trial, no credit card required to start.</p>
+    <div class="su-plan-select" id="suPlans">
+      <div class="su-plan selected" data-plan="starter" onclick="selectPlan(this)">
+        <div class="su-plan-name">Starter</div>
+        <div class="su-plan-price">Free 14 days<br>then $49/mo</div>
+      </div>
+      <div class="su-plan" data-plan="pro" onclick="selectPlan(this)">
+        <div class="su-plan-name">Pro</div>
+        <div class="su-plan-price">Free 14 days<br>then $99/mo</div>
+      </div>
+      <div class="su-plan" data-plan="enterprise" onclick="selectPlan(this)">
+        <div class="su-plan-name">Enterprise</div>
+        <div class="su-plan-price">Free 14 days<br>then Custom</div>
+      </div>
+    </div>
+    <div class="su-payment-info">
+      <strong>✓ How payments work:</strong> Your free trial activates instantly. After 14 days you'll receive an invoice by email. Pay online via card or ACH — no auto-charge without your approval. Cancel any time.
+    </div>
+    <div class="su-row">
+      <input class="su-input" id="suFirst" type="text" placeholder="First Name">
+      <input class="su-input" id="suLast" type="text" placeholder="Last Name">
+    </div>
+    <input class="su-input" id="suCompany" type="text" placeholder="Company Name">
+    <input class="su-input" id="suEmail" type="email" placeholder="Work Email">
+    <input class="su-input" id="suPhone" type="tel" placeholder="Phone Number">
+    <button class="su-submit" onclick="submitSignup()">Start Free Trial →</button>
+    <div class="su-divider">Already have an account? <span class="su-login-link" onclick="goToLogin()">Log in here</span></div>
+    <div class="su-note">🔒 Your data is encrypted & never shared. By signing up you agree to our Terms of Service.</div>
+  </div>
+</div>
+
+<!-- ═══ NAV ═══ -->
+<nav class="site-nav">
+  <div class="nav-inner">
+    <a href="aacg-website.html" class="logo-wrap">
+      <div class="logo-mark">
+        <div class="logo-hex-glow"></div>
+        <div class="logo-hex">⚡</div>
+      </div>
+      <div class="logo-text">
+        <div class="logo-name">IronForge</div>
+        <div class="logo-tag">AACG PLATFORM · BUILT FOR THE TRADES</div>
+      </div>
+    </a>
+    <div class="nav-links">
+      <div class="nav-dropdown">
+        <span class="nav-link">Trades ▾</span>
+        <div class="dropdown-menu">
+          <a class="dd-item" href="trades/demolition.html">🔨 Demolition</a>
+          <a class="dd-item" href="trades/framing.html">🪵 Framing</a>
+          <a class="dd-item" href="trades/plumbing.html">🚿 Plumbing</a>
+          <a class="dd-item" href="trades/plumbing-roughing.html">🔩 Plumbing Rough</a>
+          <a class="dd-item" href="trades/plumbing-final.html">🚰 Plumbing Final</a>
+          <a class="dd-item" href="trades/electrical.html">⚡ Electrical</a>
+          <a class="dd-item" href="trades/electrical-roughing.html">🔌 Electrical Rough</a>
+          <a class="dd-item" href="trades/electrical-final.html">💡 Electrical Final</a>
+          <a class="dd-item" href="trades/low-voltage.html">📡 Low Voltage</a>
+          <a class="dd-item" href="trades/hvac.html">❄️ HVAC</a>
+          <a class="dd-item" href="trades/hvac-walkins.html">🥶 HVAC Walk-Ins</a>
+          <a class="dd-item" href="trades/hood-makeup-air.html">🌬️ Hood &amp; Makeup Air</a>
+          <a class="dd-item" href="trades/sheetrock.html">🏠 Sheetrock</a>
+          <a class="dd-item" href="trades/compound.html">🖌️ Compound &amp; Taping</a>
+          <a class="dd-item" href="trades/painting.html">🎨 Painting</a>
+          <a class="dd-item" href="trades/tiling.html">🔲 Tiling</a>
+          <a class="dd-item" href="trades/wallpaper.html">🏛️ Wallpaper</a>
+          <a class="dd-item" href="trades/millwork.html">🪑 Millwork</a>
+          <a class="dd-item" href="trades/equipment-install.html">⚙️ Equipment Install</a>
+          <a class="dd-item" href="trades/furniture-install.html">🛋️ Furniture Install</a>
+          <a class="dd-item" href="trades/finishes.html">✨ Finishes</a>
+          <a class="dd-item" href="trades/blacktop-striping.html">🛣️ Blacktop &amp; Striping</a>
+          <a class="dd-item" href="trades/concrete.html">🏗️ Concrete</a>
+          <a class="dd-item" href="trades/roofing.html">🏠 Roofing</a>
+          <a class="dd-item" href="trades/foundation.html">⬇️ Foundation</a>
+          <a class="dd-item" href="trades/excavation.html">🚜 Excavation</a>
+          <a class="dd-item" href="trades/backfill.html">⬆️ Backfill</a>
+          <a class="dd-item" href="trades/sitework.html">🌍 Site Work</a>
+          <a class="dd-item" href="trades/maintenance.html">🔧 Maintenance</a>
+          <a class="dd-item" href="trades/waterproofing.html">💧 Waterproofing</a>
+          <a class="dd-item" href="trades/flooring.html">🏢 Flooring</a>
+          <a class="dd-item" href="trades/fire-protection.html">🔥 Fire Protection</a>
+          <a class="dd-item" href="trades/insulation.html">🌡️ Insulation</a>
+          <a class="dd-item" href="trades/glazing.html">🪟 Glazing &amp; Glass</a>
+        </div>
+      </div>
+      <div class="nav-dropdown">
+        <span class="nav-link">Sectors ▾</span>
+        <div class="dropdown-menu">
+          <a class="dd-item" href="sectors/residential.html">🏡 Residential</a>
+          <a class="dd-item" href="sectors/commercial.html">🏢 Commercial</a>
+          <a class="dd-item" href="sectors/government.html">🏛️ Government</a>
+          <a class="dd-item" href="sectors/restaurants-qsr.html">🍔 Restaurants &amp; QSR</a>
+          <a class="dd-item" href="sectors/offices.html">💼 Office &amp; Corporate</a>
+          <a class="dd-item" href="sectors/data-centers.html">🖥️ Data Centers</a>
+          <a class="dd-item" href="sectors/retail.html">🛍️ Retail</a>
+          <a class="dd-item" href="sectors/healthcare.html">🏥 Healthcare</a>
+          <a class="dd-item" href="sectors/hospitality.html">🏨 Hospitality &amp; Hotels</a>
+          <a class="dd-item" href="sectors/industrial.html">🏭 Industrial</a>
+          <a class="dd-item" href="sectors/education.html">🎓 Education</a>
+          <a class="dd-item" href="sectors/entertainment.html">🎭 Entertainment</a>
+        </div>
+      </div>
+      <a href="#agents" class="nav-link">AI Agents</a>
+      <a href="#how-it-works" class="nav-link">How It Works</a>
+      <a href="#trades" class="nav-link">Trades</a>
+      <a href="#sectors" class="nav-link">Sectors</a>
+      <a href="#gallery" class="nav-link">Gallery</a>
+      <a href="#blog" class="nav-link">Blog</a>
+      <a href="#pricing" class="nav-link">Pricing</a>
+      <a href="#faq" class="nav-link">Q&amp;A</a>
+      <a href="#contact" class="nav-link">Contact</a>
+      <div class="nav-sep"></div>
+      <a href="admin/index.html" class="nav-login">⚙️ Admin</a>
+      <button class="nav-signup" onclick="openSignup('starter')">Sign Up</button>
+    </div>
+    <a href="tel:9298882848" class="nav-cta">📞 929-888-2848</a>
+  </div>
+</nav>
+
+<!-- ═══ HERO ═══ -->
+<section class="hero" id="home">
+  <div class="hero-bg"></div>
+  <div class="hero-grid"></div>
+  <div class="hero-scan"></div>
+  <div class="hero-inner">
+    <div>
+      <div class="hero-eyebrow">⚡ Built By GCs. For GCs. — The Platform That Gets You Paid.</div>
+      <h1 class="hero-title">
+        The <span class="hl-e">AI Brain</span><br>
+        Behind Every<br>
+        <span class="hl-r">Construction</span> Business
+      </h1>
+      <p class="hero-sub">20 AI agents handle your liens, invoices, photos, scheduling, compliance & cash flow — automatically. So your crew builds while you collect.</p>
+      <p class="hero-tagline"><span class="neon">IronForge</span> — Built By GCs. For GCs.</p>
+      <div class="hero-actions">
+        <button class="btn-electric" onclick="openSignup('pro')">Start Free Trial →</button>
+        <button class="btn btn-ghost" onclick="openVideo(event,'https://www.youtube.com/embed/vCVWVvt5UlI?autoplay=1')">▶ Watch 90-Sec Demo</button>
+        <a href="tel:9298882848" class="btn-crimson">📞 Call Now</a>
+      </div>
+      <div class="hero-phone">📞 Call or Text Scott: <a href="tel:9298882848">929-888-2848</a></div>
+      <div class="hero-stats">
+        <div><div class="hs-val" data-count="10000" data-suffix="+">0</div><div class="hs-lbl">Projects</div></div>
+        <div><div class="hs-val" data-count="20">0</div><div class="hs-lbl">AI Agents</div></div>
+        <div><div class="hs-val" data-count="34">0</div><div class="hs-lbl">Trades</div></div>
+        <div><div class="hs-val" data-count="2.4" data-prefix="$" data-suffix="B">0</div><div class="hs-lbl">Revenue Protected</div></div>
+      </div>
+    </div>
+    <div>
+      <div class="video-player" onclick="openVideo(event,'https://www.youtube.com/embed/vCVWVvt5UlI?autoplay=1')">
+        <div class="vp-bg"></div>
+        <div class="vp-grid"></div>
+        <div class="vp-corner vp-tl"></div><div class="vp-corner vp-tr"></div>
+        <div class="vp-corner vp-bl"></div><div class="vp-corner vp-br"></div>
+        <div class="vp-ring"></div>
+        <div class="vp-ring2"></div>
+        <div class="vp-play">▶</div>
+        <div class="vp-waveform">
+          <div class="vp-bar"></div><div class="vp-bar"></div><div class="vp-bar"></div>
+          <div class="vp-bar"></div><div class="vp-bar"></div><div class="vp-bar"></div>
+          <div class="vp-bar"></div><div class="vp-bar"></div><div class="vp-bar"></div>
+        </div>
+        <div class="vp-live">● LIVE DEMO</div>
+        <div class="vp-label">
+          <div class="vp-title">See How AACG Automates Your Entire Business in 90 Seconds</div>
+          <div class="vp-sub">No signup required · Click to watch · 929-888-2848</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- STATS BANNER -->
+<section style="padding:40px 24px;">
+  <div class="container">
+    <div class="stats-banner reveal">
+      <div class="sb-item"><div class="sb-val" data-count="10000" data-suffix="+">0</div><div class="sb-lbl">Projects Managed</div></div>
+      <div class="sb-item"><div class="sb-val" data-count="500" data-suffix="+">0</div><div class="sb-lbl">Licensed Technicians</div></div>
+      <div class="sb-item"><div class="sb-val" data-count="34">0</div><div class="sb-lbl">Trade Verticals</div></div>
+      <div class="sb-item"><div class="sb-val" data-count="2.4" data-prefix="$" data-suffix="B">0</div><div class="sb-lbl">Revenue Protected</div></div>
+      <div class="sb-item"><div class="sb-val" data-count="99.9" data-suffix="%">0</div><div class="sb-lbl">Platform Uptime</div></div>
+      <div class="sb-item"><div class="sb-val" data-count="40" data-suffix="%">0</div><div class="sb-lbl">Faster Payments</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="section alt-section" id="how-it-works">
+  <div class="container">
+    <div class="sec-label">Process</div>
+    <h2 class="sec-title">From Connect to <span class="hl-e">Collect</span></h2>
+    <p class="sec-sub">Five steps. Fully automated. Your crew works — AACG's AI handles everything else 24/7.</p>
+    <div class="hiw-steps reveal" style="position:relative;">
+      <div class="hiw-line"></div>
+      <div class="hiw-step"><div class="hiw-num">🏗️</div><div class="hiw-title">Connect Your Projects</div><div class="hiw-desc">Sync your project list in minutes. Import from existing tools or start fresh — zero tech skills needed.</div></div>
+      <div class="hiw-step"><div class="hiw-num">🤖</div><div class="hiw-title">20 AI Agents Activate</div><div class="hiw-desc">Each AI agent takes over its domain — liens, photos, invoices, compliance, cash flow — running 24/7.</div></div>
+      <div class="hiw-step"><div class="hiw-num">⚡</div><div class="hiw-title">Automation Runs</div><div class="hiw-desc">Liens filed, photos analyzed, invoices sent, subs verified — all without you lifting a finger.</div></div>
+      <div class="hiw-step"><div class="hiw-num">📊</div><div class="hiw-title">Daily Reports</div><div class="hiw-desc">Every project's status in your inbox each morning. Know exactly what's happening on every job.</div></div>
+      <div class="hiw-step"><div class="hiw-num">💰</div><div class="hiw-title">You Get Paid Faster</div><div class="hiw-desc">Average 40% reduction in AR days. Stop chasing — let AACG protect every dollar you've earned.</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- AI AGENTS -->
+<section class="section" id="agents">
+  <div class="container">
+    <div class="sec-label">AI Agents</div>
+    <h2 class="sec-title">20 Specialized <span class="hl-e">AI Agents</span></h2>
+    <p class="sec-sub">Each agent owns a complete domain — running 24/7, processing data, sending communications, escalating only what needs your attention.</p>
+    <div class="agents-grid reveal">
+      <div class="agent-card"><div class="ac-icon">⚖️</div><div class="ac-cat">Legal</div><div class="ac-name">Lien Protection</div><div class="ac-desc">Monitors lien deadlines, auto-files mechanics liens, sends prelim notices. Never miss a filing deadline again.</div><div class="ac-tags"><span class="ac-tag">Liens</span><span class="ac-tag">Compliance</span></div><a href="admin/index.html" class="ac-btn">▶ Run Agent</a></div>
+      <div class="agent-card"><div class="ac-icon">📊</div><div class="ac-cat">Sales</div><div class="ac-name">Bid Estimator</div><div class="ac-desc">Generates detailed cost estimates from project scope — labor, materials, equipment, overhead, and margin.</div><div class="ac-tags"><span class="ac-tag">Bidding</span><span class="ac-tag">Finance</span></div><a href="admin/index.html" class="ac-btn">▶ Run Agent</a></div>
+      <div class="agent-card"><div class="ac-icon">💰</div><div class="ac-cat">Finance</div><div class="ac-name">Invoice Processing</div><div class="ac-desc">Auto-generates invoices from completed work orders, applies contract rates, calculates retention, sends to client.</div><div class="ac-tags"><span class="ac-tag">Invoicing</span><span class="ac-tag">AR</span></div><a href="admin/index.html" class="ac-btn">▶ Run Agent</a></div>
+      <div class="agent-card"><div class="ac-icon">💸</div><div class="ac-cat">Finance</div><div class="ac-name">Cash Flow Monitor</div><div class="ac-desc">Tracks receivables vs payables in real time, forecasts cash position, alerts to shortfalls before they happen.</div><div class="ac-tags"><span class="ac-tag">Cash Flow</span></div><a href="admin/index.html" class="ac-btn">▶ Run Agent</a></div>
+      <div class="agent-card"><div class="ac-icon">📸</div><div class="ac-cat">AI Vision</div><div class="ac-name">Photo Inspector</div><div class="ac-desc">Analyzes site photos with computer vision — detects progress, damage, safety violations, and compliance issues.</div><div class="ac-tags"><span class="ac-tag">Vision AI</span><span class="ac-tag">Safety</span></div><a href="admin/index.html" class="ac-btn">▶ Run Agent</a></div>
+      <div class="agent-card"><div class="ac-icon">📋</div><div class="ac-cat">Compliance</div><div class="ac-name">Permit Tracker</div><div class="ac-desc">Tracks permit applications, inspection scheduling, approval status, and certificate of occupancy filings.</div><div class="ac-tags"><span class="ac-tag">Permits</span></div><a href="admin/index.html" class="ac-btn">▶ Run Agent</a></div>
+      <div class="agent-card"><div class="ac-icon">🦺</div><div class="ac-cat">Compliance</div><div class="ac-name">Safety Compliance</div><div class="ac-desc">Processes daily safety reports, incident documentation, OSHA recordkeeping, and safety trend analysis.</div><div class="ac-tags"><span class="ac-tag">OSHA</span><span class="ac-tag">Safety</span></div><a href="admin/index.html" class="ac-btn">▶ Run Agent</a></div>
+      <div class="agent-card"><div class="ac-icon">📝</div><div class="ac-cat">Contracts</div><div class="ac-name">Change Order Manager</div><div class="ac-desc">Processes scope changes, generates CO documentation, calculates pricing, tracks approval workflow end-to-end.</div><div class="ac-tags"><span class="ac-tag">Change Orders</span></div><a href="admin/index.html" class="ac-btn">▶ Run Agent</a></div>
+      <div class="agent-card"><div class="ac-icon">❓</div><div class="ac-cat">Operations</div><div class="ac-name">RFI Manager</div><div class="ac-desc">Manages requests for information — auto-routes to correct party, tracks responses, logs decisions.</div><div class="ac-tags"><span class="ac-tag">RFIs</span></div><a href="admin/index.html" class="ac-btn">▶ Run Agent</a></div>
+      <div class="agent-card"><div class="ac-icon">📅</div><div class="ac-cat">Operations</div><div class="ac-name">Schedule Optimizer</div><div class="ac-desc">Analyzes crew availability, trade dependencies, and site conditions to optimize daily and weekly schedules.</div><div class="ac-tags"><span class="ac-tag">Scheduling</span></div><a href="admin/index.html" class="ac-btn">▶ Run Agent</a></div>
+      <div class="agent-card"><div class="ac-icon">🔗</div><div class="ac-cat">Procurement</div><div class="ac-name">Vendor Qualification</div><div class="ac-desc">Verifies vendor licenses, insurance, bonding, and track record. Flags expired credentials automatically.</div><div class="ac-tags"><span class="ac-tag">Vendors</span></div><a href="admin/index.html" class="ac-btn">▶ Run Agent</a></div>
+      <div class="agent-card"><div class="ac-icon">👷</div><div class="ac-cat">HR</div><div class="ac-name">Payroll Verification</div><div class="ac-desc">Verifies field hours against GPS and photo data, flags discrepancies, prepares certified payroll reports.</div><div class="ac-tags"><span class="ac-tag">Payroll</span></div><a href="admin/index.html" class="ac-btn">▶ Run Agent</a></div>
+      <div class="agent-card"><div class="ac-icon">🌅</div><div class="ac-cat">Operations</div><div class="ac-name">Daily Site Monitor</div><div class="ac-desc">Runs a daily check on every active project — weather, crew status, material delivery, open issues — sends digest.</div><div class="ac-tags"><span class="ac-tag">Monitoring</span></div><a href="admin/index.html" class="ac-btn">▶ Run Agent</a></div>
+      <div class="agent-card"><div class="ac-icon">📄</div><div class="ac-cat">Legal</div><div class="ac-name">Contract Analyzer</div><div class="ac-desc">Reviews contract language, flags risky clauses, summarizes payment terms, highlights indemnity obligations.</div><div class="ac-tags"><span class="ac-tag">Contracts</span><span class="ac-tag">Legal</span></div><a href="admin/index.html" class="ac-btn">▶ Run Agent</a></div>
+      <div class="agent-card"><div class="ac-icon">📦</div><div class="ac-cat">Operations</div><div class="ac-name">Material Tracker</div><div class="ac-desc">Tracks material orders, deliveries, on-site inventory, and waste. Alerts PM when materials are delayed or low.</div><div class="ac-tags"><span class="ac-tag">Materials</span></div><a href="admin/index.html" class="ac-btn">▶ Run Agent</a></div>
+      <div class="agent-card"><div class="ac-icon">🔧</div><div class="ac-cat">Legal</div><div class="ac-name">Subcontractor Manager</div><div class="ac-desc">Manages sub qualifications, insurance verification, lien waiver collection, and payment processing.</div><div class="ac-tags"><span class="ac-tag">Subs</span></div><a href="admin/index.html" class="ac-btn">▶ Run Agent</a></div>
+      <div class="agent-card"><div class="ac-icon">🛡️</div><div class="ac-cat">Operations</div><div class="ac-name">Warranty Tracker</div><div class="ac-desc">Tracks warranty periods for installed equipment and work, sends reminders, manages warranty claims.</div><div class="ac-tags"><span class="ac-tag">Warranty</span></div><a href="admin/index.html" class="ac-btn">▶ Run Agent</a></div>
+      <div class="agent-card"><div class="ac-icon">📐</div><div class="ac-cat">Documentation</div><div class="ac-name">Drawing Revision</div><div class="ac-desc">Manages drawing revisions, ensures field teams have current sets, tracks RFI-driven changes, archives superseded.</div><div class="ac-tags"><span class="ac-tag">Drawings</span></div><a href="admin/index.html" class="ac-btn">▶ Run Agent</a></div>
+      <div class="agent-card"><div class="ac-icon">✅</div><div class="ac-cat">Operations</div><div class="ac-name">Project Closeout</div><div class="ac-desc">Manages punch lists, final inspections, O&amp;M manuals, as-builts, lien waivers, and substantial completion.</div><div class="ac-tags"><span class="ac-tag">Closeout</span></div><a href="admin/index.html" class="ac-btn">▶ Run Agent</a></div>
+      <div class="agent-card"><div class="ac-icon">📈</div><div class="ac-cat">Finance</div><div class="ac-name">Revenue Forecaster</div><div class="ac-desc">Projects monthly and quarterly revenue based on active contracts, billing milestones, and payment patterns.</div><div class="ac-tags"><span class="ac-tag">Forecasting</span></div><a href="admin/index.html" class="ac-btn">▶ Run Agent</a></div>
+    </div>
+  </div>
+</section>
+
+<!-- 34 TRADES -->
+<section class="section alt-section" id="trades">
+  <div class="container">
+    <div class="sec-label">Trade Services</div>
+    <h2 class="sec-title">34 Trade Verticals. <span class="hl-e">One Platform.</span></h2>
+    <p class="sec-sub">Every trade powered by dedicated AI agents — automatic lien protection, real-time photo analysis, and instant invoicing from the moment work starts.</p>
+    <div class="trades-grid reveal">
+      <a href="trades/demolition.html" class="trade-tile"><span class="te">🔨</span>Demolition</a>
+      <a href="trades/framing.html" class="trade-tile"><span class="te">🪵</span>Framing</a>
+      <a href="trades/plumbing.html" class="trade-tile"><span class="te">🚿</span>Plumbing</a>
+      <a href="trades/plumbing-roughing.html" class="trade-tile"><span class="te">🔩</span>Plumbing Rough</a>
+      <a href="trades/plumbing-final.html" class="trade-tile"><span class="te">🚰</span>Plumbing Final</a>
+      <a href="trades/electrical.html" class="trade-tile"><span class="te">⚡</span>Electrical</a>
+      <a href="trades/electrical-roughing.html" class="trade-tile"><span class="te">🔌</span>Electrical Rough</a>
+      <a href="trades/electrical-final.html" class="trade-tile"><span class="te">💡</span>Electrical Final</a>
+      <a href="trades/low-voltage.html" class="trade-tile"><span class="te">📡</span>Low Voltage</a>
+      <a href="trades/hvac.html" class="trade-tile"><span class="te">❄️</span>HVAC</a>
+      <a href="trades/hvac-walkins.html" class="trade-tile"><span class="te">🥶</span>HVAC Walk-Ins</a>
+      <a href="trades/hood-makeup-air.html" class="trade-tile"><span class="te">🌬️</span>Hood &amp; Makeup Air</a>
+      <a href="trades/sheetrock.html" class="trade-tile"><span class="te">🏠</span>Sheetrock</a>
+      <a href="trades/compound.html" class="trade-tile"><span class="te">🖌️</span>Compound</a>
+      <a href="trades/painting.html" class="trade-tile"><span class="te">🎨</span>Painting</a>
+      <a href="trades/tiling.html" class="trade-tile"><span class="te">🔲</span>Tiling</a>
+      <a href="trades/wallpaper.html" class="trade-tile"><span class="te">🏛️</span>Wallpaper</a>
+      <a href="trades/millwork.html" class="trade-tile"><span class="te">🪑</span>Millwork</a>
+      <a href="trades/equipment-install.html" class="trade-tile"><span class="te">⚙️</span>Equipment Install</a>
+      <a href="trades/furniture-install.html" class="trade-tile"><span class="te">🛋️</span>Furniture Install</a>
+      <a href="trades/finishes.html" class="trade-tile"><span class="te">✨</span>Finishes</a>
+      <a href="trades/blacktop-striping.html" class="trade-tile"><span class="te">🛣️</span>Blacktop &amp; Striping</a>
+      <a href="trades/concrete.html" class="trade-tile"><span class="te">🏗️</span>Concrete</a>
+      <a href="trades/roofing.html" class="trade-tile"><span class="te">🏠</span>Roofing</a>
+      <a href="trades/foundation.html" class="trade-tile"><span class="te">⬇️</span>Foundation</a>
+      <a href="trades/excavation.html" class="trade-tile"><span class="te">🚜</span>Excavation</a>
+      <a href="trades/backfill.html" class="trade-tile"><span class="te">⬆️</span>Backfill</a>
+      <a href="trades/sitework.html" class="trade-tile"><span class="te">🌍</span>Site Work</a>
+      <a href="trades/maintenance.html" class="trade-tile"><span class="te">🔧</span>Maintenance</a>
+      <a href="trades/waterproofing.html" class="trade-tile"><span class="te">💧</span>Waterproofing</a>
+      <a href="trades/flooring.html" class="trade-tile"><span class="te">🏢</span>Flooring</a>
+      <a href="trades/fire-protection.html" class="trade-tile"><span class="te">🔥</span>Fire Protection</a>
+      <a href="trades/insulation.html" class="trade-tile"><span class="te">🌡️</span>Insulation</a>
+      <a href="trades/glazing.html" class="trade-tile"><span class="te">🪟</span>Glazing &amp; Glass</a>
+    </div>
+  </div>
+</section>
+
+<!-- 12 SECTORS -->
+<section class="section" id="sectors">
+  <div class="container">
+    <div class="sec-label">Market Sectors</div>
+    <h2 class="sec-title">12 Market Sectors. <span class="hl-r">Deep Expertise.</span></h2>
+    <p class="sec-sub">Whether you're building restaurants, data centers, or hospitals — AACG has sector-specific AI workflows built for your market.</p>
+    <div class="sectors-grid reveal">
+      <a href="sectors/residential.html" class="sector-tile"><span class="se">🏡</span><div class="st-name">Residential</div><div class="st-desc">Homes &amp; multi-family</div></a>
+      <a href="sectors/commercial.html" class="sector-tile"><span class="se">🏢</span><div class="st-name">Commercial</div><div class="st-desc">Office &amp; mixed-use</div></a>
+      <a href="sectors/government.html" class="sector-tile"><span class="se">🏛️</span><div class="st-name">Government</div><div class="st-desc">Public works &amp; municipal</div></a>
+      <a href="sectors/restaurants-qsr.html" class="sector-tile"><span class="se">🍔</span><div class="st-name">Restaurants &amp; QSR</div><div class="st-desc">Fast food &amp; dining</div></a>
+      <a href="sectors/offices.html" class="sector-tile"><span class="se">💼</span><div class="st-name">Office &amp; Corporate</div><div class="st-desc">Tenant improvement</div></a>
+      <a href="sectors/data-centers.html" class="sector-tile"><span class="se">🖥️</span><div class="st-name">Data Centers</div><div class="st-desc">Mission-critical builds</div></a>
+      <a href="sectors/retail.html" class="sector-tile"><span class="se">🛍️</span><div class="st-name">Retail</div><div class="st-desc">Storefronts &amp; malls</div></a>
+      <a href="sectors/healthcare.html" class="sector-tile"><span class="se">🏥</span><div class="st-name">Healthcare</div><div class="st-desc">Medical &amp; clinical</div></a>
+      <a href="sectors/hospitality.html" class="sector-tile"><span class="se">🏨</span><div class="st-name">Hospitality</div><div class="st-desc">Hotels &amp; resorts</div></a>
+      <a href="sectors/industrial.html" class="sector-tile"><span class="se">🏭</span><div class="st-name">Industrial</div><div class="st-desc">Warehouses &amp; plants</div></a>
+      <a href="sectors/education.html" class="sector-tile"><span class="se">🎓</span><div class="st-name">Education</div><div class="st-desc">Schools &amp; universities</div></a>
+      <a href="sectors/entertainment.html" class="sector-tile"><span class="se">🎭</span><div class="st-name">Entertainment</div><div class="st-desc">Venues &amp; arenas</div></a>
+    </div>
+  </div>
+</section>
+
+<!-- GALLERY -->
+<section class="section alt-section" id="gallery">
+  <div class="container">
+    <div class="sec-label">Live Projects</div>
+    <h2 class="sec-title">Projects <span class="hl-e">In Progress</span> Right Now</h2>
+    <p class="sec-sub">Gallery auto-updates as AI agents process new site photos, verify progress, and file documentation in real time.</p>
+    <div class="gallery-grid reveal">
+      <div class="gallery-card live-project"><div class="gc-thumb" style="background:linear-gradient(135deg,#04081a,#0d1835);">🏗️<div class="gc-badge-status gc-live">● LIVE</div></div><div class="gc-info"><div class="gc-name">Manhattan Office TI — 42nd St</div><div class="gc-row"><span class="gc-trade">Electrical Rough-In</span><span class="live-txt">Active Now</span></div></div></div>
+      <div class="gallery-card live-project"><div class="gc-thumb" style="background:linear-gradient(135deg,#0a0420,#1a0830);">🍔<div class="gc-badge-status gc-live">● LIVE</div></div><div class="gc-info"><div class="gc-name">Burger King — Queens Blvd</div><div class="gc-row"><span class="gc-trade">HVAC &amp; Hood Install</span><span class="live-txt">Active Now</span></div></div></div>
+      <div class="gallery-card"><div class="gc-thumb" style="background:linear-gradient(135deg,#001a0a,#002a14);">🏥<div class="gc-badge-status gc-done">✓ DONE</div></div><div class="gc-info"><div class="gc-name">NYU Medical Annex — Brooklyn</div><div class="gc-row"><span class="gc-trade">Plumbing Final</span><span style="color:var(--electric);font-size:10.5px;">Completed</span></div></div></div>
+      <div class="gallery-card live-project"><div class="gc-thumb" style="background:linear-gradient(135deg,#1a0804,#2a1008);">🏨<div class="gc-badge-status gc-live">● LIVE</div></div><div class="gc-info"><div class="gc-name">Hilton Garden — Long Island City</div><div class="gc-row"><span class="gc-trade">Millwork &amp; Finishes</span><span class="live-txt">Active Now</span></div></div></div>
+      <div class="gallery-card"><div class="gc-thumb" style="background:linear-gradient(135deg,#0a1a00,#142800);">🏭<div class="gc-badge-status gc-pending">⏳ UPCOMING</div></div><div class="gc-info"><div class="gc-name">Amazon Warehouse — NJ</div><div class="gc-row"><span class="gc-trade">Concrete &amp; Foundation</span><span style="color:var(--gold);font-size:10.5px;">Starting May 6</span></div></div></div>
+      <div class="gallery-card live-project"><div class="gc-thumb" style="background:linear-gradient(135deg,#1a0420,#280630);">🏫<div class="gc-badge-status gc-live">● LIVE</div></div><div class="gc-info"><div class="gc-name">PS 147 — Bronx Renovation</div><div class="gc-row"><span class="gc-trade">Sheetrock &amp; Painting</span><span class="live-txt">Active Now</span></div></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- BLOG -->
+<section class="section" id="blog">
+  <div class="container">
+    <div class="sec-label">Knowledge Base</div>
+    <h2 class="sec-title">Built By GCs. <span class="hl-r">Written For GCs.</span></h2>
+    <p class="sec-sub">Real insights from the field — no fluff, no theory. What actually works for contractors who build and collect.</p>
+    <div class="blog-grid reveal">
+      <div class="blog-card" onclick="openSignup('pro')">
+        <div class="blog-thumb" style="background:linear-gradient(135deg,#04081a,#0d1835);">⚖️<div class="blog-cat-badge" style="background:rgba(255,58,45,0.14);color:var(--electric);border:1px solid rgba(255,58,45,0.3);">Legal</div></div>
+        <div class="blog-body"><div class="blog-title">Why 78% of GCs Lose Money on Liens — And How AI Fixes It</div><div class="blog-excerpt">Most contractors miss lien deadlines not because they forget — but because they're juggling 12 other things. Here's how AI never lets that happen.</div><div class="blog-foot"><span>May 1, 2026 · 6 min</span><span class="blog-read">Read →</span></div></div>
+      </div>
+      <div class="blog-card" onclick="openSignup('pro')">
+        <div class="blog-thumb" style="background:linear-gradient(135deg,#0a0020,#18003a);">💰<div class="blog-cat-badge" style="background:rgba(255,32,69,0.14);color:var(--crimson);border:1px solid rgba(255,32,69,0.3);">Finance</div></div>
+        <div class="blog-body"><div class="blog-title">The Real Reason You're Waiting 90 Days to Get Paid</div><div class="blog-excerpt">It's not the GC. It's not the owner. It's the 4 bottlenecks in your invoicing workflow that add 60 days of unnecessary delay.</div><div class="blog-foot"><span>Apr 22, 2026 · 8 min</span><span class="blog-read">Read →</span></div></div>
+      </div>
+      <div class="blog-card" onclick="openSignup('pro')">
+        <div class="blog-thumb" style="background:linear-gradient(135deg,#001a04,#003010);">📸<div class="blog-cat-badge" style="background:rgba(0,255,136,0.12);color:var(--green);border:1px solid rgba(0,255,136,0.3);">AI Vision</div></div>
+        <div class="blog-body"><div class="blog-title">How AI Photo Analysis Saved One GC $340K in One Year</div><div class="blog-excerpt">When a camera can detect safety violations, verify work completion, and flag hidden damage — the savings stack up fast. Real numbers from a real GC.</div><div class="blog-foot"><span>Apr 10, 2026 · 5 min</span><span class="blog-read">Read →</span></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- VIDEO EXPLAINER -->
+<section class="alt-section" style="padding:88px 24px;" id="videos">
+  <div class="container" style="text-align:center;">
+    <div class="sec-label">Platform Walkthrough</div>
+    <h2 class="sec-title" style="text-align:center;">Watch How <span class="hl-e">AACG Works</span></h2>
+    <p class="sec-sub" style="margin:0 auto 40px;text-align:center;">See every feature in action — from lien protection to AI photo analysis to automated invoicing. Under 5 minutes.</p>
+    <div style="max-width:800px;margin:0 auto;">
+      <div class="video-player" onclick="openVideo(event,'https://www.youtube.com/embed/vCVWVvt5UlI?autoplay=1')">
+        <div class="vp-bg"></div><div class="vp-grid"></div>
+        <div class="vp-corner vp-tl"></div><div class="vp-corner vp-tr"></div>
+        <div class="vp-corner vp-bl"></div><div class="vp-corner vp-br"></div>
+        <div class="vp-ring"></div><div class="vp-ring2"></div>
+        <div class="vp-play" style="width:82px;height:82px;font-size:28px;">▶</div>
+        <div class="vp-waveform"><div class="vp-bar"></div><div class="vp-bar"></div><div class="vp-bar"></div><div class="vp-bar"></div><div class="vp-bar"></div><div class="vp-bar"></div><div class="vp-bar"></div><div class="vp-bar"></div><div class="vp-bar"></div></div>
+        <div class="vp-live">● FULL PLATFORM TOUR</div>
+        <div class="vp-label">
+          <div class="vp-title" style="font-size:16px;">Complete AACG Platform Tour — All 20 AI Agents Explained</div>
+          <div class="vp-sub">See how real GCs use AACG to protect revenue &amp; automate operations · Questions? Call 929-888-2848</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<!-- ===== PRICING ===== -->
+<section id="pricing" class="section">
+  <div class="container">
+    <div class="section-header reveal">
+      <span class="section-tag">Pricing</span>
+      <h2 class="section-title">Simple, Transparent Plans</h2>
+      <p class="section-sub">No hidden fees. No auto-charges. Start free for 14 days — cancel any time.</p>
+    </div>
+    <div class="pricing-grid reveal">
+      <!-- Starter -->
+      <div class="pricing-card">
+        <div class="pc-badge">Starter</div>
+        <div class="pc-price"><span class="pc-dollar">$</span>49<span class="pc-mo">/mo</span></div>
+        <p class="pc-desc">Perfect for solo contractors &amp; small crews getting started with AI automation.</p>
+        <ul class="pc-features">
+          <li>✓ 5 AI Agents active</li>
+          <li>✓ Document automation</li>
+          <li>✓ Lien tracking (basic)</li>
+          <li>✓ Client portal access</li>
+          <li>✓ Email &amp; chat support</li>
+          <li>✗ Custom AI training</li>
+          <li>✗ Priority support</li>
+        </ul>
+        <button class="btn btn-ghost pc-cta" onclick="openSignup('starter')">Start Free Trial</button>
+      </div>
+      <!-- Pro -->
+      <div class="pricing-card pc-featured">
+        <div class="pc-popular">MOST POPULAR</div>
+        <div class="pc-badge">Pro</div>
+        <div class="pc-price"><span class="pc-dollar">$</span>99<span class="pc-mo">/mo</span></div>
+        <p class="pc-desc">For growing contractors who need the full AI suite running their back office.</p>
+        <ul class="pc-features">
+          <li>✓ 20 AI Agents active</li>
+          <li>✓ Advanced lien management</li>
+          <li>✓ Full document suite</li>
+          <li>✓ Finance &amp; payroll AI</li>
+          <li>✓ HR &amp; compliance tools</li>
+          <li>✓ Priority support</li>
+          <li>✓ Custom AI training</li>
+        </ul>
+        <button class="btn btn-electric pc-cta" onclick="openSignup('pro')">Start Free Trial</button>
+      </div>
+      <!-- Enterprise -->
+      <div class="pricing-card">
+        <div class="pc-badge">Enterprise</div>
+        <div class="pc-price pc-custom">Custom</div>
+        <p class="pc-desc">For large GCs, developers &amp; multi-trade companies needing white-glove AI deployment.</p>
+        <ul class="pc-features">
+          <li>✓ Unlimited AI Agents</li>
+          <li>✓ Full platform white-label</li>
+          <li>✓ Dedicated account manager</li>
+          <li>✓ Custom integrations</li>
+          <li>✓ On-site onboarding</li>
+          <li>✓ SLA guarantees</li>
+          <li>✓ API access</li>
+        </ul>
+        <button class="btn btn-crimson pc-cta" onclick="openSignup('enterprise')">Get a Quote</button>
+      </div>
+    </div>
+    <div class="pricing-note reveal">
+      <div class="pn-box">
+        <strong style="color:var(--green)">💳 How payments work:</strong>
+        Your 14-day free trial starts immediately — no credit card required. At the end of your trial, you'll receive an invoice by email. Pay online via card or ACH bank transfer. <strong>We never auto-charge without your approval.</strong> Cancel any time from your dashboard — no penalties, no questions.
+      </div>
+    </div>
+  </div>
+</section>
+<!-- ===== FAQ ===== -->
+<section id="faq" class="section" style="background:var(--navy2)">
+  <div class="container">
+    <div class="section-header reveal">
+      <span class="section-tag">FAQ</span>
+      <h2 class="section-title">Common Questions</h2>
+      <p class="section-sub">Everything you need to know before you sign up.</p>
+    </div>
+    <div class="faq-list reveal">
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">What exactly is AACG and how does it help my business? <span class="faq-arrow">▾</span></button>
+        <div class="faq-a">AACG is an AI-powered back-office platform built specifically for construction companies. Instead of hiring multiple staff for lien tracking, invoicing, HR, finance, and compliance — our 20+ AI Agents handle all of it automatically, 24/7. You focus on building. We handle the paperwork.</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">Do I need to be tech-savvy to use AACG? <span class="faq-arrow">▾</span></button>
+        <div class="faq-a">No. AACG was designed for contractors, not engineers. Everything is point-and-click. You simply tell the AI what you need — file a lien, generate a contract, run payroll — and it handles it. If you ever get stuck, our team is available by phone at 929-888-2848.</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">How does the lien filing work? <span class="faq-arrow">▾</span></button>
+        <div class="faq-a">Our Lien Management Agent monitors every job automatically. When payment is overdue, it alerts you and generates the correct lien notice for your state with pre-filled data. One click sends it. We support mechanics liens, preliminary notices, and bond claims across all 50 states.</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">Is my company data secure? <span class="faq-arrow">▾</span></button>
+        <div class="faq-a">Yes. All data is encrypted at rest and in transit using AES-256 and TLS 1.3. We never sell or share your data. Your contracts, payroll info, and client records stay private — accessible only to your team.</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">What happens after my 14-day free trial? <span class="faq-arrow">▾</span></button>
+        <div class="faq-a">After 14 days you'll receive an invoice by email. You choose to pay by card or ACH bank transfer. We never auto-charge your card. If you decide AACG isn't right for you, just let us know before the trial ends and you owe nothing.</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">Can I upgrade or downgrade my plan? <span class="faq-arrow">▾</span></button>
+        <div class="faq-a">Absolutely. You can upgrade from Starter to Pro at any time from your dashboard — the difference is prorated. Downgrades take effect on your next billing cycle. Enterprise clients work with a dedicated account manager for plan changes.</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">Which trades does AACG support? <span class="faq-arrow">▾</span></button>
+        <div class="faq-a">All of them. AACG works for General Contractors, Electricians, Plumbers, HVAC, Roofing, Masonry, Drywall, Flooring, Painting, Landscaping, Concrete, Steel, Carpentry, Welding, Demolition, Glass, Insulation, Solar, Elevators, Fire Protection, Paving, Waterproofing, Millwork, Plastering, Tile, Cabinetry, Fencing, Pool, Signage, and more.</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">How do I get started right now? <span class="faq-arrow">▾</span></button>
+        <div class="faq-a">Click any "Start Free Trial" button on this page, choose your plan, fill in your company info, and you're in. Your dashboard activates instantly. Or call us at 929-888-2848 and we'll onboard you personally.</div>
+      </div>
+    </div>
+  </div>
+</section>
+<!-- ===== CONTACT ===== -->
+<section id="contact" class="section">
+  <div class="container">
+    <div class="section-header reveal">
+      <span class="section-tag">Contact</span>
+      <h2 class="section-title">Talk to a Real Person</h2>
+      <p class="section-sub">Have questions? We pick up. Call, text, or WhatsApp — we're here.</p>
+    </div>
+    <div class="contact-grid reveal">
+      <div class="contact-left">
+        <div class="contact-phone-display">929-888-2848</div>
+        <p class="contact-tagline">Mon–Sat · 7AM–9PM EST</p>
+        <div class="contact-actions">
+          <a href="tel:9298882848" class="btn btn-electric">📞 Call Now</a>
+          <a href="https://wa.me/19298882848" target="_blank" class="btn btn-green">💬 WhatsApp</a>
+          <a href="sms:9298882848" class="btn btn-ghost">📱 Text Us</a>
+        </div>
+        <div class="contact-facts">
+          <div class="cf-item"><span class="cf-icon">⚡</span><span>Average response time: under 3 minutes</span></div>
+          <div class="cf-item"><span class="cf-icon">🏗️</span><span>Construction specialists — we speak your language</span></div>
+          <div class="cf-item"><span class="cf-icon">🔒</span><span>All conversations are confidential</span></div>
+        </div>
+      </div>
+      <div class="contact-right">
+        <form class="contact-form" onsubmit="submitContact(event)">
+          <h3 class="cf-title">Send a Message</h3>
+          <div class="cf-row">
+            <div class="cf-field"><label>Your Name</label><input type="text" placeholder="John Smith" required></div>
+            <div class="cf-field"><label>Company</label><input type="text" placeholder="Smith Electrical LLC"></div>
+          </div>
+          <div class="cf-row">
+            <div class="cf-field"><label>Email</label><input type="email" placeholder="john@yourcompany.com" required></div>
+            <div class="cf-field"><label>Phone</label><input type="tel" placeholder="(929) 555-0123"></div>
+          </div>
+          <div class="cf-field"><label>Trade / Industry</label>
+            <select><option value="">Select your trade...</option>
+              <option>General Contractor</option><option>Electrician</option><option>Plumber</option>
+              <option>HVAC</option><option>Roofer</option><option>Mason</option><option>Carpenter</option>
+              <option>Painter</option><option>Landscaper</option><option>Other</option>
+            </select>
+          </div>
+          <div class="cf-field"><label>Message</label><textarea placeholder="Tell us about your business and what you need help with..." rows="4"></textarea></div>
+          <button type="submit" class="btn btn-electric" style="width:100%">Send Message →</button>
+          <p class="cf-privacy">We never share your info. 100% confidential.</p>
+        </form>
+      </div>
+    </div>
+  </div>
+</section>
+<!-- ===== FOOTER ===== -->
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <!-- Brand -->
+      <div class="footer-col footer-brand-col">
+        <div class="footer-logo">
+          <div class="logo-hex-sm"></div>
+          <div class="footer-logo-text">
+            <span class="footer-brand-name">IronForge</span>
+            <span class="footer-brand-sub">Construction Group</span>
+          </div>
+        </div>
+        <p class="footer-desc">The AI-powered back office platform built exclusively for American construction companies. 20+ AI agents running your business 24/7.</p>
+        <div class="footer-phone"><a href="tel:9298882848">929-888-2848</a></div>
+        <div class="footer-socials">
+          <a href="#" aria-label="LinkedIn" class="fs-link">in</a>
+          <a href="#" aria-label="Instagram" class="fs-link">ig</a>
+          <a href="#" aria-label="YouTube" class="fs-link">yt</a>
+          <a href="#" aria-label="Twitter" class="fs-link">x</a>
+        </div>
+      </div>
+      <!-- Trades -->
+      <div class="footer-col">
+        <h4 class="footer-col-title">Trades We Serve</h4>
+        <ul class="footer-links">
+          <li><a href="trades/general-contractor.html">General Contractor</a></li>
+          <li><a href="trades/electrician.html">Electrician</a></li>
+          <li><a href="trades/plumber.html">Plumber</a></li>
+          <li><a href="trades/hvac.html">HVAC</a></li>
+          <li><a href="trades/roofer.html">Roofer</a></li>
+          <li><a href="trades/mason.html">Mason</a></li>
+          <li><a href="trades/drywall.html">Drywall</a></li>
+          <li><a href="trades/flooring.html">Flooring</a></li>
+          <li><a href="trades/painter.html">Painter</a></li>
+          <li><a href="trades/landscaper.html">Landscaper</a></li>
+          <li><a href="trades/concrete.html">Concrete</a></li>
+          <li><a href="trades/steel-fabricator.html">Steel Fabricator</a></li>
+          <li><a href="trades/carpenter.html">Carpenter</a></li>
+          <li><a href="trades/welder.html">Welder</a></li>
+          <li><a href="trades/demolition.html">Demolition</a></li>
+          <li><a href="trades/glass-glazier.html">Glass &amp; Glazier</a></li>
+          <li><a href="trades/insulation.html">Insulation</a></li>
+          <li><a href="trades/solar-installer.html">Solar Installer</a></li>
+          <li><a href="trades/elevator.html">Elevator</a></li>
+          <li><a href="trades/fire-protection.html">Fire Protection</a></li>
+          <li><a href="trades/paving.html">Paving</a></li>
+          <li><a href="trades/waterproofing.html">Waterproofing</a></li>
+          <li><a href="trades/millwork.html">Millwork</a></li>
+          <li><a href="trades/plastering.html">Plastering</a></li>
+          <li><a href="trades/tile-setter.html">Tile Setter</a></li>
+          <li><a href="trades/cabinet-maker.html">Cabinet Maker</a></li>
+          <li><a href="trades/fencing.html">Fencing</a></li>
+          <li><a href="trades/pool-builder.html">Pool Builder</a></li>
+          <li><a href="trades/signage.html">Signage</a></li>
+          <li><a href="trades/excavation.html">Excavation</a></li>
+          <li><a href="trades/scaffolding.html">Scaffolding</a></li>
+          <li><a href="trades/mechanical.html">Mechanical</a></li>
+          <li><a href="trades/survey.html">Surveying</a></li>
+          <li><a href="trades/environmental.html">Environmental</a></li>
+        </ul>
+      </div>
+      <!-- Sectors -->
+      <div class="footer-col">
+        <h4 class="footer-col-title">Sectors</h4>
+        <ul class="footer-links">
+          <li><a href="sectors/residential.html">Residential</a></li>
+          <li><a href="sectors/commercial.html">Commercial</a></li>
+          <li><a href="sectors/industrial.html">Industrial</a></li>
+          <li><a href="sectors/government.html">Government</a></li>
+          <li><a href="sectors/healthcare.html">Healthcare</a></li>
+          <li><a href="sectors/education.html">Education</a></li>
+          <li><a href="sectors/hospitality.html">Hospitality</a></li>
+          <li><a href="sectors/retail.html">Retail</a></li>
+          <li><a href="sectors/infrastructure.html">Infrastructure</a></li>
+          <li><a href="sectors/energy.html">Energy</a></li>
+          <li><a href="sectors/telecom.html">Telecom</a></li>
+          <li><a href="sectors/marine.html">Marine</a></li>
+        </ul>
+        <h4 class="footer-col-title" style="margin-top:24px">Platform</h4>
+        <ul class="footer-links">
+          <li><a href="#agents">AI Agents</a></li>
+          <li><a href="#how">How It Works</a></li>
+          <li><a href="#pricing">Pricing</a></li>
+          <li><a href="#gallery">Gallery</a></li>
+          <li><a href="#blog">Blog</a></li>
+          <li><a href="#faq">FAQ</a></li>
+        </ul>
+      </div>
+      <!-- Company -->
+      <div class="footer-col">
+        <h4 class="footer-col-title">Company</h4>
+        <ul class="footer-links">
+          <li><a href="#how">About AACG</a></li>
+          <li><a href="#contact">Contact Us</a></li>
+          <li><a href="tel:9298882848">929-888-2848</a></li>
+          <li><a href="https://wa.me/19298882848" target="_blank">WhatsApp</a></li>
+          <li><a href="#" onclick="openSignup('pro');return false;">Sign Up</a></li>
+          <li><a href="admin/index.html">Client Login</a></li>
+          <li><a href="#">Privacy Policy</a></li>
+          <li><a href="#">Terms of Service</a></li>
+        </ul>
+        <div class="footer-cta-box">
+          <p>Ready to automate your back office?</p>
+          <button class="btn btn-electric" style="width:100%;margin-top:10px" onclick="openSignup('pro')">Start Free Trial</button>
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>&copy; 2025 IronForge. All rights reserved. AACG Platform is not a law firm and does not provide legal advice. Lien filing services are automated document preparation only.</p>
+      <p style="margin-top:6px;color:var(--text2);font-size:0.78rem">Built with AI for American Builders 🏗️</p>
+    </div>
+  </div>
+</footer>
+<!-- ===== CHATBOT ===== -->
+<div class="chatbot-btn" id="chatbotBtn" onclick="toggleChat()">
+  <div class="cb-pulse"></div>
+  <div class="cb-icon">
+    <div class="cb-hex"></div>
+    <span class="cb-label">AI</span>
+  </div>
+</div>
+<div class="chatbot-window" id="chatWindow">
+  <div class="cw-header">
+    <div class="cw-title">
+      <div class="cw-dot"></div>
+      AACG Super Agent
+    </div>
+    <button class="cw-close" onclick="toggleChat()">✕</button>
+  </div>
+  <div class="cw-messages" id="cwMessages">
+    <div class="cw-msg cw-bot">
+      <strong>👋 Hey! I'm the AACG Super Agent.</strong><br>
+      I can help you with lien filing, pricing, onboarding, or connecting you with our team. What do you need?
+    </div>
+  </div>
+  <div class="cw-input-row">
+    <input type="text" id="cwInput" placeholder="Ask anything about AACG..." onkeydown="if(event.key==='Enter')sendChat()">
+    <button onclick="sendChat()" class="cw-send">→</button>
+  </div>
+</div>
+<!-- ===== EXTRA CSS for new sections ===== -->
+<style>
+/* Pricing */
+.pricing-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:24px;margin-top:48px}
+.pricing-card{background:var(--navy3);border:1px solid var(--border);border-radius:16px;padding:36px 28px;position:relative;transition:transform .3s,box-shadow .3s}
+.pricing-card:hover{transform:translateY(-6px);box-shadow:0 20px 60px rgba(255,58,45,0.15)}
+.pc-featured{border-color:var(--electric);box-shadow:0 0 40px rgba(255,58,45,0.2)}
+.pc-popular{position:absolute;top:-14px;left:50%;transform:translateX(-50%);background:var(--electric);color:var(--navy);font-size:0.7rem;font-weight:800;padding:4px 16px;border-radius:20px;letter-spacing:1px}
+.pc-badge{font-size:1.1rem;font-weight:700;color:var(--electric);text-transform:uppercase;letter-spacing:2px;margin-bottom:12px}
+.pc-price{font-size:3rem;font-weight:900;color:#fff;line-height:1}
+.pc-dollar{font-size:1.4rem;vertical-align:top;padding-top:12px;display:inline-block;color:var(--text2)}
+.pc-mo{font-size:1rem;color:var(--text2);font-weight:400}
+.pc-custom{font-size:2rem;color:var(--crimson)}
+.pc-desc{color:var(--text2);font-size:0.88rem;margin:12px 0 20px;line-height:1.5}
+.pc-features{list-style:none;padding:0;margin:0 0 28px;display:flex;flex-direction:column;gap:8px}
+.pc-features li{font-size:0.88rem;color:var(--text2)}
+.pc-features li:nth-child(-n+5){color:var(--text)}
+.pc-cta{width:100%;justify-content:center}
+.pricing-note{margin-top:40px}
+.pn-box{background:rgba(0,255,136,0.07);border:1px solid rgba(0,255,136,0.25);border-radius:12px;padding:20px 24px;color:var(--text);font-size:0.9rem;line-height:1.7;max-width:700px;margin:0 auto;text-align:center}
+/* FAQ */
+.faq-list{display:flex;flex-direction:column;gap:8px;max-width:820px;margin:48px auto 0}
+.faq-item{border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.faq-q{width:100%;background:var(--navy3);border:none;color:var(--text);padding:18px 24px;text-align:left;font-size:0.95rem;cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-weight:600;transition:background .2s}
+.faq-q:hover{background:rgba(255,58,45,0.08)}
+.faq-arrow{color:var(--electric);font-size:1.2rem;transition:transform .3s}
+.faq-q.open .faq-arrow{transform:rotate(180deg)}
+.faq-a{display:none;padding:0 24px 18px;color:var(--text2);font-size:0.9rem;line-height:1.7;background:var(--navy3)}
+.faq-a.open{display:block}
+/* Contact */
+.contact-grid{display:grid;grid-template-columns:1fr 1.4fr;gap:48px;margin-top:48px;align-items:start}
+@media(max-width:900px){.contact-grid{grid-template-columns:1fr}}
+.contact-phone-display{font-size:3.2rem;font-weight:900;background:linear-gradient(90deg,var(--electric),var(--crimson));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1;margin-bottom:8px}
+.contact-tagline{color:var(--text2);margin-bottom:28px;font-size:0.9rem}
+.contact-actions{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:32px}
+.btn-green{background:var(--green);color:var(--navy);font-weight:700}
+.btn-green:hover{background:#00cc6a}
+.contact-facts{display:flex;flex-direction:column;gap:14px}
+.cf-item{display:flex;align-items:center;gap:12px;font-size:0.9rem;color:var(--text2)}
+.cf-icon{font-size:1.2rem}
+.contact-form{background:var(--navy3);border:1px solid var(--border);border-radius:16px;padding:32px}
+.cf-title{color:var(--electric);font-size:1.2rem;margin-bottom:24px;font-weight:700}
+.cf-row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:600px){.cf-row{grid-template-columns:1fr}}
+.cf-field{display:flex;flex-direction:column;gap:6px;margin-bottom:16px}
+.cf-field label{font-size:0.82rem;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:0.5px}
+.cf-field input,.cf-field select,.cf-field textarea{background:var(--navy2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-size:0.92rem;outline:none;transition:border-color .2s;font-family:inherit}
+.cf-field input:focus,.cf-field select:focus,.cf-field textarea:focus{border-color:var(--electric)}
+.cf-field select option{background:var(--navy2)}
+.cf-privacy{font-size:0.78rem;color:var(--text2);text-align:center;margin-top:10px}
+/* Footer */
+.site-footer{background:#02040e;border-top:1px solid var(--border);padding:64px 0 0}
+.footer-grid{display:grid;grid-template-columns:1.6fr 1.2fr 1fr 1fr;gap:40px}
+@media(max-width:1100px){.footer-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:600px){.footer-grid{grid-template-columns:1fr}}
+.footer-col-title{font-size:0.8rem;font-weight:800;text-transform:uppercase;letter-spacing:1.5px;color:var(--electric);margin-bottom:16px}
+.footer-links{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:7px}
+.footer-links a{color:var(--text2);font-size:0.84rem;text-decoration:none;transition:color .2s}
+.footer-links a:hover{color:var(--electric)}
+.footer-brand-col .footer-desc{color:var(--text2);font-size:0.85rem;line-height:1.6;margin:16px 0 20px}
+.footer-phone a{color:var(--electric);font-size:1.4rem;font-weight:800;text-decoration:none;display:block;margin-bottom:16px}
+.logo-hex-sm{width:32px;height:32px;background:linear-gradient(135deg,var(--electric),var(--crimson));clip-path:polygon(50% 0%,93% 25%,93% 75%,50% 100%,7% 75%,7% 25%);flex-shrink:0}
+.footer-logo{display:flex;align-items:center;gap:10px;margin-bottom:4px}
+.footer-logo-text{display:flex;flex-direction:column;line-height:1.1}
+.footer-brand-name{font-size:1rem;font-weight:800;color:#fff}
+.footer-brand-sub{font-size:0.7rem;color:var(--text2);text-transform:uppercase;letter-spacing:1px}
+.footer-socials{display:flex;gap:10px;margin-top:4px}
+.fs-link{width:32px;height:32px;border:1px solid var(--border);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:800;color:var(--text2);text-decoration:none;transition:all .2s}
+.fs-link:hover{border-color:var(--electric);color:var(--electric)}
+.footer-cta-box{background:rgba(255,58,45,0.07);border:1px solid var(--border);border-radius:10px;padding:16px;margin-top:24px;font-size:0.85rem;color:var(--text2)}
+.footer-bottom{border-top:1px solid var(--border);padding:24px 0;margin-top:48px;font-size:0.8rem;color:var(--text2);text-align:center}
+/* Chatbot */
+.chatbot-btn{position:fixed;bottom:28px;right:28px;z-index:9900;width:62px;height:62px;cursor:pointer}
+.cb-pulse{position:absolute;inset:-6px;border-radius:50%;background:var(--electric);opacity:0.15;animation:cb-ring 2s ease-in-out infinite}
+.cb-icon{width:62px;height:62px;background:linear-gradient(135deg,var(--electric),var(--crimson));border-radius:50%;display:flex;align-items:center;justify-content:center;position:relative;box-shadow:0 0 24px rgba(255,58,45,0.5);transition:transform .2s}
+.chatbot-btn:hover .cb-icon{transform:scale(1.1)}
+.cb-hex{position:absolute;width:28px;height:28px;background:rgba(255,255,255,0.15);clip-path:polygon(50% 0%,93% 25%,93% 75%,50% 100%,7% 75%,7% 25%)}
+.cb-label{font-size:0.7rem;font-weight:900;color:#fff;position:relative;z-index:1;letter-spacing:1px}
+@keyframes cb-ring{0%,100%{transform:scale(1);opacity:0.15}50%{transform:scale(1.3);opacity:0}}
+.chatbot-window{position:fixed;bottom:104px;right:28px;z-index:9899;width:340px;background:var(--navy2);border:1px solid var(--border);border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,0.7);display:none;flex-direction:column;overflow:hidden}
+.chatbot-window.open{display:flex}
+.cw-header{background:linear-gradient(90deg,var(--electric),var(--crimson));padding:14px 18px;display:flex;justify-content:space-between;align-items:center}
+.cw-title{font-size:0.9rem;font-weight:700;color:var(--navy);display:flex;align-items:center;gap:8px}
+.cw-dot{width:8px;height:8px;background:var(--navy);border-radius:50%;animation:pulse-dot 1.5s ease-in-out infinite}
+@keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:0.3}}
+.cw-close{background:none;border:none;color:var(--navy);font-size:1.1rem;cursor:pointer;font-weight:700;padding:0}
+.cw-messages{flex:1;max-height:300px;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px}
+.cw-msg{font-size:0.84rem;line-height:1.5;padding:10px 14px;border-radius:10px;max-width:88%}
+.cw-bot{background:var(--navy3);color:var(--text);border:1px solid var(--border);align-self:flex-start}
+.cw-user{background:linear-gradient(135deg,var(--electric),var(--electric2));color:var(--navy);align-self:flex-end;font-weight:600}
+.cw-input-row{display:flex;border-top:1px solid var(--border);padding:10px 12px;gap:8px}
+.cw-input-row input{flex:1;background:var(--navy3);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--text);font-size:0.85rem;outline:none}
+.cw-input-row input:focus{border-color:var(--electric)}
+.cw-send{background:var(--electric);border:none;color:var(--navy);font-weight:900;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:1rem;transition:background .2s}
+.cw-send:hover{background:var(--electric2)}
+</style>
+<!-- ===== JAVASCRIPT ===== -->
+<script>
+/* ---- Video Modal ---- */
+function openVideo(e,url){
+  if(e){e.preventDefault();e.stopPropagation();}
+  var modal=document.getElementById('videoModal');
+  var iframe=document.getElementById('modalIframe');
+  if(!modal||!iframe)return;
+  iframe.src=url;
+  modal.classList.add('open');
+  document.body.style.overflow='hidden';
+}
+function closeVideo(){
+  var modal=document.getElementById('videoModal');
+  var iframe=document.getElementById('modalIframe');
+  if(!modal)return;
+  modal.classList.remove('open');
+  setTimeout(function(){if(iframe)iframe.src='';},300);
+  document.body.style.overflow='';
+}
+var _vm=document.getElementById('videoModal');
+if(_vm){_vm.addEventListener('click',function(e){if(e.target===this)closeVideo();});}
+
+/* ---- Signup Modal ---- */
+var selectedPlan='pro';
+function openSignup(tier){
+  selectedPlan=tier||'pro';
+  document.querySelectorAll('.su-plan').forEach(function(b){
+    b.classList.toggle('selected',b.dataset.plan===selectedPlan);
+  });
+  var modal=document.getElementById('signupModal');
+  if(modal){modal.style.opacity='1';modal.style.pointerEvents='all';document.body.style.overflow='hidden';}
+}
+function closeSignup(){
+  var modal=document.getElementById('signupModal');
+  if(modal){modal.style.opacity='0';modal.style.pointerEvents='none';document.body.style.overflow='';}
+}
+function selectPlan(el){
+  selectedPlan=el.dataset.plan;
+  document.querySelectorAll('.su-plan').forEach(function(b){b.classList.remove('selected');});
+  el.classList.add('selected');
+}
+async function submitSignup(){
+  var firstEl=document.getElementById('suFirst');
+  var emailEl=document.getElementById('suEmail');
+  var phoneEl=document.getElementById('suPhone');
+  var compEl=document.getElementById('suCompany');
+  if(!firstEl||!firstEl.value.trim()||!emailEl||!emailEl.value.trim()){
+    alert('Please fill in your name and email.');return;
+  }
+  var name=firstEl.value.trim();
+  var email=emailEl.value.trim();
+  var phone=phoneEl?phoneEl.value.trim():'';
+  var company=compEl?compEl.value.trim():'';
+
+  var btn=document.querySelector('.su-submit');
+  if(btn){btn.textContent='Setting up your account...';btn.disabled=true;}
+
+  // Save to sessionStorage for admin redirect
+  sessionStorage.setItem('aacg_plan',selectedPlan);
+  sessionStorage.setItem('aacg_signup_name',name);
+  sessionStorage.setItem('aacg_signup_email',email);
+  sessionStorage.setItem('aacg_new_signup','1');
+
+  // Try Supabase signup (if configured)
+  if(USE_SB && sb) {
+    try { await sbSignUp(name, email, phone, company, selectedPlan); } catch(e) {}
+  }
+
+  if(btn){btn.textContent='Start Free Trial →';btn.disabled=false;}
+  window.location.href='admin/index.html?plan='+encodeURIComponent(selectedPlan)+'&new=1';
+}
+function goToLogin(){
+  closeSignup();
+  window.location.href='admin/index.html';
+}
+var _sm=document.getElementById('signupModal');
+if(_sm){_sm.addEventListener('click',function(e){if(e.target===this)closeSignup();});}
+function submitContact(e){
+  e.preventDefault();
+  var btn=e.target.querySelector('button[type=submit]');
+  btn.textContent='Message Sent! ✓';
+  btn.style.background='var(--green)';
+  btn.style.color='var(--navy)';
+  btn.disabled=true;
+}
+
+/* ---- FAQ Accordion ---- */
+function toggleFaq(btn){
+  var ans=btn.nextElementSibling;
+  var isOpen=btn.classList.contains('open');
+  document.querySelectorAll('.faq-q').forEach(function(q){
+    q.classList.remove('open');
+    q.nextElementSibling.classList.remove('open');
+  });
+  if(!isOpen){
+    btn.classList.add('open');
+    ans.classList.add('open');
+  }
+}
+
+/* ---- Chatbot ---- */
+var chatOpen=false;
+function toggleChat(){
+  chatOpen=!chatOpen;
+  var w=document.getElementById('chatWindow');
+  w.classList.toggle('open',chatOpen);
+  if(chatOpen)document.getElementById('cwInput').focus();
+}
+var botResponses={
+  lien:['Our Lien Management AI files mechanics liens, preliminary notices, and bond claims in all 50 states — automatically. Just connect your job and we track payment deadlines for you.','For lien help, call us: <strong>929-888-2848</strong>'],
+  price:['Starter is $49/mo (5 agents), Pro is $99/mo (20 agents), Enterprise is custom. All plans start with a 14-day free trial — no credit card needed.','Ready to start? <button onclick="openSignup(\'pro\')" style="background:var(--electric);border:none;color:var(--navy);padding:4px 12px;border-radius:6px;cursor:pointer;font-weight:700">Pick Your Plan</button>'],
+  pay:['We never auto-charge. After your 14-day trial you receive an invoice by email. Pay by card or ACH. Cancel any time — no penalties.'],
+  signup:['Click any Start Free Trial button or call <strong>929-888-2848</strong> and we\'ll onboard you personally.','<button onclick="openSignup(\'pro\')" style="background:var(--electric);border:none;color:var(--navy);padding:6px 16px;border-radius:8px;cursor:pointer;font-weight:700;margin-top:4px">Start Free Trial →</button>'],
+  call:['Call or text us at <strong><a href="tel:9298882848" style="color:var(--electric)">929-888-2848</a></strong> — Mon–Sat, 7AM–9PM EST. We pick up fast.'],
+  agent:['AACG has 20+ AI agents covering: Lien Management, Contracts, HR, Payroll, Finance, Insurance, Compliance, Safety, Permits, Scheduling, Fleet, Estimating, and more. Each agent runs 24/7 on your account.'],
+  trade:['AACG works for every trade — General Contractors, Electricians, Plumbers, HVAC, Roofers, Masons, Carpenters, Painters, Landscapers, Welders, Solar Installers, and 20+ more.'],
+  default:['Great question! For the fastest answer, call our team at <strong><a href="tel:9298882848" style="color:var(--electric)">929-888-2848</a></strong> — we\'re here Mon–Sat, 7AM–9PM EST.']
+};
+function sendChat(){
+  var inp=document.getElementById('cwInput');
+  var msg=inp.value.trim();
+  if(!msg)return;
+  addChatMsg(msg,'user');
+  inp.value='';
+  var low=msg.toLowerCase();
+  var resp=botResponses.default;
+  if(/lien|mechanic|prelim|notice|claim/i.test(low))resp=botResponses.lien;
+  else if(/price|cost|how much|plan|starter|pro|enterprise|fee/i.test(low))resp=botResponses.price;
+  else if(/pay|payment|charge|invoice|billing|cancel/i.test(low))resp=botResponses.pay;
+  else if(/sign.?up|register|start|trial|join/i.test(low))resp=botResponses.signup;
+  else if(/call|phone|contact|talk|reach|number/i.test(low))resp=botResponses.call;
+  else if(/agent|ai|automat|tool|feature/i.test(low))resp=botResponses.agent;
+  else if(/trade|electric|plumb|hvac|roof|mason|carp|paint|landscape|weld|solar/i.test(low))resp=botResponses.trade;
+  var delay=600;
+  resp.forEach(function(r){
+    setTimeout(function(){addChatMsg(r,'bot');},delay);
+    delay+=900;
+  });
+}
+function addChatMsg(html,type){
+  var msgs=document.getElementById('cwMessages');
+  var div=document.createElement('div');
+  div.className='cw-msg cw-'+type;
+  div.innerHTML=html;
+  msgs.appendChild(div);
+  msgs.scrollTop=msgs.scrollHeight;
+}
+setTimeout(function(){
+  if(!sessionStorage.getItem('aacg_chat_opened')){
+    toggleChat();
+    sessionStorage.setItem('aacg_chat_opened','1');
+  }
+},8000);
+
+/* ---- Counter Animation ---- */
+function animateCounters(){
+  document.querySelectorAll('[data-count]').forEach(function(el){
+    var target=parseInt(el.dataset.count);
+    var prefix=el.dataset.prefix||'';
+    var suffix=el.dataset.suffix||'';
+    var duration=1800;
+    var start=performance.now();
+    function step(now){
+      var progress=Math.min((now-start)/duration,1);
+      var ease=1-Math.pow(1-progress,3);
+      el.textContent=prefix+Math.floor(ease*target)+suffix;
+      if(progress<1)requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  });
+}
+
+/* ---- Intersection Observer ---- */
+var observed=false;
+var io=new IntersectionObserver(function(entries){
+  entries.forEach(function(entry){
+    if(entry.isIntersecting){
+      entry.target.classList.add('visible');
+      if(entry.target.closest('.stats-banner')&&!observed){
+        observed=true;
+        animateCounters();
+      }
+    }
+  });
+},{threshold:0.12});
+document.querySelectorAll('.reveal,.stats-banner').forEach(function(el){io.observe(el);});
+
+/* ---- Mobile Nav Toggle ---- */
+var _navToggle=document.getElementById('navToggle');
+var _navMenu=document.getElementById('navMenu')||document.querySelector('.nav-links');
+if(_navToggle&&_navMenu){
+  _navToggle.addEventListener('click',function(){_navMenu.classList.toggle('open');});
+}
+
+/* ---- Smooth Scroll ---- */
+document.querySelectorAll('a[href^="#"]').forEach(function(a){
+  a.addEventListener('click',function(e){
+    var id=this.getAttribute('href');
+    if(id==='#')return;
+    var target=document.querySelector(id);
+    if(target){e.preventDefault();target.scrollIntoView({behavior:'smooth',block:'start'});}
+  });
+});
+
+/* ---- Sticky Nav ---- */
+var _siteNav=document.querySelector('.site-nav');
+window.addEventListener('scroll',function(){
+  if(_siteNav)_siteNav.classList.toggle('scrolled',window.scrollY>60);
+});
+</script>
+</body>
+</html>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          
