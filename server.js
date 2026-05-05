@@ -24,6 +24,17 @@ const MIME = {
 };
 
 http.createServer((req, res) => {
+  // Handle CORS preflight
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204, {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-api-key, anthropic-version, anthropic-dangerous-allow-cors'
+    });
+    res.end();
+    return;
+  }
+
   let url = req.url.split('?')[0];
 
   // Strip /platform prefix so allamericancg.com/platform proxies here
@@ -32,9 +43,12 @@ http.createServer((req, res) => {
   }
 
   // Route mapping
-  if (url === '/' || url === '')           url = '/admin/index.html';
+  if (url === '/' || url === '')           url = '/aacg-website.html';
+  if (url === '/index.html')               url = '/aacg-website.html';
   if (url === '/admin')                    url = '/admin/index.html';
+  if (url === '/admin/')                   url = '/admin/index.html';
   if (url === '/superadmin')               url = '/superadmin/index.html';
+  if (url === '/superadmin/')              url = '/superadmin/index.html';
 
   const filePath = path.join(BASE, url);
 
@@ -50,7 +64,13 @@ http.createServer((req, res) => {
       return;
     }
     const ext = path.extname(filePath).slice(1).toLowerCase();
-    res.writeHead(200, { 'Content-Type': MIME[ext] || 'text/plain' });
+    res.writeHead(200, {
+      'Content-Type': MIME[ext] || 'text/plain',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-api-key, anthropic-version, anthropic-dangerous-allow-cors',
+      'Cache-Control': ext === 'html' ? 'no-store' : 'public, max-age=3600'
+    });
     res.end(data);
   });
 }).listen(PORT, () => {

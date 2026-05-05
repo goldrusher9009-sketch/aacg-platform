@@ -631,18 +631,33 @@ async function sbLogin(email, password) {
   if (!sbClient) return null;
   try {
     const { data, error } = await sbClient.auth.signInWithPassword({ email, password });
-    if (error) return null;
+    if (error) { console.error('[SB Login error]', error.message); return null; }
     const { data: profile } = await sbClient.from('profiles').select('*').eq('id', data.user.id).single();
-    return profile ? {
-      email: profile.email,
-      name: profile.name || email,
-      company: profile.company || '',
-      tier: profile.plan || 'starter',
-      avatar: (profile.name||email).split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2),
+    // If profile doesn't exist yet (race condition on new signup), create a minimal one
+    const userMeta = data.user.user_metadata || {};
+    if (!profile) {
+      await sbClient.from('profiles').upsert({
+        id: data.user.id, email,
+        name: userMeta.name || email,
+        phone: userMeta.phone || '',
+        company: userMeta.company || '',
+        plan: userMeta.plan || 'starter',
+        role: 'subscriber', status: 'trial',
+        trial_start: new Date().toISOString(),
+        trial_end: new Date(Date.now() + 14*86400000).toISOString()
+      });
+    }
+    const p = profile || { email, name: userMeta.name || email, company: userMeta.company || '', plan: userMeta.plan || 'starter' };
+    return {
+      email: p.email,
+      name: p.name || email,
+      company: p.company || '',
+      tier: p.plan || 'starter',
+      avatar: (p.name||email).split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2),
       color: '#ff3a2d',
       sbUser: data.user,
       sbSession: data.session
-    } : null;
+    };
   } catch(e) { console.error('[SB Login]', e); return null; }
 }
 
@@ -674,15 +689,22 @@ async function sbLogAgent(agentName, action, result) {
     const name  = sessionStorage.getItem('aacg_signup_name') || '';
     const email = sessionStorage.getItem('aacg_signup_email') || '';
     if (email) {
-      // Pre-fill login form and show welcome banner
+      // Pre-fill login form and attempt auto-login with saved password
       setTimeout(function() {
         var emailField = document.getElementById('loginEmail');
+        var passField  = document.getElementById('loginPass');
+        var savedPwd   = sessionStorage.getItem('aacg_signup_password') || '';
         if (emailField) emailField.value = email;
+        if (passField && savedPwd) {
+          passField.value = savedPwd;
+          // Auto-attempt login after a brief delay
+          setTimeout(function(){ doLogin(); }, 600);
+        }
         var banner = document.createElement('div');
         banner.style.cssText = 'position:fixed;top:0;left:0;right:0;background:linear-gradient(135deg,#ff3a2d,#cc2018);color:#fff;padding:12px;text-align:center;font-weight:700;z-index:99999;font-size:.9rem;';
-        banner.innerHTML = '🎉 Welcome, ' + (name||email) + '! Your ' + plan.toUpperCase() + ' trial is active. Enter your password below to access your dashboard.';
+        banner.innerHTML = '🎉 Welcome, ' + (name||email) + '! Your ' + plan.toUpperCase() + ' trial is active. Logging you in…';
         document.body.prepend(banner);
-        setTimeout(function(){banner.remove();}, 8000);
+        setTimeout(function(){banner.remove();}, 6000);
       }, 500);
     }
   }
@@ -1133,8 +1155,56 @@ async function buildLienContent(){
 }
 
 function openLienDetail(id){
-  // Future: open edit modal for this lien
-  addNotification('⚖️ Lien Selected', `Viewing lien ${id}. Full detail view coming soon.`, 'info');
+  // Find lien in current data
+  const lien = (window._liensCache || []).find(l => l.id === id);
+  if(!lien){ addNotification('agent','warning','Lien','Could not load lien details.'); return; }
+  document.getElementById('execModal').style.display = 'flex';
+  document.getElementById('execModalInner').innerHTML = `
+    <div class="modal-header">
+      <div class="modal-title">⚖️ Lien Details</div>
+      <button class="modal-close" onclick="closeExecModal()">×</button>
+    </div>
+    <div style="padding:20px;display:flex;flex-direction:column;gap:14px">
+      <div class="form-row">
+        <div><label>Filing Type</label><input id="ld_type" value="${lien.filing_type||'Mechanics Lien'}"></div>
+        <div><label>State</label><input id="ld_state" value="${lien.state||''}"></div>
+      </div>
+      <div class="form-row">
+        <div><label>Status</label>
+          <select id="ld_status">
+            <option ${lien.status==='pending'?'selected':''}>pending</option>
+            <option ${lien.status==='filed'?'selected':''}>filed</option>
+            <option ${lien.status==='released'?'selected':''}>released</option>
+            <option ${lien.status==='expired'?'selected':''}>expired</option>
+          </select>
+        </div>
+        <div><label>Deadline</label><input type="date" id="ld_deadline" value="${lien.deadline||''}"></div>
+      </div>
+      <div class="form-row">
+        <div><label>Filed Date</label><input type="date" id="ld_filed" value="${lien.filed_date||''}"></div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:8px">
+        <button class="btn-primary" onclick="saveLienDetail('${id}')">Save Changes</button>
+        <button class="btn-secondary" onclick="closeExecModal()">Cancel</button>
+      </div>
+    </div>`;
+}
+
+async function saveLienDetail(id){
+  const updates = {
+    filing_type: document.getElementById('ld_type').value,
+    state: document.getElementById('ld_state').value,
+    status: document.getElementById('ld_status').value,
+    deadline: document.getElementById('ld_deadline').value || null,
+    filed_date: document.getElementById('ld_filed').value || null
+  };
+  if(sbClient && window._sbUserId){
+    const { error } = await sbClient.from('lien_filings').update(updates).eq('id', id);
+    if(error){ addNotification('agent','warning','Lien','Save failed: '+error.message); return; }
+  }
+  addNotification('agent','info','Lien Updated','Lien record saved successfully.');
+  closeExecModal();
+  buildLiensContent();
 }
 
 function openAddLienModal(){
@@ -1557,7 +1627,46 @@ function filterTechs(q){
     r.style.display = !q || r.dataset.name?.includes(q.toLowerCase()) ? '' : 'none';
   });
 }
-function updateTechStatus(id, name){ addNotification('👷 Status Update', `Updating status for ${name}. Full edit coming soon.`, 'info'); }
+function updateTechStatus(id, name){
+  document.getElementById('execModal').style.display = 'flex';
+  document.getElementById('execModalInner').innerHTML = `
+    <div class="modal-header">
+      <div class="modal-title">👷 Update Status — ${name}</div>
+      <button class="modal-close" onclick="closeExecModal()">×</button>
+    </div>
+    <div style="padding:20px;display:flex;flex-direction:column;gap:14px">
+      <div class="form-group"><label>Status</label>
+        <select id="ts_status">
+          <option value="active">Active</option>
+          <option value="on_leave">On Leave</option>
+          <option value="unavailable">Unavailable</option>
+          <option value="terminated">Terminated</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Notes (optional)</label>
+        <input id="ts_notes" placeholder="e.g. Out until Monday">
+      </div>
+      <div style="display:flex;gap:10px">
+        <button class="btn-primary" onclick="saveTechStatus('${id}','${name}')">Save</button>
+        <button class="btn-secondary" onclick="closeExecModal()">Cancel</button>
+      </div>
+    </div>`;
+}
+
+async function saveTechStatus(id, name){
+  const status = document.getElementById('ts_status').value;
+  const notes = document.getElementById('ts_notes').value;
+  if(sbClient && window._sbUserId){
+    // contacts table stores field team — update status field
+    const { error } = await sbClient.from('contacts')
+      .update({ contact_type: status + (notes ? ':'+notes : '') })
+      .eq('id', id);
+    if(error){ addNotification('agent','warning','Tech','Save failed: '+error.message); return; }
+  }
+  addNotification('agent','info',`${name} Updated`,`Status set to ${status}.`);
+  closeExecModal();
+  buildTechsContent();
+}
 
 function openAddTechModal(){
   document.getElementById('execModal').style.display = 'flex';
@@ -1797,7 +1906,8 @@ async function openStripePortal(){
     } catch(e){ console.warn('[Portal]', e); }
   }
   // Fallback: open Stripe dashboard directly
-  window.open('https://billing.stripe.com/p/login/test_00000', '_blank');
+  // Portal session creation handled above via create-portal-session edge function
+  addNotification("billing", "warning", "Billing Portal", "Please ensure you are logged in to access billing management.");
 }
 
 // ────────────────────────────────────────────────
@@ -2490,7 +2600,7 @@ Current Date: ${new Date().toLocaleDateString('en-US',{weekday:'long',year:'nume
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${apiKey}`,
-          'HTTP-Referer': 'http://localhost:8080',
+          'HTTP-Referer': 'https://web-production-b2192.up.railway.app',
           'X-Title': 'IronForge AACG Platform'
         },
         body: JSON.stringify({
@@ -2640,8 +2750,116 @@ function openWorkflowExec(wfId){
         <div><label>Project</label><select><option>Riverside Commons</option><option>Harbor View QSR</option><option>Oak Park Office</option></select></div>
         <div><label>Priority</label><select><option>Normal</option><option>High</option><option>Urgent</option></select></div>
       </div>
-      <button class="exec-btn" onclick="alert('Workflow queued! ${w.agents.length} agents will run in sequence.\\n\\nEstimated completion: 3–5 minutes.')">▶ Launch Workflow</button>
+      <button class="exec-btn" onclick="runWorkflow(w)">▶ Launch Workflow</button>
     </div>`;
+}
+
+// ────────────────────────────────────────────────
+// WORKFLOW RUNNER — sequential agent execution
+// ────────────────────────────────────────────────
+async function runWorkflow(w) {
+  const modal = document.getElementById('execModal');
+  const modalContent = document.getElementById('execModalContent');
+  if (!w || !w.agents || !w.agents.length) return;
+
+  // Check API key
+  const apiKey = localStorage.getItem('ironforge_api_key');
+  if (!apiKey) {
+    openExecModal(w.agents[0]); // prompt for key via normal agent flow
+    return;
+  }
+
+  // Build workflow progress UI
+  const projectEl = document.querySelector('.exec-form select');
+  const project = projectEl ? projectEl.value : 'Current Project';
+
+  modalContent.innerHTML = `
+    <div style="padding:24px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+        <div>
+          <div style="font-size:1.1rem;font-weight:700;color:var(--gold)">${w.name}</div>
+          <div style="font-size:.8rem;color:var(--muted);margin-top:3px">Project: ${project} · ${w.agents.length} agents queued</div>
+        </div>
+        <button class="modal-close" onclick="closeExecModal()">×</button>
+      </div>
+      <div id="wf-progress" style="display:flex;flex-direction:column;gap:10px"></div>
+      <div id="wf-log" style="margin-top:16px;background:var(--mid);border-radius:8px;padding:14px;font-size:.78rem;font-family:monospace;color:#a0c4a0;max-height:200px;overflow-y:auto;white-space:pre-wrap"></div>
+      <div id="wf-done" style="display:none;margin-top:16px;text-align:center">
+        <div style="color:#4ade80;font-size:1rem;font-weight:700;margin-bottom:8px">✅ Workflow Complete</div>
+        <button class="btn-secondary" onclick="closeExecModal()">Close</button>
+      </div>
+    </div>`;
+  modal.style.display = 'flex';
+
+  const progressEl = document.getElementById('wf-progress');
+  const logEl = document.getElementById('wf-log');
+  const doneEl = document.getElementById('wf-done');
+
+  // Build step cards
+  w.agents.forEach((agentName, i) => {
+    const div = document.createElement('div');
+    div.id = `wf-step-${i}`;
+    div.style.cssText = 'display:flex;align-items:center;gap:12px;background:var(--mid);border-radius:8px;padding:10px 14px;border:1px solid var(--border)';
+    div.innerHTML = `
+      <div id="wf-icon-${i}" style="font-size:1.1rem">⏳</div>
+      <div style="flex:1">
+        <div style="font-size:.85rem;font-weight:600;color:var(--text)">${agentName}</div>
+        <div id="wf-status-${i}" style="font-size:.75rem;color:var(--muted)">Waiting…</div>
+      </div>`;
+    progressEl.appendChild(div);
+  });
+
+  // Run agents sequentially
+  let prevResult = '';
+  for (let i = 0; i < w.agents.length; i++) {
+    const agentName = w.agents[i];
+    document.getElementById(`wf-icon-${i}`).textContent = '⚡';
+    document.getElementById(`wf-status-${i}`).textContent = 'Running…';
+    document.getElementById(`wf-step-${i}`).style.borderColor = 'var(--gold)';
+
+    logEl.textContent += `\n[${agentName}] Starting…\n`;
+    logEl.scrollTop = logEl.scrollHeight;
+
+    // Find the agent config
+    const agentDef = ALL_AGENTS ? ALL_AGENTS.find(a => a.name === agentName || a.id === agentName.toLowerCase().replace(/\s+/g,'-')) : null;
+    const systemPrompt = agentDef?.systemPrompt || `You are ${agentName}, a construction AI specialist. Analyze the following context and provide actionable insights.`;
+    const userPrompt = prevResult
+      ? `Previous agent output:\n${prevResult}\n\nProject: ${project}\nContinue the workflow analysis.`
+      : `Project: ${project}\nRun a comprehensive ${agentName} analysis for a construction project.`;
+
+    try {
+      const response = await callLLMApi(apiKey, systemPrompt, userPrompt);
+      prevResult = response;
+      document.getElementById(`wf-icon-${i}`).textContent = '✅';
+      document.getElementById(`wf-status-${i}`).textContent = 'Complete';
+      document.getElementById(`wf-step-${i}`).style.borderColor = '#14532d';
+
+      // Log to Supabase
+      if (sbClient && window._sbUserId) {
+        await sbClient.from('agent_logs').insert({
+          user_id: window._sbUserId,
+          agent_name: agentName,
+          action: `workflow:${w.id}`,
+          result: response.substring(0, 500),
+          status: 'completed'
+        });
+      }
+
+      addNotification('agent', 'info', `${agentName} complete`, response.substring(0, 80) + '…');
+      logEl.textContent += `[${agentName}] ✅ Done\n${response.substring(0, 300)}\n${'─'.repeat(40)}\n`;
+      logEl.scrollTop = logEl.scrollHeight;
+
+    } catch(e) {
+      document.getElementById(`wf-icon-${i}`).textContent = '❌';
+      document.getElementById(`wf-status-${i}`).textContent = 'Error: ' + e.message;
+      document.getElementById(`wf-step-${i}`).style.borderColor = '#dc2626';
+      logEl.textContent += `[${agentName}] ERROR: ${e.message}\n`;
+      logEl.scrollTop = logEl.scrollHeight;
+      break;
+    }
+  }
+
+  doneEl.style.display = 'block';
 }
 
 // ────────────────────────────────────────────────

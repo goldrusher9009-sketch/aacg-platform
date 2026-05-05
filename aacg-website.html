@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<script src="../config.js"></script>
+<script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 // ══ IronForge Supabase Config ══
@@ -12,14 +12,12 @@ const SB_KEY = window.SUPABASE_ANON || '';
 const USE_SB = SB_URL.startsWith('https://') && SB_KEY.length > 10;
 const sb = USE_SB ? supabase.createClient(SB_URL, SB_KEY) : null;
 
-async function sbSignUp(name, email, phone, company, plan) {
+async function sbSignUp(name, email, phone, company, plan, password) {
   if (!sb) return null;
   try {
-    // Generate a temporary password — user will set their own via email magic link
-    const tempPwd = 'Tmp' + Math.random().toString(36).slice(-8) + 'Aa1!';
     const { data, error } = await sb.auth.signUp({
       email: email,
-      password: tempPwd,
+      password: password,
       options: { data: { name, phone, company, plan, role: 'subscriber' } }
     });
     if (error) throw error;
@@ -402,6 +400,7 @@ footer{background:var(--navy2);border-top:1px solid var(--border);padding:56px 2
     <input class="su-input" id="suCompany" type="text" placeholder="Company Name">
     <input class="su-input" id="suEmail" type="email" placeholder="Work Email">
     <input class="su-input" id="suPhone" type="tel" placeholder="Phone Number">
+    <input class="su-input" id="suPassword" type="password" placeholder="Create Password (min 8 chars)">
     <button class="su-submit" onclick="submitSignup()">Start Free Trial →</button>
     <div class="su-divider">Already have an account? <span class="su-login-link" onclick="goToLogin()">Log in here</span></div>
     <div class="su-note">🔒 Your data is encrypted & never shared. By signing up you agree to our Terms of Service.</div>
@@ -488,7 +487,7 @@ footer{background:var(--navy2);border-top:1px solid var(--border);padding:56px 2
       <a href="#faq" class="nav-link">Q&amp;A</a>
       <a href="#contact" class="nav-link">Contact</a>
       <div class="nav-sep"></div>
-      <a href="admin/index.html" class="nav-login">⚙️ Admin</a>
+      <a href="/admin" class="nav-login">⚙️ Admin</a>
       <button class="nav-signup" onclick="openSignup('starter')">Sign Up</button>
     </div>
     <a href="tel:9298882848" class="nav-cta">📞 929-888-2848</a>
@@ -1187,10 +1186,16 @@ async function submitSignup(){
   if(!firstEl||!firstEl.value.trim()||!emailEl||!emailEl.value.trim()){
     alert('Please fill in your name and email.');return;
   }
+  var pwdEl=document.getElementById('suPassword');
   var name=firstEl.value.trim();
   var email=emailEl.value.trim();
   var phone=phoneEl?phoneEl.value.trim():'';
   var company=compEl?compEl.value.trim():'';
+  var password=pwdEl?pwdEl.value.trim():'';
+
+  if(!password || password.length < 8){
+    alert('Please create a password of at least 8 characters.');return;
+  }
 
   var btn=document.querySelector('.su-submit');
   if(btn){btn.textContent='Setting up your account...';btn.disabled=true;}
@@ -1199,19 +1204,20 @@ async function submitSignup(){
   sessionStorage.setItem('aacg_plan',selectedPlan);
   sessionStorage.setItem('aacg_signup_name',name);
   sessionStorage.setItem('aacg_signup_email',email);
+  sessionStorage.setItem('aacg_signup_password',password);
   sessionStorage.setItem('aacg_new_signup','1');
 
   // Try Supabase signup (if configured)
   if(USE_SB && sb) {
-    try { await sbSignUp(name, email, phone, company, selectedPlan); } catch(e) {}
+    try { await sbSignUp(name, email, phone, company, selectedPlan, password); } catch(e) { console.error('Signup error:', e); }
   }
 
   if(btn){btn.textContent='Start Free Trial →';btn.disabled=false;}
-  window.location.href='admin/index.html?plan='+encodeURIComponent(selectedPlan)+'&new=1';
+  window.location.href='/admin?plan='+encodeURIComponent(selectedPlan)+'&new=1';
 }
 function goToLogin(){
   closeSignup();
-  window.location.href='admin/index.html';
+  window.location.href='/admin';
 }
 var _sm=document.getElementById('signupModal');
 if(_sm){_sm.addEventListener('click',function(e){if(e.target===this)closeSignup();});}
