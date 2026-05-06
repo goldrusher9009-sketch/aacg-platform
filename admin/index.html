@@ -512,6 +512,14 @@ const SB_KEY  = window.SUPABASE_ANON || '';
 const USE_SB  = SB_URL.startsWith('https://') && SB_KEY.length > 10;
 const sbClient = USE_SB ? supabase.createClient(SB_URL, SB_KEY) : null;
 
+// Supabase query helper with 4-second timeout — prevents panel freeze on slow/missing tables
+function sbQuery(promise) {
+  return Promise.race([
+    promise,
+    new Promise(resolve => setTimeout(() => resolve({ data: null, error: { message: 'timeout' }, count: null }), 4000))
+  ]);
+}
+
 // Stripe live publishable key
 const STRIPE_PUB_KEY = 'pk_live_51TGr8NCJZMFTCOYkEd5G6XNYQVHGbj0jGukwMYMrtc3CHxjwgAL3AWHUIhZNB4bqlnVriUJVgPO4J1h7N9N0T0TN00HLL6S9XL';
 let stripeInstance = null;
@@ -1105,7 +1113,7 @@ async function buildLienContent(){
 
   if(USE_SB && window._sbUserId){
     try {
-      const { data } = await sbClient.from('liens').select('*').eq('user_id', window._sbUserId).order('created_at', {ascending:false});
+      const { data } = await sbQuery(sbClient.from('liens').select('*').eq('user_id', window._sbUserId).order('created_at', {ascending:false}));
       if(data && data.length) liens = data;
     } catch(e){ console.warn('[Liens] Supabase read failed, using demo data', e); }
   }
@@ -1206,7 +1214,7 @@ async function saveLienDetail(id){
     filed_date: document.getElementById('ld_filed').value || null
   };
   if(sbClient && window._sbUserId){
-    const { error } = await sbClient.from('lien_filings').update(updates).eq('id', id);
+    const { error } = await sbQuery(sbClient.from('lien_filings').update(updates).eq('id', id));
     if(error){ addNotification('⚠️ Save Failed', 'Lien: ' + error.message, 'warning'); return; }
   }
   addNotification('⚖️ Lien Updated', 'Lien record saved successfully.', 'success');
@@ -1286,7 +1294,7 @@ async function buildProjectsContent(){
   let projects = [];
   if(USE_SB && window._sbUserId){
     try {
-      const { data } = await sbClient.from('jobs').select('*').eq('user_id', window._sbUserId).order('created_at',{ascending:false});
+      const { data } = await sbQuery(sbClient.from('jobs').select('*').eq('user_id', window._sbUserId).order('created_at',{ascending:false}));
       if(data && data.length) projects = data;
     } catch(e){ console.warn('[Projects] Supabase read failed', e); }
   }
@@ -1410,10 +1418,10 @@ async function buildAnalyticsContent(){
   if(USE_SB && window._sbUserId){
     try {
       const [jobsRes, logsRes, clientsRes, invoicesRes] = await Promise.all([
-        sbClient.from('jobs').select('id,status,contract_amount').eq('user_id', window._sbUserId),
-        sbClient.from('agent_logs').select('id',{count:'exact'}).eq('user_id', window._sbUserId),
-        sbClient.from('clients').select('id',{count:'exact'}).eq('user_id', window._sbUserId),
-        sbClient.from('invoices').select('amount').eq('user_id', window._sbUserId)
+        sbQuery(sbClient.from('jobs').select('id,status,contract_amount').eq('user_id', window._sbUserId)),
+        sbQuery(sbClient.from('agent_logs').select('id',{count:'exact'}).eq('user_id', window._sbUserId)),
+        sbQuery(sbClient.from('clients').select('id',{count:'exact'}).eq('user_id', window._sbUserId)),
+        sbQuery(sbClient.from('invoices').select('amount').eq('user_id', window._sbUserId))
       ]);
       if(jobsRes.data){
         totalJobs = jobsRes.data.length;
@@ -1483,7 +1491,8 @@ async function buildClientsContent(){
   let clients = [];
   if(USE_SB && window._sbUserId){
     try {
-      const { data } = await sbClient.from('clients').select('*').eq('user_id', window._sbUserId).order('name',{ascending:true});
+      const { data } = await sbQuery(sbClient.from('clients').select('*').eq('user_id', window._sbUserId).order('name',{ascending:true}));
+
       if(data && data.length) clients = data;
     } catch(e){ console.warn('[Clients] Supabase read failed', e); }
   }
@@ -1587,7 +1596,7 @@ async function buildTechContent(){
   let techs = [];
   if(USE_SB && window._sbUserId){
     try {
-      const { data } = await sbClient.from('technicians').select('*').eq('user_id', window._sbUserId).order('name',{ascending:true});
+      const { data } = await sbQuery(sbClient.from('technicians').select('*').eq('user_id', window._sbUserId).order('name',{ascending:true}));
       if(data && data.length) techs = data;
     } catch(e){ console.warn('[Techs] Supabase read failed', e); }
   }
@@ -1665,9 +1674,9 @@ async function saveTechStatus(id, name){
   const notes = document.getElementById('ts_notes').value;
   if(sbClient && window._sbUserId){
     // contacts table stores field team — update status field
-    const { error } = await sbClient.from('contacts')
+    const { error } = await sbQuery(sbClient.from('contacts')
       .update({ contact_type: status + (notes ? ':'+notes : '') })
-      .eq('id', id);
+      .eq('id', id));
     if(error){ addNotification('⚠️ Save Failed', error.message, 'warning'); return; }
   }
   addNotification(`👷 ${name} Updated`, `Status set to ${status}.`, 'success');
@@ -2023,7 +2032,7 @@ async function saveAcct(){
   let sbOk = false;
   if(USE_SB && window._sbUserId){
     try {
-      const { error } = await sbClient.from('profiles').update({ name, company, email }).eq('id', window._sbUserId);
+      const { error } = await sbQuery(sbClient.from('profiles').update({ name, company, email }).eq('id', window._sbUserId));
       if(!error) sbOk = true;
     } catch(e){ console.warn('[Settings] profile update failed', e); }
   }
