@@ -1475,6 +1475,11 @@ function seedNotifications(){
 function openExecModal(agentId){
   const a = AGENTS.find(x=>x.id===agentId);
   if(!a) return;
+  // ── TIER GATE: Cloud agents require Pro or Enterprise ──
+  if(a.tier === 'cloud' && currentTier === 'starter'){
+    showUpgradeModal();
+    return;
+  }
   const isFree = a.tier === 'free';
   const tierLabel = isFree
     ? `<span style="background:rgba(16,185,129,.18);color:var(--green);border:1px solid rgba(16,185,129,.3);padding:2px 8px;border-radius:8px;font-size:.65rem;font-weight:700;margin-left:8px">⚡ FREE</span>`
@@ -1835,6 +1840,13 @@ async function runFreeAgent(agentId){
 // ── REAL AI AGENT RUNNER — calls Claude API via Anthropic ──
 async function runAgent(agentId){
   const a = AGENTS.find(x=>x.id===agentId);
+
+  // ── TIER GATE: Cloud agents require Pro or Enterprise ──
+  if(a && a.tier === 'cloud' && currentTier === 'starter'){
+    showUpgradeModal();
+    return;
+  }
+
   const btn = document.getElementById('execRunBtn');
   const log = document.getElementById('execLog');
   btn.disabled = true; btn.textContent = '⏳ Running…';
@@ -2070,7 +2082,7 @@ function openWorkflowExec(wfId){
         <div><label>Project</label><select><option>Riverside Commons</option><option>Harbor View QSR</option><option>Oak Park Office</option></select></div>
         <div><label>Priority</label><select><option>Normal</option><option>High</option><option>Urgent</option></select></div>
       </div>
-      <button class="exec-btn" onclick="runWorkflow(w)">▶ Launch Workflow</button>
+      <button class="exec-btn" onclick="runWorkflow(WORKFLOWS.find(x=>x.id==='${w.id}'))">▶ Launch Workflow</button>
     </div>`;
 }
 
@@ -2079,7 +2091,7 @@ function openWorkflowExec(wfId){
 // ────────────────────────────────────────────────
 async function runWorkflow(w) {
   const modal = document.getElementById('execModal');
-  const modalContent = document.getElementById('execModalContent');
+  const modalContent = document.getElementById('execModalInner');
   if (!w || !w.agents || !w.agents.length) return;
 
   // Check API key
