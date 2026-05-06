@@ -2723,10 +2723,14 @@ function saveApiKey(agentId){
   runAgent(agentId);
 }
 
-// Load saved API key on startup
+// Load saved API key on startup — pre-seed platform default if none saved
 (function(){
-  const saved = localStorage.getItem('ironforge_api_key');
-  if(saved) window.IRONFORGE_API_KEY = saved;
+  const DEFAULT_KEY = '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';
+  const saved = localStorage.getItem('ironforge_api_key') || DEFAULT_KEY;
+  window.IRONFORGE_API_KEY = saved;
+  if(!localStorage.getItem('ironforge_api_key')) {
+    localStorage.setItem('ironforge_api_key', DEFAULT_KEY);
+  }
 })();
 
 function openWorkflowExec(wfId){
