@@ -1405,6 +1405,7 @@ async function saveProject(){
 // ANALYTICS
 // ────────────────────────────────────────────────
 async function buildAnalyticsContent(){
+  if(document.getElementById('analyticsContent')?.dataset.built === currentTier) return;
   const el = document.getElementById('analyticsContent');
   if(!TIER_FEATURES[currentTier].analytics){
     el.innerHTML = `
@@ -1417,15 +1418,19 @@ async function buildAnalyticsContent(){
   }
   el.innerHTML = `<div style="color:var(--muted);font-size:.83rem;padding:20px">⏳ Loading analytics…</div>`;
 
-  // Pull real counts from Supabase
+  // Pull real counts from Supabase — hard 5s total timeout on the whole batch
   let totalJobs = 0, activeJobs = 0, totalAgentRuns = 0, totalClients = 0, totalRevenue = 0;
   if(USE_SB && window._sbUserId){
     try {
-      const [jobsRes, logsRes, clientsRes, invoicesRes] = await Promise.all([
-        sbQuery(sbClient.from('jobs').select('id,status,contract_amount').eq('user_id', window._sbUserId)),
-        sbQuery(sbClient.from('agent_logs').select('id',{count:'exact'}).eq('user_id', window._sbUserId)),
-        sbQuery(sbClient.from('clients').select('id',{count:'exact'}).eq('user_id', window._sbUserId)),
-        sbQuery(sbClient.from('invoices').select('amount').eq('user_id', window._sbUserId))
+      const timeout5s = new Promise(r => setTimeout(() => r([{data:null},{data:null},{data:null},{data:null}]), 5000));
+      const [jobsRes, logsRes, clientsRes, invoicesRes] = await Promise.race([
+        Promise.all([
+          sbQuery(sbClient.from('jobs').select('id,status,contract_amount').eq('user_id', window._sbUserId)),
+          sbQuery(sbClient.from('agent_logs').select('id',{count:'exact'}).eq('user_id', window._sbUserId)),
+          sbQuery(sbClient.from('clients').select('id',{count:'exact'}).eq('user_id', window._sbUserId)),
+          sbQuery(sbClient.from('invoices').select('amount').eq('user_id', window._sbUserId))
+        ]),
+        timeout5s
       ]);
       if(jobsRes.data){
         totalJobs = jobsRes.data.length;
@@ -1483,6 +1488,7 @@ async function buildAnalyticsContent(){
         }).join('')}
       </div>
     </div>`;
+  document.getElementById('analyticsContent').dataset.built = currentTier;
 }
 
 // ────────────────────────────────────────────────
