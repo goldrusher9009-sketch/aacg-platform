@@ -24,7 +24,6 @@ const MIME = {
 };
 
 http.createServer((req, res) => {
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     res.writeHead(204, {
       'Access-Control-Allow-Origin': '*',
@@ -37,12 +36,10 @@ http.createServer((req, res) => {
 
   let url = req.url.split('?')[0];
 
-  // Strip /platform prefix so allamericancg.com/platform proxies here
   if (url.startsWith('/platform')) {
     url = url.slice('/platform'.length) || '/';
   }
 
-  // Route mapping
   if (url === '/' || url === '')           url = '/aacg-website.html';
   if (url === '/index.html')               url = '/aacg-website.html';
   if (url === '/admin')                    url = '/admin/index.html';
@@ -52,7 +49,6 @@ http.createServer((req, res) => {
 
   const filePath = path.join(BASE, url);
 
-  // Security: prevent path traversal
   if (!filePath.startsWith(BASE)) {
     res.writeHead(403); res.end('Forbidden'); return;
   }
@@ -74,4 +70,5 @@ http.createServer((req, res) => {
     res.end(data);
   });
 }).listen(PORT, () => {
-  console.log(`IronForge Platform running at http://localhost:${PORT
+  console.log('IronForge Platform running on port ' + PORT);
+});
