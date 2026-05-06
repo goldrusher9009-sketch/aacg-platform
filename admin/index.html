@@ -1032,6 +1032,7 @@ function buildDashboard(){
 // AGENTS
 // ────────────────────────────────────────────────
 function buildAgentGrid(){
+  if(document.getElementById('agentGrid')?.dataset.built === currentTier) return;
   const limit = TIER_FEATURES[currentTier].agentLimit;
   const freeAgents  = AGENTS.filter(a => a.tier === 'free');
   const cloudAgents = AGENTS.filter(a => a.tier === 'cloud');
@@ -1076,6 +1077,7 @@ function buildAgentGrid(){
     </div>
     ${cloudHtml}
   `;
+  document.getElementById('agentGrid').dataset.built = currentTier;
 }
 
 // ────────────────────────────────────────────────
@@ -1083,6 +1085,7 @@ function buildAgentGrid(){
 // ────────────────────────────────────────────────
 const TIER_ORDER = {starter:0, pro:1, enterprise:2};
 function buildWorkflowGrid(){
+  if(document.getElementById('workflowGrid')?.dataset.built === currentTier) return;
   const myLevel = TIER_ORDER[currentTier];
   document.getElementById('workflowGrid').innerHTML = WORKFLOWS.map(w=>{
     const locked = TIER_ORDER[w.tier] > myLevel;
@@ -1100,6 +1103,7 @@ function buildWorkflowGrid(){
         :`<button class="wf-run-btn" onclick="openWorkflowExec('${w.id}')">▶ Run Workflow</button>`}
     </div>`;
   }).join('');
+  document.getElementById('workflowGrid').dataset.built = currentTier;
 }
 
 // ────────────────────────────────────────────────
@@ -1735,6 +1739,7 @@ async function saveTech(){
 // PHOTO AI
 // ────────────────────────────────────────────────
 function buildPhotoAIContent(){
+  if(document.getElementById('photoaiContent')?.dataset.built === currentTier) return;
   if(!TIER_FEATURES[currentTier].photoai){
     document.getElementById('photoaiContent').innerHTML = `
       <div class="tier-lock-notice">
@@ -1762,12 +1767,14 @@ function buildPhotoAIContent(){
       </div>`).join('')}
     </div>
     <button class="run-btn" style="width:auto;padding:9px 18px" onclick="openExecModal('photo')">📷 Analyze New Site Photos</button>`;
+  document.getElementById('photoaiContent').dataset.built = currentTier;
 }
 
 // ────────────────────────────────────────────────
 // COMPLIANCE
 // ────────────────────────────────────────────────
 function buildComplianceContent(){
+  if(document.getElementById('complianceContent')?.dataset.built === currentTier) return;
   if(!TIER_FEATURES[currentTier].compliance){
     document.getElementById('complianceContent').innerHTML = `
       <div class="tier-lock-notice">
@@ -1797,12 +1804,14 @@ function buildComplianceContent(){
         </tr>`).join('')}</tbody>
       </table>
     </div>`;
+  document.getElementById('complianceContent').dataset.built = currentTier;
 }
 
 // ────────────────────────────────────────────────
 // BILLING — Stripe-ready with usage metering
 // ────────────────────────────────────────────────
 function buildBillingContent(){
+  if(document.getElementById('billingContent')?.dataset.built === currentTier) return;
   const plans = {
     starter:    {name:'Starter',    price:0,   priceStr:'Free',        color:'var(--muted)',  stripe_price_id:'price_starter_monthly',
                  features:['5 AI Agents (Free tier)','5 Active Projects','Lien Tracker','Email Support'],
@@ -1901,6 +1910,7 @@ function buildBillingContent(){
           <strong style="color:var(--text)">Need to cancel?</strong> Contact <a href="mailto:billing@aacg.com" style="color:var(--blue)">billing@aacg.com</a> — we'll process your cancellation within 24 hours. No cancellation fees.
         </div>` : ''}
     </div>`;
+  document.getElementById('billingContent').dataset.built = currentTier;
 }
 
 function downloadInvoice(id){
@@ -1931,6 +1941,7 @@ async function openStripePortal(){
 // TEAM
 // ────────────────────────────────────────────────
 function buildTeamContent(){
+  if(document.getElementById('teamContent')?.dataset.built === currentTier) return;
   if(!TIER_FEATURES[currentTier].team){
     document.getElementById('teamContent').innerHTML = `
       <div class="tier-lock-notice">
@@ -1964,12 +1975,14 @@ function buildTeamContent(){
         </tr>`).join('')}</tbody>
       </table>
     </div>`;
+  document.getElementById('teamContent').dataset.built = currentTier;
 }
 
 // ────────────────────────────────────────────────
 // SETTINGS
 // ────────────────────────────────────────────────
 function buildSettingsContent(){
+  if(document.getElementById('settingsContent')?.dataset.built === 'true') return;
   document.getElementById('settingsContent').innerHTML = `
     <div class="two-col">
       <div>
@@ -2018,6 +2031,7 @@ function buildSettingsContent(){
         </div>
       </div>
     </div>`;
+  document.getElementById('settingsContent').dataset.built = 'true';
 }
 
 async function saveAcct(){
