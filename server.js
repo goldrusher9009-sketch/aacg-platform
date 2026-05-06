@@ -67,10 +67,9 @@ http.createServer((req, res) => {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-api-key, anthropic-version, anthropic-dangerous-allow-cors',
-      'Cache-Control': ext === 'html' ? 'no-store' : 'public, max-age=3600'
+      'Cache-Control': (ext === 'html' || ext === 'js') ? 'no-store' : 'public, max-age=3600'
     });
     res.end(data);
   });
 }).listen(PORT, () => {
-  console.log('IronForge Platform running on port ' + PORT);
-});
+  console.
