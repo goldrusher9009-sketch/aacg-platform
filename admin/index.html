@@ -864,19 +864,10 @@ function initApp(){
   buildDashboard();
   buildAgentGrid();
   buildWorkflowGrid();
-  buildLienContent();
-  buildProjectsContent();
-  buildAnalyticsContent();
-  buildClientsContent();
-  buildTechContent();
-  buildPhotoAIContent();
-  buildComplianceContent();
-  buildBillingContent();
-  buildTeamContent();
-  buildSettingsContent();
   startLiveLog();
   seedNotifications();
   renderNotifPanel();
+  // Remaining panels are lazy-loaded on first navigation via showPanel()
 }
 
 // ────────────────────────────────────────────────
@@ -935,6 +926,22 @@ function showPanel(id){
   activePanel = id;
   buildSidebar();
   window.scrollTo(0,0);
+  // Lazy-build / refresh the panel content each time it is shown
+  switch(id){
+    case 'liens':       buildLienContent();       break;
+    case 'projects':    buildProjectsContent();   break;
+    case 'analytics':   buildAnalyticsContent();  break;
+    case 'clients':     buildClientsContent();     break;
+    case 'technicians': buildTechContent();        break;
+    case 'photoai':     buildPhotoAIContent();     break;
+    case 'compliance':  buildComplianceContent();  break;
+    case 'billing':     buildBillingContent();     break;
+    case 'team':        buildTeamContent();        break;
+    case 'settings':    buildSettingsContent();    break;
+    case 'agents':      buildAgentGrid();          break;
+    case 'workflows':   buildWorkflowGrid();       break;
+    case 'dashboard':   buildDashboard();          break;
+  }
 }
 
 // ────────────────────────────────────────────────
@@ -1157,7 +1164,7 @@ async function buildLienContent(){
 function openLienDetail(id){
   // Find lien in current data
   const lien = (window._liensCache || []).find(l => l.id === id);
-  if(!lien){ addNotification('agent','warning','Lien','Could not load lien details.'); return; }
+  if(!lien){ addNotification('⚠️ Lien Not Found', 'Could not load lien details.', 'warning'); return; }
   document.getElementById('execModal').style.display = 'flex';
   document.getElementById('execModalInner').innerHTML = `
     <div class="modal-header">
@@ -1200,11 +1207,11 @@ async function saveLienDetail(id){
   };
   if(sbClient && window._sbUserId){
     const { error } = await sbClient.from('lien_filings').update(updates).eq('id', id);
-    if(error){ addNotification('agent','warning','Lien','Save failed: '+error.message); return; }
+    if(error){ addNotification('⚠️ Save Failed', 'Lien: ' + error.message, 'warning'); return; }
   }
-  addNotification('agent','info','Lien Updated','Lien record saved successfully.');
+  addNotification('⚖️ Lien Updated', 'Lien record saved successfully.', 'success');
   closeExecModal();
-  buildLiensContent();
+  buildLienContent();
 }
 
 function openAddLienModal(){
@@ -1661,11 +1668,11 @@ async function saveTechStatus(id, name){
     const { error } = await sbClient.from('contacts')
       .update({ contact_type: status + (notes ? ':'+notes : '') })
       .eq('id', id);
-    if(error){ addNotification('agent','warning','Tech','Save failed: '+error.message); return; }
+    if(error){ addNotification('⚠️ Save Failed', error.message, 'warning'); return; }
   }
-  addNotification('agent','info',`${name} Updated`,`Status set to ${status}.`);
+  addNotification(`👷 ${name} Updated`, `Status set to ${status}.`, 'success');
   closeExecModal();
-  buildTechsContent();
+  buildTechContent();
 }
 
 function openAddTechModal(){
@@ -1801,12 +1808,13 @@ function buildBillingContent(){
   const p = plans[currentTier];
   const invoiceAmt = currentTier==='pro'?'$99.00':currentTier==='enterprise'?'$Custom':'$0.00';
 
-  // Usage tracking
-  const usageData = {
-    agents_run: Math.floor(Math.random()*p.limits.agents),
-    projects_active: Math.min(Math.floor(Math.random()*p.limits.projects*.8 + 2), p.limits.projects),
-    agent_runs_this_month: Math.floor(Math.random()*40)+5,
+  // Usage tracking — stable demo values (no random flicker)
+  const usageSeed = {
+    starter:    { agents_run: 3,  projects_active: 4,  agent_runs_this_month: 11 },
+    pro:        { agents_run: 14, projects_active: 31, agent_runs_this_month: 47 },
+    enterprise: { agents_run: 19, projects_active: 87, agent_runs_this_month: 134 },
   };
+  const usageData = usageSeed[currentTier] || usageSeed.starter;
 
   const usagePct = (v,max) => Math.min(100, Math.round(v/max*100));
 
@@ -1907,7 +1915,7 @@ async function openStripePortal(){
   }
   // Fallback: open Stripe dashboard directly
   // Portal session creation handled above via create-portal-session edge function
-  addNotification("billing", "warning", "Billing Portal", "Please ensure you are logged in to access billing management.");
+  addNotification('⚠️ Billing Portal', 'Please ensure you are logged in to access billing management.', 'warning');
 }
 
 // ────────────────────────────────────────────────
@@ -2173,7 +2181,7 @@ function openExecModal(agentId){
       <button class="modal-close" onclick="closeExecModal()">×</button>
     </div>
     <p style="color:var(--muted);font-size:.83rem;margin-bottom:12px">${a.desc}</p>
-    ${isFree ? `<div style="background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.25);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:.78rem;color:var(--green)">⚡ This is a <strong>free agent</strong> — runs instantly with no API key using built-in IronForge logic.</div>` : `<div style="background:rgba(139,92,246,.08);border:1px solid rgba(139,92,246,.25);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:.78rem;color:var(--purple)">☁ This is a <strong>Cloud AI agent</strong> — powered by Claude AI. Your OpenRouter key is used.</div>`}
+    ${isFree ? `<div style="background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.25);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:.78rem;color:var(--green)">⚡ This is a <strong>free agent</strong> — runs instantly with no API key using built-in IronForge logic.</div>` : `<div style="background:rgba(139,92,246,.08);border:1px solid rgba(139,92,246,.25);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:.78rem;color:var(--purple)">☁ <strong>Cloud AI agent</strong> — powered by Claude AI. <span style="color:var(--green);font-weight:700">✅ API key pre-configured — runs immediately.</span></div>`}
     <div class="exec-form">
       <div class="form-row">
         <div><label>Project</label>
@@ -2849,7 +2857,7 @@ async function runWorkflow(w) {
         });
       }
 
-      addNotification('agent', 'info', `${agentName} complete`, response.substring(0, 80) + '…');
+      addNotification(`🤖 ${agentName} Complete`, response.substring(0, 80) + '…', 'success');
       logEl.textContent += `[${agentName}] ✅ Done\n${response.substring(0, 300)}\n${'─'.repeat(40)}\n`;
       logEl.scrollTop = logEl.scrollHeight;
 
