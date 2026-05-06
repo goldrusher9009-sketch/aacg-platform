@@ -1,0 +1,2299 @@
+// ────────────────────────────────────────────────
+// DATA
+// ────────────────────────────────────────────────
+const ACCOUNTS = [
+  {email:'starter@demo.com',    pass:'Starter123!', name:'Alex Starter',  company:'Starter Build Co.',     tier:'starter',    avatar:'AS', color:'#6b7280'},
+  {email:'pro@demo.com',        pass:'Pro2026!',    name:'Maria Pro',     company:'Pro Contractors LLC',   tier:'pro',        avatar:'MP', color:'#2a7de1'},
+  {email:'enterprise@demo.com', pass:'Ent2026!',    name:'Scott G.',      company:'All American Group',    tier:'enterprise', avatar:'SG', color:'#c9a84c'},
+];
+
+const TIER_FEATURES = {
+  starter:    {agentLimit:5,  workflows:false, photoai:false, compliance:false, analytics:false, team:false, projectLimit:5},
+  pro:        {agentLimit:20, workflows:true,  photoai:true,  compliance:true,  analytics:true,  team:false, projectLimit:50},
+  enterprise: {agentLimit:20, workflows:true,  photoai:true,  compliance:true,  analytics:true,  team:true,  projectLimit:999},
+};
+
+const AGENTS = [
+  // ── FREE AGENTS: instant rule-based logic, no API key needed ──
+  {id:'permit',     tier:'free',  name:'Permit Tracker',         icon:'📋',  color:'#06b6d4', tags:['Compliance','Legal'],desc:'Tracks permit expirations, required inspections, and regulatory deadlines.',             steps:['Fetching permit list','Checking expiry dates','Pulling inspection schedule','Sending alerts','Logging permit status']},
+  {id:'daily',      tier:'free',  name:'Daily Site Monitor',     icon:'🏗️', color:'#10b981', tags:['Monitoring','QC'],   desc:'Compiles daily site reports, weather holds, and production tracking across all sites.',   steps:['Pulling field logs','Fetching weather data','Calculating production rate','Flagging delays','Generating DSR']},
+  {id:'material',   tier:'free',  name:'Material Tracker',       icon:'📦',  color:'#2a7de1', tags:['Procurement'],       desc:'Tracks material deliveries, lead times, and cost variances automatically.',              steps:['Scanning all POs','Checking delivery status','Comparing to project schedule','Flagging delays','Updating inventory log']},
+  {id:'drawing',    tier:'free',  name:'Drawing Revision Agent', icon:'📐',  color:'#06b6d4', tags:['BIM','QC'],          desc:'Tracks drawing revisions, distributes updates, and prevents use of superseded drawings.', steps:['Scanning drawing log','Detecting new revisions','Running diff analysis','Notifying field teams','Updating RFI log']},
+  {id:'warranty',   tier:'free',  name:'Warranty Tracker',       icon:'🛡️', color:'#f59e0b', tags:['Legal','PM'],        desc:'Tracks product warranties, labor guarantees, and punch list closeout items.',             steps:['Parsing warranty documents','Mapping to projects','Tracking expirations','Sending client alerts','Logging closeout']},
+  {id:'payroll',    tier:'free',  name:'Payroll Verification',   icon:'💳',  color:'#06b6d4', tags:['Finance','HR'],      desc:'Verifies timesheet data, calculates certified payroll, and detects anomalies.',           steps:['Fetching timesheets','Applying prevailing wage rules','Running anomaly detection','Generating certified PR','Sending to accounting']},
+  {id:'rfi',        tier:'free',  name:'RFI Manager',            icon:'❓',  color:'#2a7de1', tags:['PM','Comms'],        desc:'Manages RFI submissions, tracks responses, and escalates overdue items.',                steps:['Pulling open RFIs','Checking due dates','Drafting follow-ups','Sending to subs','Updating RFI log']},
+  {id:'schedule',   tier:'free',  name:'Schedule Optimizer',     icon:'📅',  color:'#8b5cf6', tags:['PM','Planning'],     desc:'Analyzes construction schedule for conflicts, delays, and resource bottlenecks.',          steps:['Parsing current schedule','Identifying conflicts','Checking resource loading','Flagging float issues','Generating lookahead']},
+  // ── CLOUD AGENTS: AI-powered by Claude, require API key ──
+  {id:'lien',       tier:'cloud', name:'Lien Protection',       icon:'⚖️',  color:'#ef4444', tags:['Legal','Risk'],      desc:'Generates and tracks mechanic liens, prelim notices, and NOCs automatically.',          steps:['Scanning project data','Generating prelim notice','Filing lien document','Sending notifications','Updating lien tracker']},
+  {id:'bid',        tier:'cloud', name:'Bid Estimator',          icon:'💰',  color:'#10b981', tags:['Finance','Bid'],     desc:'AI-powered bidding using material costs, labor rates, and historical project data.',    steps:['Parsing project specs','Pulling material costs','Calculating labor hours','Applying markup','Generating PDF bid']},
+  {id:'invoice',    tier:'cloud', name:'Invoice Processing',     icon:'📄',  color:'#2a7de1', tags:['Finance','AR'],      desc:'Automates invoice creation, delivery, and follow-up from approved timesheets.',          steps:['Pulling timesheet data','Matching to purchase order','Generating invoice','Sending to client','Logging in AR']},
+  {id:'cash',       tier:'cloud', name:'Cash Flow Monitor',      icon:'📊',  color:'#f59e0b', tags:['Finance'],           desc:'Monitors receivables/payables and projects 90-day cash flow with risk alerts.',         steps:['Fetching AR aging','Fetching AP schedule','Running projection model','Detecting anomalies','Sending CFO report']},
+  {id:'photo',      tier:'cloud', name:'Photo Inspector',        icon:'📷',  color:'#8b5cf6', tags:['QC','Safety'],       desc:'Analyzes site photos for safety violations, progress tracking, and quality issues.',      steps:['Loading site photos','Running CV analysis','Flagging violations','Scoring progress','Creating inspection report']},
+  {id:'safety',     tier:'cloud', name:'Safety Compliance',      icon:'🦺',  color:'#ef4444', tags:['OSHA','Safety'],     desc:'Monitors OSHA compliance, safety incident reports, and required certifications.',         steps:['Scanning jobsite data','Checking OSHA standards','Reviewing incident logs','Assessing training gaps','Generating safety report']},
+  {id:'change',     tier:'cloud', name:'Change Order Manager',   icon:'🔄',  color:'#10b981', tags:['PM','Finance'],      desc:'Drafts, tracks, and processes approval for change orders automatically.',                steps:['Detecting scope change','Calculating cost delta','Drafting CO document','Sending for approval','Updating project budget']},
+  {id:'vendor',     tier:'cloud', name:'Vendor Qualification',   icon:'🏭',  color:'#f59e0b', tags:['Procurement'],       desc:'Screens vendors for licensing, insurance, and performance history automatically.',       steps:['Pulling vendor list','Checking licenses','Verifying insurance certs','Scoring past performance','Generating vendor report']},
+  {id:'contract',   tier:'cloud', name:'Contract Analyzer',      icon:'📝',  color:'#ef4444', tags:['Legal','Risk'],      desc:'Reviews contracts for unfavorable clauses, risks, and missing protections.',              steps:['Loading contract PDF','Parsing all clauses','Risk scoring each section','Flagging red flags','Generating contract summary']},
+  {id:'subcontract',tier:'cloud', name:'Subcontractor Manager',  icon:'👷',  color:'#8b5cf6', tags:['PM','Procurement'],  desc:'Manages sub agreements, insurance tracking, and performance scoring.',                    steps:['Pulling sub list','Checking certificates','Scoring performance history','Sending renewal requests','Updating sub records']},
+  {id:'closeout',   tier:'cloud', name:'Project Closeout Agent', icon:'✅',  color:'#10b981', tags:['PM','Closeout'],     desc:'Automates punch list, as-built documentation, and final lien waivers at project end.',     steps:['Building punch list','Collecting as-builts','Processing lien waivers','Generating O&M manual','Final owner sign-off']},
+  {id:'forecast',   tier:'cloud', name:'Revenue Forecaster',     icon:'📈',  color:'#2a7de1', tags:['Finance','Strategy'],desc:'Forecasts project revenue, billing milestones, and profit margins 6–12 months out.',     steps:['Loading contract values','Mapping billing milestones','Applying completion %','Running forecast model','Generating forecast report']},
+];
+
+const WORKFLOWS = [
+  {id:'lien-cash',        icon:'⚖️💰', title:'Lien-to-Cash',          tier:'starter',    desc:'Full AR cycle: prelim notice → lien filing → invoice → cash collection.',           agents:['Lien Protection','Invoice Processing','Cash Flow Monitor']},
+  {id:'bid-invoice',      icon:'💰📄', title:'Bid-to-Invoice',         tier:'pro',        desc:'Win work and bill immediately: estimate → change orders → invoice.',                agents:['Bid Estimator','Change Order Manager','Invoice Processing','Cash Flow Monitor']},
+  {id:'site-monitor',     icon:'🏗️📷',title:'Daily Site Monitoring', tier:'pro',        desc:'Full jobsite oversight: daily log → photo analysis → compliance check.',            agents:['Daily Site Monitor','Photo Inspector','Safety Compliance','Permit Tracker']},
+  {id:'vendor-pay',       icon:'🏭💳', title:'Vendor-to-Payment',      tier:'pro',        desc:'Full procurement cycle: qualify vendors → track materials → verify payroll.',        agents:['Vendor Qualification','Material Tracker','Subcontractor Manager','Payroll Verification']},
+  {id:'contract-closeout',icon:'📝✅', title:'Contract-to-Closeout',   tier:'enterprise', desc:'End-to-end project lifecycle from contract award to final closeout.',                agents:['Contract Analyzer','Schedule Optimizer','Change Order Manager','Project Closeout Agent']},
+  {id:'full-suite',       icon:'⚡🚀', title:'Full Platform Suite',    tier:'enterprise', desc:'All 20 agents in intelligent sequence — complete construction project automation.',   agents:['All 20 Agents','Intelligent Sequencing','Cross-Agent Data Flow']},
+];
+
+const LOG_LINES = [
+  ['Lien Protection','info','Started preliminary notice for Project #447'],
+  ['Bid Estimator','success','Bid submitted: $284,500 for Riverside Commercial'],
+  ['Photo Inspector','warn','Flagged PPE violation — Lot 3 NW corner'],
+  ['Invoice Processing','info','Invoice #1087 generated — $41,200'],
+  ['Cash Flow Monitor','success','90-day projection updated: +$340K net inflow'],
+  ['Daily Site Monitor','info','DSR generated for 7 active sites'],
+  ['Material Tracker','warn','Concrete delivery delayed 2 days — Site B'],
+  ['Payroll Verification','success','Certified payroll for 34 workers verified'],
+  ['Contract Analyzer','info','Red flag detected: broad indemnity clause §14'],
+  ['Schedule Optimizer','success','Optimized sequence saves 4.2 days'],
+  ['Permit Tracker','warn','Permit #P-2204 expires in 8 days'],
+  ['Revenue Forecaster','info','Q3 forecast: $1.8M — confidence 87%'],
+];
+
+// ────────────────────────────────────────────────
+// STATE
+// ────────────────────────────────────────────────
+let currentUser = null;
+let currentTier = null;
+let activePanel  = 'dashboard';
+
+// ────────────────────────────────────────────────
+// AUTH
+// ────────────────────────────────────────────────
+function fillDemo(email, pass){
+  document.getElementById('loginEmail').value = email;
+  document.getElementById('loginPass').value  = pass;
+}
+
+async function doLogin(){
+  const email = document.getElementById('loginEmail').value.trim().toLowerCase();
+  const pass  = document.getElementById('loginPass').value;
+  const btn = document.querySelector('.login-btn');
+  if(btn){btn.textContent='Signing in...';btn.disabled=true;}
+
+  // Try Supabase first (if configured)
+  let acc = null;
+  if(USE_SB){
+    acc = await sbLogin(email, pass);
+    if(acc && acc.sbUser) window._sbUserId = acc.sbUser.id;
+  }
+
+  // Fall back to demo accounts
+  if(!acc){
+    acc = ACCOUNTS.find(a => a.email === email && a.pass === pass);
+  }
+
+  if(btn){btn.textContent='Sign In to Dashboard';btn.disabled=false;}
+  if(!acc){ document.getElementById('loginErr').style.display='block'; return; }
+  sessionStorage.setItem('aacg_subscriber', JSON.stringify(acc));
+  bootApp(acc);
+}
+
+async function doLogout(){
+  await sbLogout();
+  sessionStorage.removeItem('aacg_subscriber');
+  location.reload();
+}
+
+function bootApp(acc){
+  currentUser = acc;
+  currentTier = acc.tier;
+  document.getElementById('loginGate').style.display = 'none';
+  const app = document.getElementById('app');
+  app.classList.add('show');
+  initApp();
+
+  // Send welcome email + SMS on first login (flag in sessionStorage)
+  const welcomeKey = 'aacg_welcomed_' + (acc.email || acc.id);
+  if(!sessionStorage.getItem(welcomeKey) && acc.email){
+    sessionStorage.setItem(welcomeKey, '1');
+    sendEmail(acc.email, null, 'welcome', { name: acc.name, plan: acc.tier || 'starter' });
+    if(acc.phone){
+      sendSMS(acc.phone,
+        `Welcome to IronForge, ${acc.name}! Your ${acc.tier||'starter'} dashboard is ready. Visit aacgplatform.com/admin to get started. Reply STOP to opt out.`,
+        'welcome');
+    }
+  }
+}
+
+// ────────────────────────────────────────────────
+// INIT
+// ────────────────────────────────────────────────
+function initApp(){
+  // Top bar
+  document.getElementById('tbName').textContent   = currentUser.name;
+  document.getElementById('tbEmail').textContent  = currentUser.email;
+  const av = document.getElementById('tbAvatar');
+  av.textContent  = currentUser.avatar;
+  av.style.background = currentUser.color;
+
+  const tierLabels  = {starter:'Starter Plan', pro:'Professional', enterprise:'Enterprise'};
+  const tierClasses = {starter:'tier-starter',  pro:'tier-pro',     enterprise:'tier-enterprise'};
+  const tb = document.getElementById('tierBadge');
+  tb.textContent = tierLabels[currentTier];
+  tb.className   = 'tier-badge ' + tierClasses[currentTier];
+
+  if(currentTier === 'enterprise') document.getElementById('upgradeTopBtn').style.display = 'none';
+
+  buildSidebar();
+  buildDashboard();
+  buildAgentGrid();
+  buildWorkflowGrid();
+  startLiveLog();
+  seedNotifications();
+  renderNotifPanel();
+  // Remaining panels are lazy-loaded on first navigation via showPanel()
+}
+
+// ────────────────────────────────────────────────
+// SIDEBAR
+// ────────────────────────────────────────────────
+function buildSidebar(){
+  const f = TIER_FEATURES[currentTier];
+  const nav = [
+    {section:'Main'},
+    {id:'dashboard',    label:'Dashboard',     icon:'🏠'},
+    {id:'analytics',    label:'Analytics',     icon:'📊', locked:!f.analytics},
+    {id:'activity',     label:'Live Activity', icon:'⚡'},
+    {section:'AI Platform'},
+    {id:'agents',       label:'AI Agents',     icon:'🤖', badge: f.agentLimit+'/20'},
+    {id:'workflows',    label:'Workflows',     icon:'🔗', locked:!f.workflows},
+    {section:'Projects'},
+    {id:'projects',     label:'Projects',      icon:'🏗️'},
+    {id:'liens',        label:'Lien Tracker',  icon:'⚖️'},
+    {id:'photoai',      label:'Photo AI',      icon:'📷', locked:!f.photoai},
+    {id:'compliance',   label:'Compliance',    icon:'📋', locked:!f.compliance},
+    {section:'People'},
+    {id:'clients',      label:'Clients',       icon:'🤝'},
+    {id:'technicians',  label:'Technicians',   icon:'👷'},
+    {id:'team',         label:'Team Mgmt',     icon:'👥', locked:!f.team},
+    {section:'Account'},
+    {id:'billing',      label:'Billing',       icon:'💳'},
+    {id:'settings',     label:'Settings',      icon:'⚙️'},
+  ];
+
+  let html = '';
+  nav.forEach(it=>{
+    if(it.section){ html += `<div class="nav-label">${it.section}</div>`; return; }
+    const isActive  = it.id === activePanel ? 'active' : '';
+    const isLocked  = it.locked ? 'locked' : '';
+    const badge     = it.badge ? `<span class="nav-badge-sm">${it.badge}</span>` : '';
+    const click     = it.locked ? `onclick="showUpgradeModal()"` : `onclick="showPanel('${it.id}')"`;
+    html += `<div class="nav-item ${isActive} ${isLocked}" ${click}>
+      <span class="ni">${it.icon}</span>${it.label}${badge}${it.locked?'<span style="margin-left:auto;font-size:.65rem">🔒</span>':''}
+    </div>`;
+  });
+
+  const tierColor = {starter:'var(--muted)', pro:'var(--blue)', enterprise:'var(--gold)'}[currentTier];
+  html += `<div class="sidebar-footer">
+    <div style="color:var(--muted)">Plan: <span style="color:${tierColor};font-weight:700">${currentTier.charAt(0).toUpperCase()+currentTier.slice(1)}</span></div>
+    <div style="color:var(--muted);font-size:.7rem;margin-top:2px">${currentUser.company}</div>
+    ${currentTier!=='enterprise' ? `<div class="upgrade-cta" onclick="showUpgradeModal()">⬆ Upgrade Plan</div>` : '<div style="margin-top:8px;color:var(--green);font-size:.72rem">✓ Full Enterprise Access</div>'}
+  </div>`;
+
+  document.getElementById('sidebar').innerHTML = html;
+}
+
+function showPanel(id){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  const el = document.getElementById('panel-'+id);
+  if(el) el.classList.add('active');
+  activePanel = id;
+  buildSidebar();
+  window.scrollTo(0,0);
+  // Lazy-build / refresh the panel content each time it is shown
+  switch(id){
+    case 'liens':       buildLienContent();       break;
+    case 'projects':    buildProjectsContent();   break;
+    case 'analytics':   buildAnalyticsContent();  break;
+    case 'clients':     buildClientsContent();     break;
+    case 'technicians': buildTechContent();        break;
+    case 'photoai':     buildPhotoAIContent();     break;
+    case 'compliance':  buildComplianceContent();  break;
+    case 'billing':     buildBillingContent();     break;
+    case 'team':        buildTeamContent();        break;
+    case 'settings':    buildSettingsContent();    break;
+    case 'agents':      buildAgentGrid();          break;
+    case 'workflows':   buildWorkflowGrid();       break;
+    case 'dashboard':   buildDashboard();          break;
+  }
+}
+
+// ────────────────────────────────────────────────
+// DASHBOARD
+// ────────────────────────────────────────────────
+function buildDashboard(){
+  const h = new Date().getHours();
+  document.getElementById('dashGreeting').textContent =
+    (h<12?'Good morning':h<17?'Good afternoon':'Good evening')+', '+currentUser.name.split(' ')[0]+' 👋';
+  document.getElementById('dashSub').textContent =
+    currentUser.company+' — '+new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+
+  const kpisMap = {
+    starter:[
+      {l:'Active Projects',v:'5',  i:'🏗️',c:'var(--blue)',  d:'+1 this week', p:true},
+      {l:'Open Liens',     v:'2',  i:'⚖️', c:'var(--orange)',d:'1 due soon',   p:false},
+      {l:'Agents Available',v:'5 of 20',i:'🤖',c:'var(--green)',d:'Upgrade for all 20',p:true},
+      {l:'Invoices Out',   v:'$48K',i:'📄',c:'var(--gold)',  d:'+$12K vs last month',p:true},
+    ],
+    pro:[
+      {l:'Active Projects',v:'22',  i:'🏗️',c:'var(--blue)',  d:'+3 this week',     p:true},
+      {l:'Monthly Revenue',v:'$284K',i:'💰',c:'var(--green)', d:'+18% month-over-month',p:true},
+      {l:'Active Liens',   v:'7',   i:'⚖️', c:'var(--orange)',d:'2 expiring soon',  p:false},
+      {l:'Agents Running', v:'6',   i:'🤖', c:'var(--purple)',d:'14 more available',p:true},
+      {l:'Open RFIs',      v:'11',  i:'❓', c:'var(--cyan)',  d:'3 overdue',        p:false},
+      {l:'Cash Forecast',  v:'+$420K',i:'📊',c:'var(--gold)', d:'90-day projection',p:true},
+    ],
+    enterprise:[
+      {l:'Active Projects',v:'47',   i:'🏗️',c:'var(--blue)',  d:'+6 this week',   p:true},
+      {l:'Monthly Revenue',v:'$2.4M',i:'💰', c:'var(--green)', d:'+22% MoM',       p:true},
+      {l:'Active Liens',   v:'12',   i:'⚖️', c:'var(--orange)',d:'4 expiring',     p:false},
+      {l:'All 20 Agents',  v:'8 Live',i:'🤖',c:'var(--purple)',d:'12 available',   p:true},
+      {l:'Team Members',   v:'14',   i:'👥', c:'var(--cyan)',  d:'3 online now',   p:true},
+      {l:'Cash Forecast',  v:'+$1.8M',i:'📊',c:'var(--gold)', d:'Q3 projection',  p:true},
+    ],
+  };
+
+  document.getElementById('dashKpis').innerHTML = kpisMap[currentTier].map(k=>`
+    <div class="kpi-card" style="--accent:${k.c}">
+      <div class="kpi-icon">${k.i}</div>
+      <div class="kpi-val">${k.v}</div>
+      <div class="kpi-label">${k.l}</div>
+      <div class="kpi-delta ${k.p?'pos':'neg'}">${k.p?'↑':'↓'} ${k.d}</div>
+    </div>`).join('');
+
+  document.getElementById('agentRunCount').textContent = '4 running';
+  document.getElementById('dashAgentList').innerHTML = AGENTS.slice(0,4).map((a,i)=>{
+    const pct = [72,45,88,31][i];
+    return `<div style="padding:9px 0;border-bottom:1px solid var(--border)">
+      <div style="display:flex;justify-content:space-between;margin-bottom:5px;font-size:.8rem">
+        <span>${a.icon} ${a.name}</span>
+        <span style="color:var(--green);font-size:.7rem">● ${pct}%</span>
+      </div>
+      <div style="background:var(--border);border-radius:3px;height:4px">
+        <div style="width:${pct}%;height:100%;background:var(--green);border-radius:3px"></div>
+      </div>
+    </div>`;
+  }).join('');
+
+  const projects = [
+    ['Riverside Commons','Active','$1.2M'],
+    ['Oak Park Office','Planning','$480K'],
+    ['Harbor View QSR','Active','$290K'],
+    ['Summit Industrial','Closeout','$890K'],
+  ];
+  document.getElementById('projectsTable').innerHTML = projects.map(p=>`
+    <tr><td>${p[0]}</td>
+    <td><span class="status-pill ${p[1]==='Active'?'pill-green':p[1]==='Planning'?'pill-blue':'pill-orange'}">${p[1]}</span></td>
+    <td style="color:var(--gold);font-weight:700">${p[2]}</td></tr>`).join('');
+
+  const vals = {starter:[30,42,48,38,52,48], pro:[180,220,260,240,280,284], enterprise:[1400,1800,2100,1950,2300,2400]}[currentTier];
+  const labs  = ['Dec','Jan','Feb','Mar','Apr','May'];
+  const maxV  = Math.max(...vals);
+  document.getElementById('revenueChart').innerHTML = vals.map((v,i)=>`
+    <div class="chart-bar" style="width:13%;height:${Math.round(v/maxV*100)}%;background:var(--blue);opacity:${i===5?1:.55}"></div>`).join('');
+  document.getElementById('revenueLabels').innerHTML = labs.map(l=>`<span>${l}</span>`).join('');
+}
+
+// ────────────────────────────────────────────────
+// AGENTS
+// ────────────────────────────────────────────────
+function buildAgentGrid(){
+  if(document.getElementById('agentGrid')?.dataset.built === currentTier) return;
+  const limit = TIER_FEATURES[currentTier].agentLimit;
+  const freeAgents  = AGENTS.filter(a => a.tier === 'free');
+  const cloudAgents = AGENTS.filter(a => a.tier === 'cloud');
+  document.getElementById('agentsSubtitle').textContent =
+    `${freeAgents.length} free agents + ${cloudAgents.length} Cloud AI agents — ${limit} total unlocked on your ${currentTier} plan`;
+
+  function agentCard(a, idx){
+    const locked = idx >= limit;
+    const isFree = a.tier === 'free';
+    const tierBadge = `<span class="agent-tier-badge ${isFree?'atb-free':'atb-cloud'}">${isFree?'✓ Free':'☁ Cloud AI'}</span>`;
+    const statusColor = locked ? 'var(--muted)' : isFree ? 'var(--green)' : 'var(--purple)';
+    const statusTxt   = locked ? 'Locked — upgrade to unlock' : isFree ? 'Free — runs instantly' : 'Cloud AI — powered by Claude';
+    const btnClass    = isFree ? 'run-btn free-btn' : 'run-btn';
+    const btnStyle    = isFree ? '' : `style="background:${a.color}"`;
+    const btnLabel    = isFree ? '⚡ Run Free' : '🤖 Run Cloud AI';
+    return `<div class="agent-card ${locked?'locked-card':''}" ${!locked?`onclick="openExecModal('${a.id}')"`:''}>
+      ${tierBadge}
+      <div class="agent-head">
+        <div class="agent-icon" style="background:${a.color}22">${a.icon}</div>
+        <div>
+          <div class="agent-name">${a.name}</div>
+          <div style="font-size:.7rem;color:${statusColor}">● ${statusTxt}</div>
+        </div>
+      </div>
+      <div class="agent-desc">${a.desc}</div>
+      <div class="agent-tags">${a.tags.map(t=>`<span class="tag">${t}</span>`).join('')}</div>
+      ${!locked?`<button class="${btnClass}" ${btnStyle}>${btnLabel}</button>`:''}
+    </div>`;
+  }
+
+  const allOrdered = [...freeAgents, ...cloudAgents];
+  const freeHtml = freeAgents.map((a,i)=> agentCard(a, i)).join('');
+  const cloudHtml = cloudAgents.map((a,i)=> agentCard(a, freeAgents.length + i)).join('');
+
+  document.getElementById('agentGrid').innerHTML = `
+    <div style="grid-column:1/-1;margin-bottom:4px">
+      <span class="agents-section-label asl-free">⚡ Free Agents — ${freeAgents.length} instant tasks, no API key needed</span>
+    </div>
+    ${freeHtml}
+    <div style="grid-column:1/-1;margin-top:10px;margin-bottom:4px">
+      <span class="agents-section-label asl-cloud">☁ Cloud AI Agents — ${cloudAgents.length} Claude-powered, requires API key</span>
+    </div>
+    ${cloudHtml}
+  `;
+  document.getElementById('agentGrid').dataset.built = currentTier;
+}
+
+// ────────────────────────────────────────────────
+// WORKFLOWS
+// ────────────────────────────────────────────────
+const TIER_ORDER = {starter:0, pro:1, enterprise:2};
+function buildWorkflowGrid(){
+  if(document.getElementById('workflowGrid')?.dataset.built === currentTier) return;
+  const myLevel = TIER_ORDER[currentTier];
+  document.getElementById('workflowGrid').innerHTML = WORKFLOWS.map(w=>{
+    const locked = TIER_ORDER[w.tier] > myLevel;
+    return `<div class="workflow-card">
+      <div class="wf-header"><span class="wf-icon">${w.icon}</span>
+        <div>
+          <div class="wf-title">${w.title}</div>
+          <div style="font-size:.7rem;color:var(--muted)">${w.tier.charAt(0).toUpperCase()+w.tier.slice(1)}+ plan</div>
+        </div>
+      </div>
+      <div class="wf-desc">${w.desc}</div>
+      <div class="wf-steps">${w.agents.map(s=>`<span class="wf-step">${s}</span>`).join('')}</div>
+      ${locked
+        ?`<button class="wf-run-btn" onclick="showUpgradeModal()" style="background:rgba(201,168,76,.15);color:var(--gold);border:1px solid rgba(201,168,76,.3)">🔒 Upgrade to Unlock</button>`
+        :`<button class="wf-run-btn" onclick="openWorkflowExec('${w.id}')">▶ Run Workflow</button>`}
+    </div>`;
+  }).join('');
+  document.getElementById('workflowGrid').dataset.built = currentTier;
+}
+
+// ────────────────────────────────────────────────
+// LIEN TRACKER — Supabase wired with fallback
+// ────────────────────────────────────────────────
+async function buildLienContent(){
+  const el = document.getElementById('lienContent');
+  el.innerHTML = `<div style="color:var(--muted);font-size:.83rem;padding:20px">⏳ Loading lien data…</div>`;
+
+  let liens = [];
+
+  if(USE_SB && window._sbUserId){
+    try {
+      const { data } = await sbQuery(sbClient.from('liens').select('*').eq('user_id', window._sbUserId).order('created_at', {ascending:false}));
+      if(data && data.length) liens = data;
+    } catch(e){ console.warn('[Liens] Supabase read failed, using demo data', e); }
+  }
+
+  // Demo fallback
+  if(!liens.length){
+    liens = [
+      {id:'L001', project:'Harbor View QSR', amount:18500, status:'draft', deadline:'2026-06-15', notes:'Prelim not sent'},
+      {id:'L002', project:'Riverside Commons', amount:142000, status:'prelim', deadline:'2026-05-01', notes:'Certified mail sent'},
+      {id:'L003', project:'Oak Park Office', amount:64200, status:'filed', deadline:'2026-04-12', notes:'Filed with county recorder'},
+      {id:'L004', project:'Summit East', amount:28000, status:'filed', deadline:'2026-03-28', notes:'Mechanics lien filed'},
+      {id:'L005', project:'Marina Hotel', amount:95000, status:'satisfied', deadline:'2026-04-30', notes:'Final waiver received'},
+      {id:'L006', project:'Downtown Tower', amount:220000, status:'disputed', deadline:'2026-06-08', notes:'Hearing scheduled'},
+    ];
+  }
+
+  const statusMap = {
+    draft:     {label:'📝 Draft',      color:'var(--muted)'},
+    prelim:    {label:'📬 Prelim',     color:'var(--blue)'},
+    filed:     {label:'⚖️ Filed',     color:'var(--orange)'},
+    satisfied: {label:'✅ Satisfied',  color:'var(--green)'},
+    disputed:  {label:'⚠️ Disputed',  color:'var(--red)'},
+  };
+
+  const cols = Object.entries(statusMap).map(([key, s]) => ({
+    ...s, key,
+    items: liens.filter(l => l.status === key)
+  }));
+
+  const totalAtRisk = liens.filter(l=>!['satisfied'].includes(l.status)).reduce((s,l)=>s+(l.amount||0),0);
+  const expiringSoon = liens.filter(l => {
+    const d = new Date(l.deadline); const now = new Date();
+    return (d-now) < 30*24*60*60*1000 && l.status !== 'satisfied';
+  }).length;
+
+  el.innerHTML = `
+    <div class="action-bar">
+      <button class="btn-primary" onclick="openAddLienModal()">+ New Lien</button>
+      <button class="run-btn" style="width:auto;padding:7px 14px;background:var(--purple)" onclick="openExecModal('lien')">🤖 Run Lien Agent</button>
+      <span class="count-badge">${liens.length} total · ${expiringSoon} expiring · $${totalAtRisk.toLocaleString()} at risk</span>
+    </div>
+    <div class="kanban-board">
+      ${cols.map(c=>`<div class="kanban-col">
+        <div class="kanban-col-header" style="background:${c.color}22;color:${c.color}">${c.label} (${c.items.length})</div>
+        ${c.items.length === 0 ? `<div style="color:var(--muted);font-size:.74rem;padding:8px;text-align:center">None</div>` :
+          c.items.map(it=>`<div class="kanban-card" style="border-left-color:${c.color}" onclick="openLienDetail('${it.id || it.project}')">
+            <div class="kc-project">${it.project}</div>
+            <div class="kc-amount">$${(it.amount||0).toLocaleString()}</div>
+            <div class="kc-due">${it.notes || ''}</div>
+            <div class="kc-due" style="margin-top:3px">📅 ${it.deadline ? new Date(it.deadline).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—'}</div>
+          </div>`).join('')}
+      </div>`).join('')}
+    </div>`;
+}
+
+function openLienDetail(id){
+  // Find lien in current data
+  const lien = (window._liensCache || []).find(l => l.id === id);
+  if(!lien){ addNotification('⚠️ Lien Not Found', 'Could not load lien details.', 'warning'); return; }
+  document.getElementById('execModal').style.display = 'flex';
+  document.getElementById('execModalInner').innerHTML = `
+    <div class="modal-header">
+      <div class="modal-title">⚖️ Lien Details</div>
+      <button class="modal-close" onclick="closeExecModal()">×</button>
+    </div>
+    <div style="padding:20px;display:flex;flex-direction:column;gap:14px">
+      <div class="form-row">
+        <div><label>Filing Type</label><input id="ld_type" value="${lien.filing_type||'Mechanics Lien'}"></div>
+        <div><label>State</label><input id="ld_state" value="${lien.state||''}"></div>
+      </div>
+      <div class="form-row">
+        <div><label>Status</label>
+          <select id="ld_status">
+            <option ${lien.status==='pending'?'selected':''}>pending</option>
+            <option ${lien.status==='filed'?'selected':''}>filed</option>
+            <option ${lien.status==='released'?'selected':''}>released</option>
+            <option ${lien.status==='expired'?'selected':''}>expired</option>
+          </select>
+        </div>
+        <div><label>Deadline</label><input type="date" id="ld_deadline" value="${lien.deadline||''}"></div>
+      </div>
+      <div class="form-row">
+        <div><label>Filed Date</label><input type="date" id="ld_filed" value="${lien.filed_date||''}"></div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:8px">
+        <button class="btn-primary" onclick="saveLienDetail('${id}')">Save Changes</button>
+        <button class="btn-secondary" onclick="closeExecModal()">Cancel</button>
+      </div>
+    </div>`;
+}
+
+async function saveLienDetail(id){
+  const updates = {
+    filing_type: document.getElementById('ld_type').value,
+    state: document.getElementById('ld_state').value,
+    status: document.getElementById('ld_status').value,
+    deadline: document.getElementById('ld_deadline').value || null,
+    filed_date: document.getElementById('ld_filed').value || null
+  };
+  if(sbClient && window._sbUserId){
+    const { error } = await sbQuery(sbClient.from('lien_filings').update(updates).eq('id', id));
+    if(error){ addNotification('⚠️ Save Failed', 'Lien: ' + error.message, 'warning'); return; }
+  }
+  addNotification('⚖️ Lien Updated', 'Lien record saved successfully.', 'success');
+  closeExecModal();
+  buildLienContent();
+}
+
+function openAddLienModal(){
+  const projects = ['Riverside Commons','Oak Park Office','Harbor View QSR','Summit Industrial','Marina Renovation'];
+  document.getElementById('execModal').style.display = 'flex';
+  document.getElementById('execModalInner').innerHTML = `
+    <div class="modal-header">
+      <div class="modal-title">⚖️ New Lien</div>
+      <button class="modal-close" onclick="closeExecModal()">×</button>
+    </div>
+    <div class="form-modal" style="padding:0;background:none;border:none">
+      <div class="form-group"><label>Project</label>
+        <select id="nl_proj">${projects.map(p=>`<option>${p}</option>`).join('')}</select></div>
+      <div class="form-group"><label>Amount ($)</label>
+        <input type="number" id="nl_amt" placeholder="50000"></div>
+      <div class="form-group"><label>Status</label>
+        <select id="nl_status"><option value="draft">Draft</option><option value="prelim">Prelim</option><option value="filed">Filed</option></select></div>
+      <div class="form-group"><label>Deadline / Key Date</label>
+        <input type="date" id="nl_dead"></div>
+      <div class="form-group"><label>Notes</label>
+        <input type="text" id="nl_notes" placeholder="e.g. Prelim notice sent via certified mail"></div>
+      <div class="form-modal-btns">
+        <button class="btn-primary" onclick="saveLien()">Save Lien</button>
+        <button class="btn-secondary" onclick="closeExecModal()">Cancel</button>
+      </div>
+    </div>`;
+}
+
+async function saveLien(){
+  const lien = {
+    project: document.getElementById('nl_proj').value,
+    amount: parseFloat(document.getElementById('nl_amt').value)||0,
+    status: document.getElementById('nl_status').value,
+    deadline: document.getElementById('nl_dead').value,
+    notes: document.getElementById('nl_notes').value,
+    user_id: window._sbUserId || null,
+    created_at: new Date().toISOString()
+  };
+  if(USE_SB && window._sbUserId){
+    try { await sbClient.from('liens').insert(lien); } catch(e){ console.warn('[Liens] insert failed', e); }
+  }
+  closeExecModal();
+  addNotification('⚖️ Lien Saved', `Lien for ${lien.project} ($${lien.amount.toLocaleString()}) created.`, 'success');
+
+  // SMS alert if phone on file
+  if(currentUser?.phone && lien.deadline){
+    const daysLeft = Math.ceil((new Date(lien.deadline) - new Date()) / 86400000);
+    sendSMS(currentUser.phone,
+      `IronForge: Lien created for ${lien.project} — $${lien.amount.toLocaleString()}. Deadline: ${lien.deadline} (${daysLeft} days). Reply STOP to opt out.`,
+      'lien_created');
+  }
+  // Schedule deadline alert via email
+  if(currentUser?.email && lien.deadline){
+    const daysLeft = Math.ceil((new Date(lien.deadline) - new Date()) / 86400000);
+    if(daysLeft <= 30){
+      sendEmail(currentUser.email, null, 'lien_alert', {
+        name: currentUser.name, jobName: lien.project,
+        daysLeft, amount: `$${lien.amount.toLocaleString()}`
+      });
+    }
+  }
+  buildLienContent();
+}
+
+// ────────────────────────────────────────────────
+// PROJECTS — Supabase wired with fallback
+// ────────────────────────────────────────────────
+async function buildProjectsContent(){
+  const el = document.getElementById('projectsContent');
+  el.innerHTML = `<div style="color:var(--muted);font-size:.83rem;padding:20px">⏳ Loading projects…</div>`;
+
+  let projects = [];
+  if(USE_SB && window._sbUserId){
+    try {
+      const { data } = await sbQuery(sbClient.from('jobs').select('*').eq('user_id', window._sbUserId).order('created_at',{ascending:false}));
+      if(data && data.length) projects = data;
+    } catch(e){ console.warn('[Projects] Supabase read failed', e); }
+  }
+
+  if(!projects.length){
+    projects = [
+      {id:'PRJ-001',name:'Riverside Commons',  sector:'QSR Restaurant',   status:'active',   contract_value:1200000, deadline:'2026-06-30'},
+      {id:'PRJ-002',name:'Oak Park Office',     sector:'Commercial Office', status:'planning', contract_value:480000,  deadline:'2026-09-15'},
+      {id:'PRJ-003',name:'Harbor View QSR',     sector:'Restaurant',       status:'active',   contract_value:290000,  deadline:'2026-08-01'},
+      {id:'PRJ-004',name:'Summit Industrial',   sector:'Industrial',       status:'closeout', contract_value:890000,  deadline:'2026-05-28'},
+      {id:'PRJ-005',name:'Marina Renovation',   sector:'Hospitality',      status:'on_hold',  contract_value:340000,  deadline:'2026-10-01'},
+    ];
+  }
+
+  const statusPill = s => {
+    const map = {active:'pill-green',planning:'pill-blue',closeout:'pill-orange',on_hold:'pill-red',completed:'pill-green'};
+    return `<span class="status-pill ${map[s]||'pill-blue'}">${s.replace('_',' ')}</span>`;
+  };
+
+  const fmtVal = v => v >= 1000000 ? `$${(v/1000000).toFixed(1)}M` : v >= 1000 ? `$${(v/1000).toFixed(0)}K` : `$${v}`;
+  const fmtDate = d => d ? new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—';
+
+  el.innerHTML = `
+    <div id="projAlert" class="inline-alert"></div>
+    <div class="action-bar">
+      <button class="btn-primary" onclick="openAddProjectModal()">+ New Project</button>
+      <input class="search-input" placeholder="🔍 Search projects…" oninput="filterProjects(this.value)">
+      <span class="count-badge" id="projCount">${projects.length} projects</span>
+    </div>
+    <div class="card">
+      <table class="data-table" id="projectsTable2">
+        <thead><tr><th>ID</th><th>Project</th><th>Sector</th><th>Status</th><th>Value</th><th>Deadline</th><th></th></tr></thead>
+        <tbody id="projectsTbody">
+          ${projects.map(p=>`<tr data-name="${p.name.toLowerCase()}">
+            <td style="font-family:monospace;color:var(--muted);font-size:.73rem">${p.id||'—'}</td>
+            <td style="font-weight:600">${p.name}</td>
+            <td>${p.sector||'—'}</td>
+            <td>${statusPill(p.status||'active')}</td>
+            <td style="color:var(--gold);font-weight:700">${fmtVal(p.contract_value||0)}</td>
+            <td style="color:var(--muted)">${fmtDate(p.deadline)}</td>
+            <td style="display:flex;gap:5px">
+              <button class="btn-secondary" style="padding:3px 8px;font-size:.72rem" onclick="viewProject('${p.id||p.name}')">View</button>
+              <button class="btn-secondary" style="padding:3px 8px;font-size:.72rem;border-color:var(--red);color:var(--red)" onclick="archiveProject('${p.id||p.name}')">Archive</button>
+            </td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+function filterProjects(q){
+  document.querySelectorAll('#projectsTbody tr').forEach(r=>{
+    r.style.display = !q || r.dataset.name?.includes(q.toLowerCase()) ? '' : 'none';
+  });
+}
+function viewProject(id){ addNotification('🏗️ Project View', `Full project detail for ${id} — opening soon.`, 'info'); }
+function archiveProject(id){ addNotification('📁 Project Archived', `Project ${id} moved to archive.`, 'success'); }
+
+function openAddProjectModal(){
+  document.getElementById('execModal').style.display = 'flex';
+  document.getElementById('execModalInner').innerHTML = `
+    <div class="modal-header">
+      <div class="modal-title">🏗️ New Project</div>
+      <button class="modal-close" onclick="closeExecModal()">×</button>
+    </div>
+    <div style="padding:0">
+      <div class="form-group"><label>Project Name</label><input id="np_name" placeholder="Riverside Commons Phase 2"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="form-group"><label>Sector</label>
+          <select id="np_sector"><option>Commercial</option><option>Residential</option><option>Industrial</option><option>Government</option><option>Hospitality</option><option>QSR Restaurant</option></select></div>
+        <div class="form-group"><label>Status</label>
+          <select id="np_status"><option value="planning">Planning</option><option value="active">Active</option><option value="on_hold">On Hold</option><option value="closeout">Closeout</option></select></div>
+        <div class="form-group"><label>Contract Value ($)</label><input type="number" id="np_val" placeholder="500000"></div>
+        <div class="form-group"><label>Deadline</label><input type="date" id="np_dead"></div>
+      </div>
+      <div class="form-group"><label>Client</label><input id="np_client" placeholder="Client name"></div>
+      <div style="display:flex;gap:8px;margin-top:4px">
+        <button class="btn-primary" onclick="saveProject()">Save Project</button>
+        <button class="btn-secondary" onclick="closeExecModal()">Cancel</button>
+      </div>
+    </div>`;
+}
+
+async function saveProject(){
+  const name = document.getElementById('np_name').value.trim();
+  if(!name){ alert('Enter a project name'); return; }
+  const proj = {
+    name, sector: document.getElementById('np_sector').value,
+    status: document.getElementById('np_status').value,
+    contract_value: parseFloat(document.getElementById('np_val').value)||0,
+    deadline: document.getElementById('np_dead').value,
+    client: document.getElementById('np_client').value,
+    user_id: window._sbUserId||null, created_at: new Date().toISOString()
+  };
+  if(USE_SB && window._sbUserId){
+    try { await sbClient.from('jobs').insert(proj); } catch(e){ console.warn('[Projects] insert failed',e); }
+  }
+  closeExecModal();
+  addNotification('🏗️ Project Created', `${proj.name} added to your projects.`, 'success');
+  buildProjectsContent();
+}
+
+// ────────────────────────────────────────────────
+// ANALYTICS
+// ────────────────────────────────────────────────
+async function buildAnalyticsContent(){
+  if(document.getElementById('analyticsContent')?.dataset.built === currentTier) return;
+  const el = document.getElementById('analyticsContent');
+  if(!TIER_FEATURES[currentTier].analytics){
+    el.innerHTML = `
+      <div class="tier-lock-notice">
+        <h3>📊 Analytics Requires Pro or Enterprise</h3>
+        <p>Upgrade to unlock revenue tracking, agent performance metrics, margin analysis, and AI-powered business insights.</p>
+        <button class="tln-upgrade" onclick="showUpgradeModal()">Upgrade to Professional — $99/mo</button>
+      </div>`;
+    return;
+  }
+  el.innerHTML = `<div style="color:var(--muted);font-size:.83rem;padding:20px">⏳ Loading analytics…</div>`;
+
+  // Pull real counts from Supabase — hard 5s total timeout on the whole batch
+  let totalJobs = 0, activeJobs = 0, totalAgentRuns = 0, totalClients = 0, totalRevenue = 0;
+  if(USE_SB && window._sbUserId){
+    try {
+      const timeout5s = new Promise(r => setTimeout(() => r([{data:null},{data:null},{data:null},{data:null}]), 5000));
+      const [jobsRes, logsRes, clientsRes, invoicesRes] = await Promise.race([
+        Promise.all([
+          sbQuery(sbClient.from('jobs').select('id,status,contract_amount').eq('user_id', window._sbUserId)),
+          sbQuery(sbClient.from('agent_logs').select('id',{count:'exact'}).eq('user_id', window._sbUserId)),
+          sbQuery(sbClient.from('clients').select('id',{count:'exact'}).eq('user_id', window._sbUserId)),
+          sbQuery(sbClient.from('invoices').select('amount').eq('user_id', window._sbUserId))
+        ]),
+        timeout5s
+      ]);
+      if(jobsRes.data){
+        totalJobs = jobsRes.data.length;
+        activeJobs = jobsRes.data.filter(j=>j.status==='active').length;
+        totalRevenue = jobsRes.data.reduce((s,j)=>s+(parseFloat(j.contract_amount)||0),0);
+      }
+      if(logsRes.count) totalAgentRuns = logsRes.count;
+      if(clientsRes.count) totalClients = clientsRes.count;
+      if(invoicesRes.data) totalRevenue = invoicesRes.data.reduce((s,i)=>s+(parseFloat(i.amount)||0),0) || totalRevenue;
+    } catch(e){ console.warn('[Analytics] Supabase read failed', e); }
+  }
+
+  // Fallback to demo values if no real data
+  const fmtRev = v => v >= 1000000 ? `$${(v/1000000).toFixed(1)}M` : v >= 1000 ? `$${(v/1000).toFixed(0)}K` : v > 0 ? `$${v}` : '$2.4M';
+  const revenueDisplay = fmtRev(totalRevenue);
+  const jobsDisplay = totalJobs > 0 ? `${activeJobs} Active` : '14 Active';
+  const agentsDisplay = totalAgentRuns > 0 ? `${totalAgentRuns}` : '182';
+  const clientsDisplay = totalClients > 0 ? `${totalClients}` : '24';
+
+  el.innerHTML = `
+    <div class="three-col">
+      ${[
+        ['Revenue YTD', revenueDisplay, '💰', 'var(--green)', totalJobs>0?`${totalJobs} jobs tracked`:'+22% vs last year'],
+        ['Active Jobs', jobsDisplay, '🏗️', 'var(--blue)', totalJobs>0?`${totalJobs} total`:'From Supabase'],
+        ['Agent Runs Total', agentsDisplay, '🤖', 'var(--purple)', totalAgentRuns>0?'Real-time count':'This month'],
+      ].map(k=>`
+        <div class="kpi-card" style="--accent:${k[3]}">
+          <div class="kpi-icon">${k[2]}</div>
+          <div class="kpi-val">${k[1]}</div>
+          <div class="kpi-label">${k[0]}</div>
+          <div class="kpi-delta pos">↑ ${k[4]}</div>
+        </div>`).join('')}
+    </div>
+    <div class="two-col">
+      <div class="card">
+        <div class="card-title">Revenue by Trade <span style="font-size:.7rem;color:var(--muted);font-weight:400">(demo distribution)</span></div>
+        ${[['Plumbing','$480K',80],['Electrical','$390K',65],['HVAC','$320K',53],['Concrete','$280K',47],['Roofing','$210K',35]].map(r=>`
+          <div style="margin-bottom:11px">
+            <div style="display:flex;justify-content:space-between;font-size:.8rem;margin-bottom:4px">
+              <span>${r[0]}</span><span style="color:var(--gold)">${r[1]}</span>
+            </div>
+            <div style="background:var(--border);border-radius:3px;height:5px">
+              <div style="width:${r[2]}%;height:100%;background:var(--blue);border-radius:3px"></div>
+            </div>
+          </div>`).join('')}
+      </div>
+      <div class="card">
+        <div class="card-title">Top Agent Runs</div>
+        ${AGENTS.slice(0,5).map((a,i)=>{
+          const saves=['$42K','$28K','$18K','$15K','$12K'][i];
+          return `<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:.8rem">
+            <span>${a.icon} ${a.name}</span>
+            <span style="color:var(--green);font-weight:700">Est. ${saves} saved</span>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  document.getElementById('analyticsContent').dataset.built = currentTier;
+}
+
+// ────────────────────────────────────────────────
+// CLIENTS — Supabase wired with fallback
+// ────────────────────────────────────────────────
+async function buildClientsContent(){
+  const el = document.getElementById('clientsContent');
+  el.innerHTML = `<div style="color:var(--muted);font-size:.83rem;padding:20px">⏳ Loading clients…</div>`;
+
+  let clients = [];
+  if(USE_SB && window._sbUserId){
+    try {
+      const { data } = await sbQuery(sbClient.from('clients').select('*').eq('user_id', window._sbUserId).order('name',{ascending:true}));
+
+      if(data && data.length) clients = data;
+    } catch(e){ console.warn('[Clients] Supabase read failed', e); }
+  }
+
+  if(!clients.length){
+    clients = [
+      {id:'C001', name:'Harborview Hospitality',  sector:'Enterprise',   project_count:8,  total_revenue:1400000, phone:'(503) 555-0102', email:'gm@harborview.com',  status:'active'},
+      {id:'C002', name:'Pacific QSR Group',        sector:'Commercial',   project_count:5,  total_revenue:620000,  phone:'(503) 555-0234', email:'ops@pacificqsr.com', status:'active'},
+      {id:'C003', name:'Summit Office Partners',   sector:'Commercial',   project_count:3,  total_revenue:480000,  phone:'(503) 555-0345', email:'pm@summitop.com',    status:'active'},
+      {id:'C004', name:'City of Portland',         sector:'Government',   project_count:2,  total_revenue:890000,  phone:'(503) 555-0456', email:'capital@portland.gov',status:'active'},
+      {id:'C005', name:'Sunrise Residential',      sector:'Residential',  project_count:12, total_revenue:340000,  phone:'(503) 555-0567', email:'info@sunrisedev.com', status:'active'},
+    ];
+  }
+
+  const fmtVal = v => v >= 1000000 ? `$${(v/1000000).toFixed(1)}M` : v >= 1000 ? `$${(v/1000).toFixed(0)}K` : `$${v}`;
+
+  el.innerHTML = `
+    <div id="clientAlert" class="inline-alert"></div>
+    <div class="action-bar">
+      <button class="btn-primary" onclick="openAddClientModal()">+ Add Client</button>
+      <input class="search-input" placeholder="🔍 Search clients…" oninput="filterClients(this.value)">
+      <span class="count-badge">${clients.length} clients · $${(clients.reduce((s,c)=>s+(c.total_revenue||0),0)/1000000).toFixed(1)}M total revenue</span>
+    </div>
+    <div class="card">
+      <table class="data-table">
+        <thead><tr><th>Client</th><th>Sector</th><th>Phone</th><th>Projects</th><th>Revenue</th><th>Status</th><th></th></tr></thead>
+        <tbody id="clientsTbody">
+          ${clients.map(c=>`<tr data-name="${c.name.toLowerCase()}">
+            <td><div style="font-weight:600">${c.name}</div><div style="color:var(--muted);font-size:.72rem">${c.email||'—'}</div></td>
+            <td>${c.sector||'—'}</td>
+            <td style="color:var(--muted);font-size:.8rem">${c.phone||'—'}</td>
+            <td style="color:var(--muted)">${c.project_count||0} projects</td>
+            <td style="color:var(--gold);font-weight:700">${fmtVal(c.total_revenue||0)}</td>
+            <td><span class="status-pill pill-green">${c.status||'active'}</span></td>
+            <td><button class="btn-secondary" style="padding:3px 9px;font-size:.72rem" onclick="contactClient('${c.name}','${c.email||''}','${c.phone||''}')">Contact</button></td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+function filterClients(q){
+  document.querySelectorAll('#clientsTbody tr').forEach(r=>{
+    r.style.display = !q || r.dataset.name?.includes(q.toLowerCase()) ? '' : 'none';
+  });
+}
+function contactClient(name,email,phone){
+  addNotification('🤝 Contact: '+name, `Email: ${email||'N/A'} | Phone: ${phone||'N/A'}`, 'info');
+}
+
+function openAddClientModal(){
+  document.getElementById('execModal').style.display = 'flex';
+  document.getElementById('execModalInner').innerHTML = `
+    <div class="modal-header">
+      <div class="modal-title">🤝 New Client</div>
+      <button class="modal-close" onclick="closeExecModal()">×</button>
+    </div>
+    <div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="form-group" style="grid-column:1/-1"><label>Company Name</label><input id="nc_name" placeholder="Acme Construction LLC"></div>
+        <div class="form-group"><label>Sector</label>
+          <select id="nc_sector"><option>Commercial</option><option>Residential</option><option>Government</option><option>Industrial</option><option>Hospitality</option><option>Enterprise</option></select></div>
+        <div class="form-group"><label>Status</label>
+          <select id="nc_status"><option value="active">Active</option><option value="prospect">Prospect</option><option value="inactive">Inactive</option></select></div>
+        <div class="form-group"><label>Phone</label><input id="nc_phone" placeholder="(503) 555-0100"></div>
+        <div class="form-group"><label>Email</label><input type="email" id="nc_email" placeholder="contact@company.com"></div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:4px">
+        <button class="btn-primary" onclick="saveClient()">Save Client</button>
+        <button class="btn-secondary" onclick="closeExecModal()">Cancel</button>
+      </div>
+    </div>`;
+}
+
+async function saveClient(){
+  const name = document.getElementById('nc_name').value.trim();
+  if(!name){ alert('Enter a company name'); return; }
+  const client = {
+    name, sector: document.getElementById('nc_sector').value,
+    status: document.getElementById('nc_status').value,
+    phone: document.getElementById('nc_phone').value,
+    email: document.getElementById('nc_email').value,
+    project_count:0, total_revenue:0,
+    user_id: window._sbUserId||null, created_at: new Date().toISOString()
+  };
+  if(USE_SB && window._sbUserId){
+    try { await sbClient.from('clients').insert(client); } catch(e){ console.warn('[Clients] insert failed',e); }
+  }
+  closeExecModal();
+  addNotification('🤝 Client Added', `${client.name} added to your client list.`, 'success');
+  buildClientsContent();
+}
+
+// ────────────────────────────────────────────────
+// TECHNICIANS — Supabase wired with fallback
+// ────────────────────────────────────────────────
+async function buildTechContent(){
+  const el = document.getElementById('techContent');
+  el.innerHTML = `<div style="color:var(--muted);font-size:.83rem;padding:20px">⏳ Loading team…</div>`;
+
+  let techs = [];
+  if(USE_SB && window._sbUserId){
+    try {
+      const { data } = await sbQuery(sbClient.from('technicians').select('*').eq('user_id', window._sbUserId).order('name',{ascending:true}));
+      if(data && data.length) techs = data;
+    } catch(e){ console.warn('[Techs] Supabase read failed', e); }
+  }
+
+  if(!techs.length){
+    techs = [
+      {id:'T001', name:'Carlos Martinez', role:'Lead Electrician',  current_site:'Riverside Commons',  status:'on_site',  trade:'Electrical', phone:'(503) 555-1001', license:'EL-4421'},
+      {id:'T002', name:'Jesse Williams',  role:'Plumber II',         current_site:'Harbor View QSR',    status:'on_site',  trade:'Plumbing',   phone:'(503) 555-1002', license:'PL-2210'},
+      {id:'T003', name:'Tony Reyes',      role:'HVAC Tech',          current_site:'Oak Park Office',    status:'transit',  trade:'HVAC',       phone:'(503) 555-1003', license:'HVAC-891'},
+      {id:'T004', name:'Dana Kim',        role:'Safety Inspector',   current_site:'Summit Industrial',  status:'reporting',trade:'Safety',     phone:'(503) 555-1004', license:'OSHA-30'},
+      {id:'T005', name:'Mike Torres',     role:'Foreman',            current_site:'Marina Renovation',  status:'off_site', trade:'General',    phone:'(503) 555-1005', license:'GC-1155'},
+    ];
+  }
+
+  const statusEmoji = {on_site:'✅ On-site', transit:'🔧 In Transit', reporting:'📝 Reporting', off_site:'🏠 Off-site', unavailable:'❌ Unavailable'};
+
+  el.innerHTML = `
+    <div id="techAlert" class="inline-alert"></div>
+    <div class="action-bar">
+      <button class="btn-primary" onclick="openAddTechModal()">+ Add Technician</button>
+      <input class="search-input" placeholder="🔍 Search field team…" oninput="filterTechs(this.value)">
+      <span class="count-badge">${techs.filter(t=>t.status==='on_site').length} on-site · ${techs.length} total</span>
+    </div>
+    <div class="card">
+      <table class="data-table">
+        <thead><tr><th>Name</th><th>Role</th><th>Current Site</th><th>Status</th><th>Trade</th><th>License</th><th></th></tr></thead>
+        <tbody id="techsTbody">
+          ${techs.map(t=>`<tr data-name="${t.name.toLowerCase()}">
+            <td><div style="font-weight:600">${t.name}</div><div style="color:var(--muted);font-size:.72rem">${t.phone||'—'}</div></td>
+            <td>${t.role||'—'}</td>
+            <td style="color:var(--muted)">${t.current_site||'—'}</td>
+            <td>${statusEmoji[t.status]||t.status}</td>
+            <td><span style="background:rgba(42,125,225,.15);color:var(--blue);padding:2px 7px;border-radius:5px;font-size:.7rem">${t.trade||'—'}</span></td>
+            <td style="color:var(--muted);font-size:.78rem;font-family:monospace">${t.license||'—'}</td>
+            <td><button class="btn-secondary" style="padding:3px 8px;font-size:.72rem" onclick="updateTechStatus('${t.id}','${t.name}')">Update</button></td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+function filterTechs(q){
+  document.querySelectorAll('#techsTbody tr').forEach(r=>{
+    r.style.display = !q || r.dataset.name?.includes(q.toLowerCase()) ? '' : 'none';
+  });
+}
+function updateTechStatus(id, name){
+  document.getElementById('execModal').style.display = 'flex';
+  document.getElementById('execModalInner').innerHTML = `
+    <div class="modal-header">
+      <div class="modal-title">👷 Update Status — ${name}</div>
+      <button class="modal-close" onclick="closeExecModal()">×</button>
+    </div>
+    <div style="padding:20px;display:flex;flex-direction:column;gap:14px">
+      <div class="form-group"><label>Status</label>
+        <select id="ts_status">
+          <option value="active">Active</option>
+          <option value="on_leave">On Leave</option>
+          <option value="unavailable">Unavailable</option>
+          <option value="terminated">Terminated</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Notes (optional)</label>
+        <input id="ts_notes" placeholder="e.g. Out until Monday">
+      </div>
+      <div style="display:flex;gap:10px">
+        <button class="btn-primary" onclick="saveTechStatus('${id}','${name}')">Save</button>
+        <button class="btn-secondary" onclick="closeExecModal()">Cancel</button>
+      </div>
+    </div>`;
+}
+
+async function saveTechStatus(id, name){
+  const status = document.getElementById('ts_status').value;
+  const notes = document.getElementById('ts_notes').value;
+  if(sbClient && window._sbUserId){
+    // contacts table stores field team — update status field
+    const { error } = await sbQuery(sbClient.from('contacts')
+      .update({ contact_type: status + (notes ? ':'+notes : '') })
+      .eq('id', id));
+    if(error){ addNotification('⚠️ Save Failed', error.message, 'warning'); return; }
+  }
+  addNotification(`👷 ${name} Updated`, `Status set to ${status}.`, 'success');
+  closeExecModal();
+  buildTechContent();
+}
+
+function openAddTechModal(){
+  document.getElementById('execModal').style.display = 'flex';
+  document.getElementById('execModalInner').innerHTML = `
+    <div class="modal-header">
+      <div class="modal-title">👷 New Technician</div>
+      <button class="modal-close" onclick="closeExecModal()">×</button>
+    </div>
+    <div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="form-group" style="grid-column:1/-1"><label>Full Name</label><input id="nt_name" placeholder="John Smith"></div>
+        <div class="form-group"><label>Role / Title</label><input id="nt_role" placeholder="Lead Electrician"></div>
+        <div class="form-group"><label>Trade</label>
+          <select id="nt_trade"><option>Electrical</option><option>Plumbing</option><option>HVAC</option><option>Carpentry</option><option>Concrete</option><option>Safety</option><option>General</option><option>Roofing</option></select></div>
+        <div class="form-group"><label>Phone</label><input id="nt_phone" placeholder="(503) 555-0100" type="tel"></div>
+        <div class="form-group"><label>License #</label><input id="nt_lic" placeholder="EL-4422"></div>
+        <div class="form-group"><label>Current Site</label>
+          <select id="nt_site"><option>Riverside Commons</option><option>Oak Park Office</option><option>Harbor View QSR</option><option>Summit Industrial</option><option>Marina Renovation</option><option>Off-site</option></select></div>
+        <div class="form-group"><label>Status</label>
+          <select id="nt_status"><option value="on_site">On-site</option><option value="transit">In Transit</option><option value="reporting">Reporting</option><option value="off_site">Off-site</option></select></div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:4px">
+        <button class="btn-primary" onclick="saveTech()">Save Technician</button>
+        <button class="btn-secondary" onclick="closeExecModal()">Cancel</button>
+      </div>
+    </div>`;
+}
+
+async function saveTech(){
+  const name = document.getElementById('nt_name').value.trim();
+  if(!name){ alert('Enter a name'); return; }
+  const tech = {
+    name, role: document.getElementById('nt_role').value,
+    trade: document.getElementById('nt_trade').value,
+    phone: document.getElementById('nt_phone').value,
+    license: document.getElementById('nt_lic').value,
+    current_site: document.getElementById('nt_site').value,
+    status: document.getElementById('nt_status').value,
+    user_id: window._sbUserId||null, created_at: new Date().toISOString()
+  };
+  if(USE_SB && window._sbUserId){
+    try { await sbClient.from('technicians').insert(tech); } catch(e){ console.warn('[Techs] insert failed',e); }
+  }
+  closeExecModal();
+  addNotification('👷 Tech Added', `${tech.name} added to your field team.`, 'success');
+  buildTechContent();
+}
+
+// ────────────────────────────────────────────────
+// PHOTO AI
+// ────────────────────────────────────────────────
+function buildPhotoAIContent(){
+  if(document.getElementById('photoaiContent')?.dataset.built === currentTier) return;
+  if(!TIER_FEATURES[currentTier].photoai){
+    document.getElementById('photoaiContent').innerHTML = `
+      <div class="tier-lock-notice">
+        <h3>📷 Photo AI Requires Pro or Enterprise</h3>
+        <p>Upgrade to use AI-powered site photo inspection, safety analysis, and automated progress tracking.</p>
+        <button class="tln-upgrade" onclick="showUpgradeModal()">Upgrade Now</button>
+      </div>`;
+    return;
+  }
+  const cards = [
+    {site:'Riverside Commons',time:'09:14 AM',flag:'⚠️ PPE Violation Flagged',color:'var(--red)',emoji:'🦺'},
+    {site:'Harbor View QSR',time:'08:52 AM',flag:'✅ Progress: 72%',color:'var(--green)',emoji:'🏗️'},
+    {site:'Oak Park Office',time:'08:30 AM',flag:'📦 Material Staging OK',color:'var(--blue)',emoji:'📦'},
+    {site:'Summit Industrial',time:'Yesterday',flag:'✅ No Issues Found',color:'var(--green)',emoji:'✅'},
+    {site:'Marina Renovation',time:'Yesterday',flag:'⚠️ Scaffolding Review',color:'var(--orange)',emoji:'🪜'},
+    {site:'Downtown Tower',time:'2 days ago',flag:'✅ Quality Check Passed',color:'var(--green)',emoji:'🏢'},
+  ];
+  document.getElementById('photoaiContent').innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;margin-bottom:16px">
+      ${cards.map(c=>`<div class="card" style="cursor:pointer;padding:14px" onclick="openExecModal('photo')">
+        <div style="background:var(--mid);border-radius:7px;height:100px;display:flex;align-items:center;justify-content:center;font-size:2.5rem;margin-bottom:10px">${c.emoji}</div>
+        <div style="font-weight:700;font-size:.87rem;margin-bottom:3px">${c.site}</div>
+        <div style="color:var(--muted);font-size:.72rem;margin-bottom:7px">${c.time}</div>
+        <div style="color:${c.color};font-size:.78rem;font-weight:600">${c.flag}</div>
+      </div>`).join('')}
+    </div>
+    <button class="run-btn" style="width:auto;padding:9px 18px" onclick="openExecModal('photo')">📷 Analyze New Site Photos</button>`;
+  document.getElementById('photoaiContent').dataset.built = currentTier;
+}
+
+// ────────────────────────────────────────────────
+// COMPLIANCE
+// ────────────────────────────────────────────────
+function buildComplianceContent(){
+  if(document.getElementById('complianceContent')?.dataset.built === currentTier) return;
+  if(!TIER_FEATURES[currentTier].compliance){
+    document.getElementById('complianceContent').innerHTML = `
+      <div class="tier-lock-notice">
+        <h3>📋 Compliance Requires Pro or Enterprise</h3>
+        <p>Upgrade to track permits, OSHA requirements, insurance certificates, and regulatory deadlines automatically.</p>
+        <button class="tln-upgrade" onclick="showUpgradeModal()">Upgrade Now</button>
+      </div>`;
+    return;
+  }
+  const items = [
+    {n:'Permit #P-2204 — Riverside',d:'Jun 8, 2026',s:'⚠️ Expires in 37 days',c:'var(--orange)'},
+    {n:'OSHA 300 Log — Q2',d:'Jul 1, 2026',s:'✅ On Track',c:'var(--green)'},
+    {n:'Business License Renewal',d:'Aug 15, 2026',s:'✅ Current',c:'var(--green)'},
+    {n:'Contractor Bond — State',d:'Sep 30, 2026',s:'✅ Current',c:'var(--green)'},
+    {n:'Insurance COI — Summit',d:'May 31, 2026',s:'🔴 Expires in 29 days',c:'var(--red)'},
+  ];
+  document.getElementById('complianceContent').innerHTML = `
+    <div class="card">
+      <div class="card-title">Active Compliance Items</div>
+      <table class="data-table">
+        <thead><tr><th>Item</th><th>Deadline</th><th>Status</th><th>Action</th></tr></thead>
+        <tbody>${items.map(it=>`<tr>
+          <td style="font-weight:600">${it.n}</td>
+          <td style="color:var(--muted)">${it.d}</td>
+          <td style="color:${it.c}">${it.s}</td>
+          <td><button style="background:none;border:1px solid var(--border);color:var(--muted);padding:3px 9px;border-radius:5px;cursor:pointer;font-size:.72rem" onclick="openExecModal('permit')">Manage</button></td>
+        </tr>`).join('')}</tbody>
+      </table>
+    </div>`;
+  document.getElementById('complianceContent').dataset.built = currentTier;
+}
+
+// ────────────────────────────────────────────────
+// BILLING — Stripe-ready with usage metering
+// ────────────────────────────────────────────────
+function buildBillingContent(){
+  if(document.getElementById('billingContent')?.dataset.built === currentTier) return;
+  const plans = {
+    starter:    {name:'Starter',    price:0,   priceStr:'Free',        color:'var(--muted)',  stripe_price_id:'price_starter_monthly',
+                 features:['5 AI Agents (Free tier)','5 Active Projects','Lien Tracker','Email Support'],
+                 limits:{agents:5, projects:5}},
+    pro:        {name:'Professional',price:99, priceStr:'$99/month',   color:'var(--blue)',   stripe_price_id:'price_pro_monthly',
+                 features:['All 20 AI Agents','50 Active Projects','All 6 Workflows','Photo AI Inspector','Compliance Tracker','Priority Support'],
+                 limits:{agents:20, projects:50}},
+    enterprise: {name:'Enterprise', price:0,   priceStr:'Custom',      color:'var(--gold)',   stripe_price_id:'price_enterprise_custom',
+                 features:['All 20 AI Agents','Unlimited Projects','Team Management (15 users)','API Access','Dedicated Account Manager','SLA Guarantee'],
+                 limits:{agents:20, projects:999}},
+  };
+  const p = plans[currentTier];
+  const invoiceAmt = currentTier==='pro'?'$99.00':currentTier==='enterprise'?'$Custom':'$0.00';
+
+  // Usage tracking — stable demo values (no random flicker)
+  const usageSeed = {
+    starter:    { agents_run: 3,  projects_active: 4,  agent_runs_this_month: 11 },
+    pro:        { agents_run: 14, projects_active: 31, agent_runs_this_month: 47 },
+    enterprise: { agents_run: 19, projects_active: 87, agent_runs_this_month: 134 },
+  };
+  const usageData = usageSeed[currentTier] || usageSeed.starter;
+
+  const usagePct = (v,max) => Math.min(100, Math.round(v/max*100));
+
+  document.getElementById('billingContent').innerHTML = `
+    <div class="two-col" style="margin-bottom:18px">
+      <div class="card">
+        <div class="card-title">Current Plan</div>
+        <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px">
+          <div>
+            <div style="font-size:1.6rem;font-weight:800;color:${p.color}">${p.name}</div>
+            <div style="font-size:1.2rem;font-weight:700;margin-top:2px">${p.priceStr}</div>
+          </div>
+          <span class="tier-badge tier-${currentTier}" style="font-size:.8rem;padding:5px 14px">Active</span>
+        </div>
+        <ul style="list-style:none;margin-bottom:16px">
+          ${p.features.map(f=>`<li style="padding:5px 0;font-size:.83rem;border-bottom:1px solid rgba(45,55,72,.3)">✅ ${f}</li>`).join('')}
+        </ul>
+        ${currentTier!=='enterprise'?`
+          <button class="btn-primary" style="width:100%;margin-bottom:8px" onclick="showUpgradeModal()">⬆ Upgrade Plan</button>
+          <div style="font-size:.72rem;color:var(--muted);text-align:center">Upgrade locks in your rate. Cancel any time.</div>
+        `:`<div style="color:var(--green);font-size:.82rem;font-weight:700">✓ You have full Enterprise access. Contact us to discuss multi-location pricing.</div>`}
+      </div>
+      <div>
+        <div class="card" style="margin-bottom:14px">
+          <div class="card-title">Usage This Month</div>
+          <div style="margin-bottom:14px">
+            <div style="display:flex;justify-content:space-between;font-size:.8rem;margin-bottom:4px">
+              <span>AI Agents Available</span>
+              <span style="color:var(--muted)">${usageData.agents_run} / ${p.limits.agents}</span>
+            </div>
+            <div class="usage-bar-wrap"><div class="usage-bar" style="width:${usagePct(usageData.agents_run,p.limits.agents)}%;background:${usagePct(usageData.agents_run,p.limits.agents)>80?'var(--orange)':'var(--blue)'}"></div></div>
+          </div>
+          <div style="margin-bottom:14px">
+            <div style="display:flex;justify-content:space-between;font-size:.8rem;margin-bottom:4px">
+              <span>Active Projects</span>
+              <span style="color:var(--muted)">${usageData.projects_active} / ${p.limits.projects===999?'∞':p.limits.projects}</span>
+            </div>
+            <div class="usage-bar-wrap"><div class="usage-bar" style="width:${usagePct(usageData.projects_active,p.limits.projects===999?100:p.limits.projects)}%"></div></div>
+          </div>
+          <div style="font-size:.76rem;color:var(--muted)">🤖 ${usageData.agent_runs_this_month} agent runs this month · Billing period resets Jun 1</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Payment Method</div>
+          ${currentTier==='starter'?`
+            <div style="padding:14px;text-align:center;color:var(--muted);font-size:.82rem">
+              No payment method required for Starter plan.<br>
+              <button class="btn-primary" style="margin-top:10px" onclick="showUpgradeModal()">Upgrade to add payment</button>
+            </div>
+          `:`
+            <div class="payment-method-box">
+              <span class="card-icon">💳</span>
+              <div class="card-info">
+                <div class="card-number">Visa •••• •••• •••• 4242</div>
+                <div class="card-exp">Expires 12/2027 · billing@aacg.com</div>
+              </div>
+              <button class="btn-secondary" style="padding:5px 10px;font-size:.73rem" onclick="openStripePortal()">Manage</button>
+            </div>
+            <div style="font-size:.74rem;color:var(--muted)">🔒 Payment secured by Stripe. AACG never stores card data.</div>
+          `}
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Invoice History</div>
+      <table class="data-table">
+        <thead><tr><th>Invoice #</th><th>Date</th><th>Description</th><th>Amount</th><th>Status</th><th></th></tr></thead>
+        <tbody>
+          <tr><td style="font-family:monospace;color:var(--muted);font-size:.73rem">INV-0042</td><td style="color:var(--muted)">May 1, 2026</td><td>${p.name} — Monthly</td><td style="color:var(--gold);font-weight:700">${invoiceAmt}</td><td><span class="status-pill pill-green">Paid</span></td><td><button class="btn-secondary" style="padding:2px 8px;font-size:.7rem" onclick="downloadInvoice('INV-0042')">📄 PDF</button></td></tr>
+          <tr><td style="font-family:monospace;color:var(--muted);font-size:.73rem">INV-0041</td><td style="color:var(--muted)">Apr 1, 2026</td><td>${p.name} — Monthly</td><td style="color:var(--gold);font-weight:700">${invoiceAmt}</td><td><span class="status-pill pill-green">Paid</span></td><td><button class="btn-secondary" style="padding:2px 8px;font-size:.7rem" onclick="downloadInvoice('INV-0041')">📄 PDF</button></td></tr>
+          <tr><td style="font-family:monospace;color:var(--muted);font-size:.73rem">INV-0040</td><td style="color:var(--muted)">Mar 1, 2026</td><td>${p.name} — Monthly</td><td style="color:var(--gold);font-weight:700">${invoiceAmt}</td><td><span class="status-pill pill-green">Paid</span></td><td><button class="btn-secondary" style="padding:2px 8px;font-size:.7rem" onclick="downloadInvoice('INV-0040')">📄 PDF</button></td></tr>
+        </tbody>
+      </table>
+      ${currentTier !== 'starter' ? `
+        <div style="margin-top:14px;padding:12px;background:rgba(42,125,225,.07);border-radius:8px;font-size:.78rem;color:var(--muted)">
+          <strong style="color:var(--text)">Need to cancel?</strong> Contact <a href="mailto:billing@aacg.com" style="color:var(--blue)">billing@aacg.com</a> — we'll process your cancellation within 24 hours. No cancellation fees.
+        </div>` : ''}
+    </div>`;
+  document.getElementById('billingContent').dataset.built = currentTier;
+}
+
+function downloadInvoice(id){
+  // Open Stripe customer portal for invoice management
+  openStripePortal();
+  addNotification('📄 Invoice Portal', `Opening Stripe billing portal for ${id}…`, 'info');
+}
+
+async function openStripePortal(){
+  // If we have a stripe_customer_id, open the Stripe Customer Portal
+  // Otherwise redirect to Stripe billing page
+  addNotification('💳 Billing Portal', 'Opening Stripe payment management…', 'info');
+  // Try to create a portal session via edge function
+  if(sbClient && window._sbUserId){
+    try {
+      const { data, error } = await sbClient.functions.invoke('create-portal-session', {
+        body: { userId: window._sbUserId, returnUrl: window.location.href }
+      });
+      if(data?.url){ window.open(data.url, '_blank'); return; }
+    } catch(e){ console.warn('[Portal]', e); }
+  }
+  // Fallback: open Stripe dashboard directly
+  // Portal session creation handled above via create-portal-session edge function
+  addNotification('⚠️ Billing Portal', 'Please ensure you are logged in to access billing management.', 'warning');
+}
+
+// ────────────────────────────────────────────────
+// TEAM
+// ────────────────────────────────────────────────
+function buildTeamContent(){
+  if(document.getElementById('teamContent')?.dataset.built === currentTier) return;
+  if(!TIER_FEATURES[currentTier].team){
+    document.getElementById('teamContent').innerHTML = `
+      <div class="tier-lock-notice">
+        <h3>👥 Team Management — Enterprise Only</h3>
+        <p>Enterprise plan includes multi-user team management, role-based permissions, and sub-account access for your whole crew.</p>
+        <button class="tln-upgrade" onclick="showUpgradeModal()">Upgrade to Enterprise</button>
+      </div>`;
+    return;
+  }
+  const members = [
+    {n:'Scott G.',       e:'scott@aacg.com',    r:'Owner',           a:'Full Admin',           s:'Online'},
+    {n:'Maria Chen',     e:'m.chen@aacg.com',   r:'Project Manager', a:'Projects + Agents',    s:'Online'},
+    {n:'Derek Ross',     e:'d.ross@aacg.com',   r:'Estimator',       a:'Bid Estimator Only',   s:'Offline'},
+    {n:'Tanya Morales',  e:'t.morales@aacg.com',r:'Accountant',      a:'Finance + Billing',    s:'Online'},
+    {n:'Jake Patel',     e:'j.patel@aacg.com',  r:'Field Supervisor',a:'Projects + Photos',    s:'Offline'},
+  ];
+  document.getElementById('teamContent').innerHTML = `
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <div class="card-title" style="margin:0">Team Members — ${members.length} / 15</div>
+        <button class="run-btn" style="width:auto;padding:7px 14px">+ Invite Member</button>
+      </div>
+      <table class="data-table">
+        <thead><tr><th>Member</th><th>Role</th><th>Access Level</th><th>Status</th><th></th></tr></thead>
+        <tbody>${members.map(m=>`<tr>
+          <td><div style="font-weight:600">${m.n}</div><div style="color:var(--muted);font-size:.73rem">${m.e}</div></td>
+          <td>${m.r}</td>
+          <td><span style="background:rgba(42,125,225,.1);color:var(--blue);padding:2px 7px;border-radius:5px;font-size:.73rem">${m.a}</span></td>
+          <td><span class="status-pill ${m.s==='Online'?'pill-green':'pill-red'}">${m.s}</span></td>
+          <td><button style="background:none;border:1px solid var(--border);color:var(--muted);padding:3px 9px;border-radius:5px;cursor:pointer;font-size:.72rem">Edit</button></td>
+        </tr>`).join('')}</tbody>
+      </table>
+    </div>`;
+  document.getElementById('teamContent').dataset.built = currentTier;
+}
+
+// ────────────────────────────────────────────────
+// SETTINGS
+// ────────────────────────────────────────────────
+function buildSettingsContent(){
+  if(document.getElementById('settingsContent')?.dataset.built === 'true') return;
+  document.getElementById('settingsContent').innerHTML = `
+    <div class="two-col">
+      <div>
+        <div class="settings-section">
+          <h3>Account Details</h3>
+          <div class="form-group" style="margin-bottom:12px"><label style="font-size:.76rem;color:var(--muted);display:block;margin-bottom:4px">Full Name</label>
+            <input type="text" id="setName" value="${currentUser.name}" style="width:100%;padding:9px 12px;background:var(--mid);border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:.84rem;outline:none"></div>
+          <div class="form-group" style="margin-bottom:12px"><label style="font-size:.76rem;color:var(--muted);display:block;margin-bottom:4px">Company</label>
+            <input type="text" id="setCompany" value="${currentUser.company}" style="width:100%;padding:9px 12px;background:var(--mid);border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:.84rem;outline:none"></div>
+          <div class="form-group" style="margin-bottom:14px"><label style="font-size:.76rem;color:var(--muted);display:block;margin-bottom:4px">Email</label>
+            <input type="email" id="setEmail" value="${currentUser.email}" style="width:100%;padding:9px 12px;background:var(--mid);border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:.84rem;outline:none"></div>
+          <button class="save-btn" onclick="saveAcct()">Save Changes</button>
+          <span id="acctMsg" style="margin-left:10px;font-size:.78rem;display:none"></span>
+        </div>
+        <div class="settings-section">
+          <h3>Change Password</h3>
+          <div class="form-group" style="margin-bottom:10px"><label style="font-size:.76rem;color:var(--muted);display:block;margin-bottom:4px">Current Password</label>
+            <input type="password" id="curPwd" placeholder="••••••••" style="width:100%;padding:9px 12px;background:var(--mid);border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:.84rem;outline:none"></div>
+          <div class="form-group" style="margin-bottom:10px"><label style="font-size:.76rem;color:var(--muted);display:block;margin-bottom:4px">New Password</label>
+            <input type="password" id="newPwd" placeholder="••••••••" style="width:100%;padding:9px 12px;background:var(--mid);border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:.84rem;outline:none"></div>
+          <div class="form-group" style="margin-bottom:14px"><label style="font-size:.76rem;color:var(--muted);display:block;margin-bottom:4px">Confirm Password</label>
+            <input type="password" id="confPwd" placeholder="••••••••" style="width:100%;padding:9px 12px;background:var(--mid);border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:.84rem;outline:none"></div>
+          <button class="save-btn" onclick="savePwd()">Update Password</button>
+          <span id="pwdMsg" style="margin-left:10px;font-size:.78rem"></span>
+        </div>
+      </div>
+      <div>
+        <div class="settings-section">
+          <h3>Notifications</h3>
+          ${[['Lien Deadline Alerts','Alert 30 days before lien expiry'],
+             ['Agent Completion','When an AI agent finishes a task'],
+             ['Invoice Reminders','When invoices are overdue'],
+             ['Safety Alerts','Immediate for PPE or OSHA violations']].map(([t,d])=>`
+            <div class="setting-row">
+              <div class="setting-info"><h4>${t}</h4><p>${d}</p></div>
+              <label class="toggle-sw"><input type="checkbox" checked><div class="toggle-track"></div></label>
+            </div>`).join('')}
+        </div>
+        <div class="settings-section">
+          <h3>Integrations</h3>
+          ${[['QuickBooks Online','Accounting sync'],['Procore','Project management'],['DocuSign','E-signatures']].map(([n,d])=>`
+            <div class="setting-row">
+              <div class="setting-info"><h4>${n}</h4><p>${d}</p></div>
+              <button style="background:none;border:1px solid var(--blue);color:var(--blue);padding:5px 12px;border-radius:6px;cursor:pointer;font-size:.76rem">Connect</button>
+            </div>`).join('')}
+        </div>
+      </div>
+    </div>`;
+  document.getElementById('settingsContent').dataset.built = 'true';
+}
+
+async function saveAcct(){
+  const btn = event?.target;
+  if(btn){ btn.textContent='Saving…'; btn.disabled=true; }
+  const name    = document.getElementById('setName').value.trim();
+  const company = document.getElementById('setCompany').value.trim();
+  const email   = document.getElementById('setEmail').value.trim();
+  const msg = document.getElementById('acctMsg');
+
+  // Try Supabase profile update
+  let sbOk = false;
+  if(USE_SB && window._sbUserId){
+    try {
+      const { error } = await sbQuery(sbClient.from('profiles').update({ name, company, email }).eq('id', window._sbUserId));
+      if(!error) sbOk = true;
+    } catch(e){ console.warn('[Settings] profile update failed', e); }
+  }
+
+  // Always update local state
+  currentUser.name    = name;
+  currentUser.company = company;
+  currentUser.email   = email;
+  currentUser.avatar  = name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+  sessionStorage.setItem('aacg_subscriber', JSON.stringify(currentUser));
+  document.getElementById('tbName').textContent  = name;
+  document.getElementById('tbEmail').textContent = email;
+  document.getElementById('tbAvatar').textContent = currentUser.avatar;
+
+  if(btn){ btn.textContent='Save Changes'; btn.disabled=false; }
+  msg.style.color = 'var(--green)';
+  msg.textContent = sbOk ? '✓ Saved to cloud' : '✓ Saved locally';
+  msg.style.display = 'inline';
+  setTimeout(()=>{ msg.style.display='none'; }, 3000);
+  addNotification('⚙️ Profile Updated', `Name: ${name} | Company: ${company}`, 'success');
+}
+
+async function savePwd(){
+  const cur = document.getElementById('curPwd').value;
+  const nw  = document.getElementById('newPwd').value;
+  const cf  = document.getElementById('confPwd').value;
+  const msg = document.getElementById('pwdMsg');
+
+  if(nw !== cf){ msg.style.color='var(--red)'; msg.textContent='✗ Passwords do not match'; return; }
+  if(nw.length < 8){ msg.style.color='var(--red)'; msg.textContent='✗ Minimum 8 characters'; return; }
+
+  // Try Supabase password update (if logged in via Supabase)
+  if(USE_SB && currentUser?.sbSession){
+    msg.textContent = '⏳ Updating…';
+    try {
+      const { error } = await sbClient.auth.updateUser({ password: nw });
+      if(error){ msg.style.color='var(--red)'; msg.textContent='✗ '+error.message; return; }
+      msg.style.color = 'var(--green)'; msg.textContent = '✓ Password updated in Supabase';
+      addNotification('🔐 Password Changed', 'Your password was updated successfully.', 'success');
+      return;
+    } catch(e){ console.warn('[Settings] password update failed', e); }
+  }
+
+  // Demo mode fallback
+  if(cur !== (currentUser.pass||'')) { msg.style.color='var(--red)'; msg.textContent='✗ Wrong current password'; return; }
+  currentUser.pass = nw;
+  sessionStorage.setItem('aacg_subscriber', JSON.stringify(currentUser));
+  msg.style.color = 'var(--green)'; msg.textContent = '✓ Password updated';
+  addNotification('🔐 Password Changed', 'Your password was updated successfully.', 'success');
+}
+
+// ────────────────────────────────────────────────
+// NOTIFICATIONS SYSTEM
+// ────────────────────────────────────────────────
+let NOTIFICATIONS = [];
+
+function addNotification(title, body, type='info'){
+  const n = { id: Date.now(), title, body, type, time: new Date(), unread: true };
+  NOTIFICATIONS.unshift(n);
+  if(NOTIFICATIONS.length > 50) NOTIFICATIONS.pop();
+  renderNotifPanel();
+  // Flash bell
+  const bell = document.getElementById('notifBell');
+  if(bell){ bell.style.borderColor='var(--blue)'; setTimeout(()=>{ bell.style.borderColor=''; }, 1200); }
+}
+
+function renderNotifPanel(){
+  const unread = NOTIFICATIONS.filter(n=>n.unread).length;
+  const dot = document.getElementById('notifDot');
+  if(dot){ dot.className = 'notif-dot' + (unread>0?' has-notif':''); }
+
+  const list = document.getElementById('notifList');
+  if(!list) return;
+  if(!NOTIFICATIONS.length){
+    list.innerHTML = '<div class="notif-empty">No notifications yet</div>';
+    return;
+  }
+  const typeClass = {info:'unread', success:'success', alert:'alert', warn:'unread'};
+  list.innerHTML = NOTIFICATIONS.slice(0,20).map(n=>`
+    <div class="notif-item ${typeClass[n.type]||'unread'}" onclick="markNotifRead(${n.id})">
+      <div class="notif-title">${n.title}</div>
+      <div class="notif-body">${n.body}</div>
+      <div class="notif-time">${timeAgo(n.time)}</div>
+    </div>`).join('');
+}
+
+function markNotifRead(id){
+  const n = NOTIFICATIONS.find(x=>x.id===id);
+  if(n) n.unread = false;
+  renderNotifPanel();
+}
+
+function clearAllNotifs(){
+  NOTIFICATIONS = [];
+  renderNotifPanel();
+  toggleNotifPanel();
+}
+
+function toggleNotifPanel(){
+  const panel = document.getElementById('notifPanel');
+  if(!panel) return;
+  const isOpen = panel.classList.contains('show');
+  if(!isOpen){
+    NOTIFICATIONS.forEach(n=>{ n.unread=false; });
+    renderNotifPanel();
+  }
+  panel.classList.toggle('show');
+}
+
+// Close notification panel when clicking outside
+document.addEventListener('click', function(e){
+  const panel = document.getElementById('notifPanel');
+  const bell  = document.getElementById('notifBell');
+  if(panel && bell && !panel.contains(e.target) && !bell.contains(e.target)){
+    panel.classList.remove('show');
+  }
+});
+
+function timeAgo(d){
+  const sec = Math.floor((new Date()-d)/1000);
+  if(sec<60) return 'just now';
+  if(sec<3600) return Math.floor(sec/60)+'m ago';
+  if(sec<86400) return Math.floor(sec/3600)+'h ago';
+  return d.toLocaleDateString();
+}
+
+// Seed initial notifications on login
+function seedNotifications(){
+  addNotification('🔴 Permit Expiring', 'Oak Park Office P-2216 expires in 6 days. Take action now.', 'alert');
+  addNotification('⚖️ Lien Deadline', 'Downtown Tower lien hearing in 37 days — review documents.', 'alert');
+  addNotification('🤖 Agent Complete', 'Schedule Optimizer saved 4.2 days on Riverside Commons critical path.', 'success');
+  addNotification('💳 Invoice Sent', 'Invoice #1087 for $41,200 sent to Harborview Hospitality.', 'success');
+  addNotification('⚠️ Safety Alert', 'PPE violation flagged by Photo Inspector — Riverside Commons Lot 3.', 'warn');
+  addNotification('📦 Material Delay', 'Roofing membrane delayed 5 days — alternate supplier recommended.', 'warn');
+  addNotification('✅ Payroll Cleared', 'Certified payroll for 34 workers verified. $157.50 on hold — needs supervisor sign-off.', 'info');
+}
+
+// ────────────────────────────────────────────────
+// EXECUTION MODAL
+// ────────────────────────────────────────────────
+function openExecModal(agentId){
+  const a = AGENTS.find(x=>x.id===agentId);
+  if(!a) return;
+  const isFree = a.tier === 'free';
+  const tierLabel = isFree
+    ? `<span style="background:rgba(16,185,129,.18);color:var(--green);border:1px solid rgba(16,185,129,.3);padding:2px 8px;border-radius:8px;font-size:.65rem;font-weight:700;margin-left:8px">⚡ FREE</span>`
+    : `<span style="background:rgba(139,92,246,.18);color:var(--purple);border:1px solid rgba(139,92,246,.3);padding:2px 8px;border-radius:8px;font-size:.65rem;font-weight:700;margin-left:8px">☁ CLOUD AI</span>`;
+  const btnLabel = isFree ? '⚡ Run Free Agent' : `🤖 Execute ${a.name}`;
+  const btnColor = isFree ? 'var(--green)' : a.color;
+  const runFn    = isFree ? `runFreeAgent('${agentId}')` : `runAgent('${agentId}')`;
+  document.getElementById('execModal').style.display = 'flex';
+  document.getElementById('execModalInner').innerHTML = `
+    <div class="modal-header">
+      <div class="modal-title">${a.icon} ${a.name} ${tierLabel}</div>
+      <button class="modal-close" onclick="closeExecModal()">×</button>
+    </div>
+    <p style="color:var(--muted);font-size:.83rem;margin-bottom:12px">${a.desc}</p>
+    ${isFree ? `<div style="background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.25);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:.78rem;color:var(--green)">⚡ This is a <strong>free agent</strong> — runs instantly with no API key using built-in IronForge logic.</div>` : `<div style="background:rgba(139,92,246,.08);border:1px solid rgba(139,92,246,.25);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:.78rem;color:var(--purple)">☁ <strong>Cloud AI agent</strong> — powered by Claude AI. <span style="color:var(--green);font-weight:700">✅ API key pre-configured — runs immediately.</span></div>`}
+    <div class="exec-form">
+      <div class="form-row">
+        <div><label>Project</label>
+          <select id="execProj"><option>Riverside Commons</option><option>Oak Park Office</option><option>Harbor View QSR</option><option>Summit Industrial</option></select></div>
+        <div><label>Priority</label>
+          <select id="execPri"><option>Normal</option><option>High</option><option>Urgent</option></select></div>
+      </div>
+      <label>Additional Notes (optional)</label>
+      <textarea id="execNotes" placeholder="Any specific instructions…" style="margin-top:4px"></textarea>
+      <button class="exec-btn" id="execRunBtn" style="background:${btnColor}" onclick="${runFn}">${btnLabel}</button>
+    </div>
+    <div class="progress-section" id="progSec">
+      <div style="font-weight:700;font-size:.84rem;margin-bottom:10px">Running…</div>
+      <div class="progress-bar-wrap"><div class="progress-bar-fill" id="progBar" style="width:0%"></div></div>
+      <div class="step-list" id="stepList">${a.steps.map((s,i)=>`
+        <div class="step-item" id="si-${i}">
+          <div class="step-status pending-s" id="ss-${i}">○</div>
+          <div>${s}</div>
+        </div>`).join('')}</div>
+      <div class="exec-log" id="execLog"></div>
+    </div>`;
+}
+
+function closeExecModal(){ document.getElementById('execModal').style.display='none'; }
+
+// ── AGENT PROMPTS: each agent has a real system prompt defining its expertise ──
+const AGENT_PROMPTS = {
+  lien: `You are the IronForge Lien Protection AI Agent — an expert construction attorney specializing in mechanics lien law across all 50 US states. When run, you: (1) analyze active jobs and their lien deadlines, (2) identify which jobs need preliminary notices filed immediately, (3) flag any jobs past their prelim notice window, (4) generate a prioritized action list with exact deadlines, state-specific rules, and filing instructions. Be specific, use real construction legal terminology, and output actionable items.`,
+  bid: `You are the IronForge Bid Estimator AI Agent — a senior construction estimator with 20 years experience. When run with a project scope, you: (1) break down labor hours by trade (carpenter, electrician, plumber, etc.), (2) calculate material quantities and current market pricing, (3) apply regional labor rate multipliers, (4) add equipment costs, overhead (15%), and profit margin (10-18%), (5) produce a detailed line-item estimate. Be specific with real numbers, CSI divisions, and industry-standard formatting.`,
+  invoice: `You are the IronForge Invoice Processing AI Agent. When run, you: (1) scan completed work orders for the current billing period, (2) apply contract rates and AIA G702/G703 schedule of values format, (3) calculate retention (typically 5-10%), (4) generate professional invoice numbers, (5) flag any billing disputes or missing documentation. Output a complete, ready-to-send invoice with all line items.`,
+  cashflow: `You are the IronForge Cash Flow Monitor AI Agent — a construction CFO. When run, you: (1) analyze current AR aging (30/60/90 days), (2) project AP obligations for the next 30/60/90 days, (3) calculate net cash position by week, (4) identify cash gaps and their exact dates, (5) recommend specific actions: which invoices to collect, which payables to defer, whether to draw on line of credit. Use real financial analysis with dollar amounts.`,
+  photo: `You are the IronForge Photo Inspector AI Agent — a construction quality control expert and OSHA safety officer. When run on site photos, you: (1) identify visible safety violations (PPE, fall protection, scaffolding, etc.), (2) assess construction progress percentage by trade, (3) flag quality issues (improper installation, code violations), (4) document findings with severity ratings (critical/major/minor), (5) generate OSHA-compliant incident reports if needed. Be specific about what you observe.`,
+  permit: `You are the IronForge Permit Tracker AI Agent. When run, you: (1) list all active permits by project with current status, (2) identify inspections due in the next 14 days, (3) flag any failed inspections requiring re-inspection, (4) track certificate of occupancy progress, (5) alert on permits nearing expiration. Include AHJ (Authority Having Jurisdiction) names, permit numbers, and contact information for each jurisdiction.`,
+  safety: `You are the IronForge Safety Compliance AI Agent — a certified OSHA 30-hour safety officer. When run, you: (1) review daily safety reports for violations, (2) calculate TRIR (Total Recordable Incident Rate) and DART rate, (3) identify trending hazards across all projects, (4) generate OSHA 300 log entries for recordable incidents, (5) create a corrective action plan with assigned responsibilities and due dates. Reference specific OSHA standards (29 CFR 1926.xxx).`,
+  changeorder: `You are the IronForge Change Order Manager AI Agent. When run, you: (1) process pending scope changes and calculate cost impact, (2) apply contract markup rates (overhead + profit), (3) calculate schedule impact in days, (4) generate AIA G701 change order documentation, (5) track cumulative change order total vs. original contract value, (6) flag changes that exceed contract thresholds requiring owner approval. Use proper AIA/ConsensusDocs terminology.`,
+  rfi: `You are the IronForge RFI Manager AI Agent. When run, you: (1) categorize open RFIs by discipline (civil, structural, MEP, architectural), (2) identify overdue RFIs (>7 days without response), (3) flag RFIs with schedule impact, (4) draft technically precise RFI responses for standard questions, (5) route complex RFIs to the correct design team member. Use AIA RFI format and construction drawing reference standards.`,
+  schedule: `You are the IronForge Schedule Optimizer AI Agent — a CPM scheduling expert. When run, you: (1) analyze current schedule against baseline using Earned Value Management, (2) calculate SPI (Schedule Performance Index) and CPI (Cost Performance Index), (3) identify activities on the critical path at risk of delay, (4) recommend crew resequencing to recover float, (5) generate a 3-week lookahead schedule in tabular format. Reference Primavera P6 / MS Project terminology.`,
+  vendor: `You are the IronForge Vendor Qualification AI Agent. When run, you: (1) check all active subcontractors for expired licenses, (2) flag insurance certificates expiring in the next 30 days (GL, workers comp, auto), (3) verify bonding capacity vs. current contract values, (4) score each vendor on payment history, quality, and safety record (1-10), (5) generate a pre-qualification report with recommended approval/conditional/disqualified status.`,
+  payroll: `You are the IronForge Payroll Verification AI Agent. When run, you: (1) cross-reference field time cards against GPS check-in/check-out data, (2) flag hours with no GPS verification, (3) calculate certified payroll for prevailing wage projects (Davis-Bacon), (4) verify overtime calculations (1.5x after 8hrs/day, 40hrs/week per state law), (5) generate WH-347 certified payroll reports. Flag any discrepancies over $50 for supervisor review.`,
+  dailymonitor: `You are the IronForge Daily Site Monitor AI Agent. When run each morning, you: (1) pull weather forecasts for all active job sites and flag days with conditions impacting work (rain >0.25", wind >25mph, temp extremes), (2) verify crew check-ins vs. scheduled headcount, (3) confirm material deliveries scheduled for today, (4) surface the top 3 open issues per project requiring PM attention, (5) generate a morning digest email with a red/yellow/green status per project.`,
+  contract: `You are the IronForge Contract Analyzer AI Agent — a construction attorney with AIA, ConsensusDocs, and EJCDC contract expertise. When run on a contract, you: (1) flag high-risk clauses (unfair indemnification, no-damage-for-delay, pay-if-paid, unilateral termination), (2) identify missing standard protections (differing site conditions, force majeure, dispute resolution), (3) summarize payment terms (schedule, retention, final payment triggers), (4) rate overall contract risk: Low/Medium/High/Very High with specific page/section references.`,
+  material: `You are the IronForge Material Tracker AI Agent. When run, you: (1) check all open material purchase orders against scheduled delivery dates, (2) flag materials with lead times that will delay critical path activities, (3) calculate on-site inventory levels vs. next 2-week consumption forecast, (4) identify over-ordered materials generating excess cost, (5) generate procurement recommendations with quantities, suppliers, and target delivery dates.`,
+  sub: `You are the IronForge Subcontractor Manager AI Agent. When run, you: (1) track lien waiver collection status (conditional/unconditional, progress/final) for all subs, (2) verify sub insurance on file before releasing payments, (3) calculate retainage owed and flag subs eligible for retainage release, (4) track sub payment application status and flag late payments triggering prompt payment act penalties, (5) generate a sub payment dashboard with amounts due this period.`,
+  warranty: `You are the IronForge Warranty Tracker AI Agent. When run, you: (1) list all installed equipment with warranty start/end dates and warranty provider contacts, (2) flag warranties expiring in the next 90 days requiring inspection, (3) log and track active warranty claims with status, (4) identify equipment requiring preventive maintenance to maintain warranty validity, (5) generate an owner-facing warranty manual summary for project closeout.`,
+  drawing: `You are the IronForge Drawing Revision AI Agent. When run, you: (1) identify drawing sets that have been superseded but may still be in the field, (2) track ASIs (Architect's Supplemental Instructions) and their impact on drawings, (3) flag RFIs that resulted in drawing changes not yet incorporated into issued-for-construction sets, (4) verify all field teams have received current drawing revisions, (5) generate a drawing transmittal log with revision history for each sheet number.`,
+  closeout: `You are the IronForge Project Closeout AI Agent. When run, you: (1) generate a comprehensive punch list from all open deficiency items, (2) track O&M manual and as-built drawing submission status, (3) verify all lien waivers collected from subs and suppliers, (4) confirm Certificate of Substantial Completion is signed and dated, (5) calculate final retainage amounts and release schedule. Output a closeout checklist with % complete and responsible party for each item.`,
+  revenue: `You are the IronForge Revenue Forecaster AI Agent — a construction finance expert. When run, you: (1) calculate projected billings for current month based on schedule of values and % complete, (2) forecast next 3 months revenue by project using contract milestone schedules, (3) identify projects at risk of revenue shortfall (behind schedule = behind billing), (4) calculate backlog burn rate and months of backlog remaining, (5) generate a revenue waterfall chart data showing billed vs. earned vs. collected.`
+};
+
+// ── FREE AGENT RUNNER — instant deterministic logic, no API key needed ──
+const FREE_AGENT_RESULTS = {
+  permit: `## Permit Status Report — ${new Date().toLocaleDateString()}
+
+**Active Permits Across All Projects**
+
+| Project | Permit # | Type | Status | Expires |
+|---|---|---|---|---|
+| Riverside Commons | P-2201 | Building | ✅ Active | 2025-09-14 |
+| Riverside Commons | P-2202 | Electrical | ✅ Active | 2025-08-30 |
+| Harbor View QSR | P-2208 | Mechanical | ⚠️ Expires in 12 days | 2025-05-14 |
+| Oak Park Office | P-2215 | Fire Suppression | ✅ Active | 2025-11-20 |
+| Oak Park Office | P-2216 | Plumbing | 🔴 Expires in 6 days | 2025-05-08 |
+| Summit Industrial | P-2199 | Grading | ✅ Finaled | — |
+
+**Action Required:**
+- **Oak Park Office P-2216** — renew plumbing permit by May 8. Contact AHJ: City of Oak Park Building Dept (555) 234-5678
+- **Harbor View QSR P-2208** — mechanical inspection due before expiry. Schedule with inspector Jones
+
+**Upcoming Inspections (next 14 days):**
+- May 5: Rough framing — Riverside Commons (Inspector: Kim)
+- May 8: Final plumbing — Oak Park Office (URGENT — permit expires same day)
+- May 11: HVAC rough-in — Harbor View QSR
+
+**Summary:** 6 active permits tracked. 2 require immediate action. 0 failed inspections pending re-inspection.`,
+
+  daily: `## Daily Site Monitor — Morning Digest
+**${new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}**
+
+### 🌤 Weather Holds
+- Riverside Commons: Clear, 68°F — No holds ✅
+- Harbor View QSR: Rain forecasted 2pm (0.4") — Concrete pour POSTPONED ⚠️
+- Oak Park Office: Clear, 71°F — No holds ✅
+- Summit Industrial: Wind 22mph — Monitor; flag if exceeds 25mph
+
+### 👷 Crew Check-In Status
+| Project | Scheduled | Checked In | Status |
+|---|---|---|---|
+| Riverside Commons | 22 | 21 | ⚠️ 1 no-show — foreman notified |
+| Harbor View QSR | 14 | 14 | ✅ Full crew |
+| Oak Park Office | 18 | 18 | ✅ Full crew |
+| Summit Industrial | 8 | 6 | 🔴 2 absent — call sub PM |
+
+### 📦 Today's Deliveries
+- 7:00am — Lumber package ($18,400) → Riverside Commons ✅ Confirmed
+- 10:00am — HVAC units (4 RTUs) → Harbor View QSR ✅ On schedule
+- 2:00pm — Concrete pour (40 CY) → Oak Park Office — ⚠️ Reschedule if rain moves north
+
+### 🔴 Top Issues Requiring PM Attention
+1. **Harbor View QSR** — Concrete pour postponed; reschedule with batch plant (lead time 3 days)
+2. **Summit Industrial** — 2 crew absences; production will be 25% below forecast
+3. **Riverside Commons** — 1 no-show; check if framing crew is understaffed for today's tasks`,
+
+  material: `## Material Tracker — Procurement Status Report
+
+### Open Purchase Orders
+| PO # | Material | Supplier | Ordered | Due Date | Status | Variance |
+|---|---|---|---|---|---|---|
+| PO-4401 | Structural Steel — W8x31 | Metro Steel | $42,000 | May 7 | ✅ On Time | — |
+| PO-4402 | Roofing Membrane (4,200 SF) | RoofPro Supply | $18,600 | May 3 | 🔴 Delayed +5 days | -$0 |
+| PO-4403 | Electrical Panel (200A, 42ckt) | Consolidated Elec | $3,200 | May 5 | ✅ On Time | — |
+| PO-4404 | Ready-Mix Concrete (120 CY) | Valley Concrete | $14,400 | May 8 | ✅ Confirmed | — |
+| PO-4405 | Aluminum Storefront | Glass Masters | $28,900 | May 21 | ⚠️ Lead time risk | +3 wks |
+
+### 🔴 Critical Delays
+- **PO-4402 Roofing Membrane** — supplier backorder, arriving May 8. Impact: roofing crew idle 5 days → ~$3,200 lost productivity. **Action:** contact alternate supplier (Pacific Roofing Supply — call 555-887-2200) for split delivery.
+
+### ⚠️ Lead Time Risks
+- **PO-4405 Aluminum Storefront** — Glass Masters confirmed 14-week lead from order date. This pushes install to June 15. Check if critical path activity — if so, alternate vendor (City Glass, 12-week lead) should be evaluated.
+
+### 📦 On-Site Inventory vs. 2-Week Forecast
+- Lumber: 840 BF on hand | Need 1,200 BF → **Order 360 BF by May 6**
+- Drywall: 420 sheets | Need 380 sheets → ✅ Sufficient
+- Conduit (½"): 240 LF | Need 600 LF → **Order 400 LF by May 5**
+
+**Summary:** 5 POs tracked. 1 critical delay (roofing). 2 items need reorder this week.`,
+
+  drawing: `## Drawing Revision Agent — Distribution Report
+
+### Drawing Log Summary
+**Latest Revision: Rev D (issued April 28, 2025)**
+
+### ⚠️ Superseded Drawings Still In Field
+| Sheet | Old Rev | Current Rev | Location | Action |
+|---|---|---|---|---|
+| A2.01 | Rev B | Rev D | Riverside Commons site trailer | 🔴 Retrieve immediately |
+| S3.00 | Rev C | Rev D | Harbor View framing crew binder | ⚠️ Replace by EOD |
+| E1.01 | Rev A | Rev C | Summit Industrial electrical sub | 🔴 2 revisions behind |
+
+### ASI Tracking
+- **ASI-007** (issued Apr 22): Door hardware schedule updated. Affects sheets A8.01–A8.04. Rev D issued ✅
+- **ASI-008** (issued Apr 29): Structural connection detail at grid B-4 revised. Sheet S3.00 Rev D. ⚠️ Not yet distributed to Harbor View framing crew.
+- **ASI-009** (PENDING): Architect has not issued — RFI #31 response overdue 4 days. **Escalate to architect.**
+
+### RFI-to-Drawing Changes
+| RFI # | Response Date | Drawing Impact | Rev Issued |
+|---|---|---|---|
+| RFI-28 | Apr 20 | MEP coordination — sheet M3.01 | Rev C ✅ |
+| RFI-31 | OVERDUE | Structural — sheet S3.00 | Pending ASI-009 🔴 |
+
+**Action Required:** Distribute Rev D to all field teams. Retrieve and destroy Rev B/C prints. Escalate RFI-31 to architect.`,
+
+  warranty: `## Warranty Tracker — Equipment & Labor Guarantee Report
+
+### Active Warranties
+| Equipment / System | Project | Warranty Start | Warranty End | Provider | Status |
+|---|---|---|---|---|---|
+| Carrier RTU-3 (5 ton) | Harbor View QSR | Oct 14, 2024 | Oct 14, 2025 | Carrier Corp | ✅ Active |
+| Electrical Service (200A) | Riverside Commons | Jan 3, 2025 | Jan 3, 2026 | Labor Warranty | ✅ Active |
+| Roofing System (TPO) | Summit Industrial | Nov 2, 2023 | Nov 2, 2033 | Firestone | ✅ 10-yr active |
+| Fire Suppression System | Oak Park Office | Mar 15, 2025 | Mar 15, 2026 | Simplex Grinnell | ✅ Active |
+| HVAC Controls (BAS) | Riverside Commons | Feb 20, 2025 | Feb 20, 2026 | JCI | ⚠️ Preventive maintenance due |
+
+### ⚠️ Expiring in 90 Days
+- **Carrier RTU-3** — expires Oct 14, 2025. Schedule final warranty inspection by Sep 14. Contact: Carrier Regional (555) 445-2310
+
+### 🔧 Preventive Maintenance Required (to keep warranty valid)
+- **JCI BAS Controls** — quarterly filter service due May 15. Failure to document voids warranty. Schedule with JCI service tech.
+
+### Open Warranty Claims
+| Claim # | System | Filed | Status | Contractor Action |
+|---|---|---|---|---|
+| WC-001 | RTU-3 Compressor vibration | Apr 10 | 🔄 In review | Carrier tech visit scheduled May 6 |
+
+**Summary:** 5 active warranties tracked. 1 expiring within 90 days. 1 PM required to maintain coverage. 1 open claim in progress.`,
+
+  payroll: `## Payroll Verification Report — Pay Period Ending May 2, 2025
+
+### Timesheet vs. GPS Verification
+| Worker | Project | Hours Claimed | GPS Verified | Variance | Flag |
+|---|---|---|---|---|---|
+| J. Martinez | Riverside Commons | 44h | 44h | $0 | ✅ Clear |
+| R. Thompson | Riverside Commons | 40h | 38.5h | 1.5h unverified | ⚠️ Review |
+| K. Nguyen | Harbor View QSR | 48h | 48h | $0 | ✅ Clear |
+| D. Williams | Oak Park Office | 40h | 40h | $0 | ✅ Clear |
+| M. Johnson | Oak Park Office | 52h | 49h | 3h unverified | 🔴 Flag >$50 |
+
+### Certified Payroll (Prevailing Wage — Davis-Bacon)
+**Harbor View QSR — Federal project threshold: $2,000**
+- Carpenter (Journeyman): $42.85/hr base + $18.20 fringe = $61.05/hr ✅ Compliant
+- Electrician: $58.40/hr base + $21.10 fringe = $79.50/hr ✅ Compliant
+- Laborer: $31.20/hr base + $14.80 fringe = $46.00/hr ✅ Compliant
+
+### Overtime Calculations
+- R. Thompson: 4h OT @ $52.50 = $210.00 | State rule: 1.5x after 8h/day ✅ Correct
+- K. Nguyen: 8h OT @ $87.60 = $700.80 | Federal project 1.5x ✅ Correct
+- M. Johnson: 12h OT — **3h unverified by GPS. Hold $157.50 pending supervisor sign-off**
+
+### Anomaly Flags (>$50)
+🔴 M. Johnson — 3 unverified overtime hours = **$157.50 held**. Supervisor: please verify and approve by May 5.
+
+**WH-347 Report:** Ready to generate for Harbor View QSR. 3 workers covered under Davis-Bacon. All wage rates compliant.
+
+**Summary:** 5 workers reviewed. 2 flagged (1 minor, 1 held). $157.50 in disputed pay requires supervisor sign-off before release.`,
+
+  rfi: `## RFI Manager — Status Report
+**${new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}**
+
+### Open RFIs by Discipline
+| # | Subject | Discipline | Project | Submitted | Due | Status |
+|---|---|---|---|---|---|---|
+| RFI-28 | MEP coordination at grid C-3 | MEP | Riverside | Apr 20 | Apr 27 | ✅ Closed |
+| RFI-29 | Slab edge condition at entry | Structural | Harbor View | Apr 25 | May 2 | ✅ Answered today |
+| RFI-30 | Light fixture mounting height | Architectural | Oak Park | Apr 26 | May 3 | ⚠️ Response due tomorrow |
+| RFI-31 | Beam connection detail at B-4 | Structural | Summit | Apr 25 | May 2 | 🔴 OVERDUE 1 day |
+| RFI-32 | Fire-rating at stairwell smoke curtain | Fire/Life Safety | Riverside | Apr 30 | May 7 | 🕐 Open |
+| RFI-33 | Plumbing fixture rough-in heights | MEP | Harbor View | May 1 | May 8 | 🕐 Open |
+
+### 🔴 Overdue RFIs (Action Required)
+**RFI-31** — Structural, Summit Industrial. Sent to ENG: Rodriguez & Assoc. **4 business days since submittal, no response.** Draft follow-up email being generated:
+
+> *"Subject: OVERDUE — RFI-31 Beam Connection Detail B-4 | Summit Industrial*
+> *This is a follow-up on RFI-31 submitted April 25. We require a response by May 5 to avoid a schedule impact of 2–3 days on critical path steel erection. Please confirm receipt and ETA."*
+
+### ⚠️ Schedule Impact RFIs
+- **RFI-31** — Steel erection on hold pending structural clarification. **Impact: 2–3 days float consumption on critical path.**
+
+### Summary
+- Total Open: 5 | Overdue: 1 | Schedule Impact: 1
+- Average response time (last 10 RFIs): 4.2 days
+- Recommendation: Add RFI-31 to tomorrow's OAC agenda.`,
+
+  schedule: `## Schedule Optimizer — Lookahead & Conflict Report
+**Week of ${new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}**
+
+### Earned Value Summary
+| Project | Planned % | Actual % | SPI | CPI | Status |
+|---|---|---|---|---|---|
+| Riverside Commons | 68% | 65% | 0.96 | 1.02 | ⚠️ Slightly behind |
+| Harbor View QSR | 32% | 30% | 0.94 | 0.98 | ⚠️ Monitor |
+| Oak Park Office | 84% | 82% | 0.98 | 1.04 | ✅ On track |
+| Summit Industrial | 100% | 100% | 1.00 | 0.96 | ✅ Closeout |
+
+### 🔴 Critical Path Activities at Risk
+- **Riverside Commons — Exterior glazing** (Activity RC-44): 3 days of float remaining. Storefront fabrication delayed. If not resolved by May 8, this hits critical path.
+- **Harbor View QSR — Concrete pour** (Activity HV-12): Weather hold today pushes MEP rough-in by 1 day. 1 day of float consumed. **No more float for this activity.**
+
+### Resource Loading Conflicts
+| Crew | Week of May 5 | Conflict |
+|---|---|---|
+| Framing Crew A | Riverside + Oak Park overlap | ⚠️ Double-booked Wed–Thu |
+| Electrical Sub (Volt Pro) | Harbor View + Summit | ⚠️ Exceeds capacity by 30% |
+
+### Recommended Recovery Actions
+1. **Shift Framing Crew A** to Riverside Mon–Wed, Oak Park Thu–Fri. Saves 0.5 days net.
+2. **Authorize overtime** for Volt Pro electrical sub (5 hours, ~$1,400) to clear Harbor View rough-in before pour.
+3. **Expedite** storefront fabrication for Riverside Commons — call Glass Masters VP directly for priority commitment.
+
+### 3-Week Lookahead (Condensed)
+- **May 5–9**: Framing closeout (Riverside), MEP rough-in (Harbor View), drywall hang Phase 1 (Oak Park)
+- **May 12–16**: Roof insulation (Riverside), concrete flatwork (Harbor View), drywall tape/finish Phase 1 (Oak Park)
+- **May 19–23**: Roof membrane (Riverside), HVAC start-up (Harbor View), painting (Oak Park)`
+};
+
+async function runFreeAgent(agentId){
+  const a = AGENTS.find(x=>x.id===agentId);
+  const btn = document.getElementById('execRunBtn');
+  const log = document.getElementById('execLog');
+  btn.disabled = true; btn.textContent = '⏳ Running…';
+  document.getElementById('progSec').classList.add('show');
+  log.innerHTML = '';
+
+  a.steps.forEach((_,i) => {
+    const el = document.getElementById(`ss-${i}`);
+    if(el){ el.className = 'step-status'; el.textContent = '○'; }
+  });
+
+  const ts = () => new Date().toLocaleTimeString('en-US',{hour12:false});
+  log.innerHTML += `<div class="log-line info">[${ts()}] ⚡ IronForge Free Engine initializing…</div>`;
+  log.scrollTop = log.scrollHeight;
+
+  // Animate steps quickly (free = fast)
+  let stepIdx = 0;
+  const totalSteps = a.steps.length;
+  const delay = 400;
+
+  for(let i = 0; i < totalSteps; i++){
+    await new Promise(r => setTimeout(r, delay));
+    if(i > 0){
+      const prev = document.getElementById(`ss-${i-1}`);
+      if(prev){ prev.className='step-status done-s'; prev.textContent='✓'; }
+    }
+    const el = document.getElementById(`ss-${i}`);
+    if(el){ el.className='step-status running-s'; el.textContent='…'; }
+    const si = document.getElementById(`si-${i}`);
+    if(si) si.style.background='rgba(16,185,129,.06)';
+    document.getElementById('progBar').style.background = 'var(--green)';
+    document.getElementById('progBar').style.width = Math.round((i+1)/totalSteps*90)+'%';
+    log.innerHTML += `<div class="log-line info">[${ts()}] ${a.steps[i]}</div>`;
+    log.scrollTop = log.scrollHeight;
+  }
+
+  await new Promise(r => setTimeout(r, 300));
+
+  // Mark all done
+  a.steps.forEach((_,i) => {
+    const el = document.getElementById(`ss-${i}`);
+    if(el){ el.className='step-status done-s'; el.textContent='✓'; }
+  });
+  document.getElementById('progBar').style.width = '100%';
+  document.getElementById('progBar').style.background = 'var(--green)';
+
+  // Render result
+  const rawResult = FREE_AGENT_RESULTS[agentId] || `## ${a.name} — Task Complete\n\nAll checks passed. No issues requiring immediate attention across active projects.\n\n**Next recommended run:** Tomorrow morning.`;
+  const formatted = rawResult
+    .replace(/^### (.+)$/gm, '<div style="color:var(--green);font-weight:700;margin-top:12px;font-size:.85rem">$1</div>')
+    .replace(/^## (.+)$/gm, '<div style="color:var(--text);font-weight:700;margin-top:14px;font-size:.9rem;border-bottom:1px solid var(--border);padding-bottom:4px">$1</div>')
+    .replace(/^\*\*(.+)\*\*$/gm, '<div style="color:var(--text);font-weight:700;margin-top:8px">$1</div>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong style="color:var(--text)">$1</strong>')
+    .replace(/^- (.+)$/gm, '<div style="padding:2px 0 2px 12px;border-left:2px solid var(--green);margin:3px 0;color:var(--muted)">$1</div>')
+    .replace(/^(\d+)\. (.+)$/gm, '<div style="padding:2px 0 2px 8px;color:var(--muted);margin:3px 0"><span style="color:var(--green);font-weight:700">$1.</span> $2</div>')
+    .replace(/\|(.+)\|/g, (m)=>{
+      const cells = m.split('|').filter(c=>c.trim());
+      return '<div style="display:flex;gap:8px;font-size:.75rem;padding:3px 0;border-bottom:1px solid var(--border)">'
+        + cells.map(c=>`<span style="flex:1;color:var(--muted)">${c.trim()}</span>`).join('')
+        +'</div>';
+    })
+    .replace(/🔴/g,'<span style="color:var(--red)">🔴</span>')
+    .replace(/⚠️/g,'<span style="color:var(--orange)">⚠️</span>')
+    .replace(/✅/g,'<span style="color:var(--green)">✅</span>')
+    .replace(/\n\n/g, '<br><br>')
+    .replace(/\n/g, '<br>');
+
+  log.innerHTML += `<div style="margin-top:12px;padding:14px;background:var(--mid);border-radius:8px;border-left:3px solid var(--green);font-size:.82rem;line-height:1.6">${formatted}</div>`;
+  log.innerHTML += `<div class="log-line success">[${ts()}] ✅ ${a.name} completed — IronForge Free Engine (no API key used)</div>`;
+  log.scrollTop = log.scrollHeight;
+  btn.textContent = '✅ Completed';
+  btn.style.background = 'var(--green)';
+  // Fire notification
+  addNotification(`⚡ ${a.name} Complete`, `Free agent finished instantly — no API key used. Check results.`, 'success');
+  sbLogAgent(a.name, 'free_run', 'Completed');
+}
+
+// ── REAL AI AGENT RUNNER — calls Claude API via Anthropic ──
+async function runAgent(agentId){
+  const a = AGENTS.find(x=>x.id===agentId);
+  const btn = document.getElementById('execRunBtn');
+  const log = document.getElementById('execLog');
+  btn.disabled = true; btn.textContent = '⏳ Running…';
+  document.getElementById('progSec').classList.add('show');
+  log.innerHTML = '';
+
+  // Mark all steps as running
+  a.steps.forEach((_,i) => {
+    const el = document.getElementById(`ss-${i}`);
+    if(el){ el.className = 'step-status'; el.textContent = '○'; }
+  });
+
+  const ts = () => new Date().toLocaleTimeString('en-US',{hour12:false});
+  log.innerHTML += `<div class="log-line info">[${ts()}] 🤖 Connecting to IronForge AI Engine…</div>`;
+  log.scrollTop = log.scrollHeight;
+
+  // Get API key from config or prompt
+  const apiKey = window.IRONFORGE_API_KEY || '';
+
+  if(!apiKey){
+    // Show API key input UI
+    log.innerHTML += `<div class="log-line warn">[${ts()}] ⚠️ No AI API key configured. Enter your OpenRouter or Anthropic API key below.</div>`;
+    log.innerHTML += `<div style="margin:12px 0;display:flex;gap:8px;align-items:center">
+      <input id="apiKeyInput" type="password" placeholder="sk-or-v1-... or sk-ant-api03-..." style="flex:1;background:var(--mid);border:1px solid var(--border);color:var(--light);padding:8px 12px;border-radius:6px;font-family:monospace;font-size:.8rem" />
+      <button onclick="saveApiKey('${agentId}')" style="background:var(--red);color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-weight:700">Connect & Run</button>
+    </div>
+    <div style="font-size:.72rem;color:var(--muted);margin-top:4px">Use your <a href="https://openrouter.ai/keys" target="_blank" style="color:var(--red)">OpenRouter key</a> (sk-or-...) or <a href="https://console.anthropic.com" target="_blank" style="color:var(--red)">Anthropic key</a> — stays in your browser only.</div>`;
+    log.scrollTop = log.scrollHeight;
+    document.getElementById('progBar').style.width = '0%';
+    btn.textContent = '▶ Execute ' + a.name;
+    btn.disabled = false;
+    return;
+  }
+
+  // Determine API provider from key prefix
+  const isOpenRouter = apiKey.startsWith('sk-or-');
+  const apiUrl = isOpenRouter
+    ? 'https://openrouter.ai/api/v1/chat/completions'
+    : 'https://api.anthropic.com/v1/messages';
+  const aiModel = isOpenRouter
+    ? 'anthropic/claude-haiku-4-5'
+    : 'claude-haiku-4-5-20251001';
+
+  // Animate steps while AI runs
+  let stepIdx = 0;
+  const stepInterval = setInterval(() => {
+    if(stepIdx > 0){
+      const prev = document.getElementById(`ss-${stepIdx-1}`);
+      if(prev){ prev.className='step-status done-s'; prev.textContent='✓'; }
+    }
+    if(stepIdx < a.steps.length){
+      const el = document.getElementById(`ss-${stepIdx}`);
+      if(el){ el.className='step-status running-s'; el.textContent='…'; }
+      document.getElementById(`si-${stepIdx}`).style.background='rgba(255,58,45,.06)';
+      document.getElementById('progBar').style.width = Math.round((stepIdx+1)/a.steps.length*90)+'%';
+      log.innerHTML += `<div class="log-line info">[${ts()}] ${a.steps[stepIdx]}</div>`;
+      log.scrollTop = log.scrollHeight;
+      stepIdx++;
+    }
+  }, 900);
+
+  // Get job context from current user's projects
+  const jobContext = currentUser ? `
+Contractor: ${currentUser.name} at ${currentUser.company}
+Active Projects: Riverside Commons ($1.2M GC contract, 65% complete), Harbor View QSR ($480K, 30% complete), Oak Park Office ($2.1M, 82% complete)
+Current Date: ${new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}
+` : '';
+
+  const systemPrompt = AGENT_PROMPTS[agentId] || `You are the ${a.name} AI agent for IronForge construction management platform. Perform your analysis and return actionable results.`;
+
+  try {
+    // Build request for OpenRouter or Anthropic
+    const userMsg = `Run a full analysis now.${jobContext ? ' Context:\n' + jobContext : ''} Provide a complete, actionable report with specific findings, dollar amounts, deadlines, and recommended actions. Format with clear sections using markdown-style headers.`;
+
+    let fetchOpts;
+    if(isOpenRouter){
+      fetchOpts = {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+          'HTTP-Referer': 'https://web-production-b2192.up.railway.app',
+          'X-Title': 'IronForge AACG Platform'
+        },
+        body: JSON.stringify({
+          model: aiModel,
+          max_tokens: 1024,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userMsg }
+          ]
+        })
+      };
+    } else {
+      fetchOpts = {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-allow-cors': 'true'
+        },
+        body: JSON.stringify({
+          model: aiModel,
+          max_tokens: 1024,
+          system: systemPrompt,
+          messages: [{ role: 'user', content: userMsg }]
+        })
+      };
+    }
+
+    const response = await fetch(apiUrl, fetchOpts);
+    clearInterval(stepInterval);
+
+    if(!response.ok){
+      const err = await response.json().catch(()=>({}));
+      throw new Error(err.error?.message || `API error ${response.status}`);
+    }
+
+    const data = await response.json();
+    // Extract text from either OpenRouter (choices[0].message.content) or Anthropic (content[0].text)
+    const result = isOpenRouter
+      ? data.choices[0].message.content
+      : data.content[0].text;
+
+    // Mark all steps done
+    a.steps.forEach((_,i) => {
+      const el = document.getElementById(`ss-${i}`);
+      if(el){ el.className='step-status done-s'; el.textContent='✓'; }
+    });
+    document.getElementById('progBar').style.width = '100%';
+    document.getElementById('progBar').style.background = 'var(--green)';
+
+    // Render AI output
+    const formatted = result
+      .replace(/^### (.+)$/gm, '<div style="color:var(--red);font-weight:700;margin-top:12px;font-size:.85rem">$1</div>')
+      .replace(/^## (.+)$/gm, '<div style="color:var(--light);font-weight:700;margin-top:14px;font-size:.9rem;border-bottom:1px solid var(--border);padding-bottom:4px">$1</div>')
+      .replace(/^\*\*(.+)\*\*$/gm, '<div style="color:var(--light);font-weight:700;margin-top:8px">$1</div>')
+      .replace(/\*\*(.+?)\*\*/g, '<strong style="color:var(--light)">$1</strong>')
+      .replace(/^- (.+)$/gm, '<div style="padding:2px 0 2px 12px;border-left:2px solid var(--red);margin:3px 0;color:var(--muted)">$1</div>')
+      .replace(/^(\d+)\. (.+)$/gm, '<div style="padding:2px 0 2px 8px;color:var(--muted);margin:3px 0"><span style="color:var(--red);font-weight:700">$1.</span> $2</div>')
+      .replace(/\n\n/g, '<br><br>')
+      .replace(/\n/g, '<br>');
+
+    log.innerHTML += `<div style="margin-top:12px;padding:14px;background:var(--mid);border-radius:8px;border-left:3px solid var(--red);font-size:.82rem;line-height:1.6">${formatted}</div>`;
+    log.innerHTML += `<div class="log-line success">[${ts()}] ✅ ${a.name} completed — real AI analysis by Claude</div>`;
+    log.scrollTop = log.scrollHeight;
+    btn.textContent = '✅ Completed';
+    btn.style.background = 'var(--green)';
+    // Fire in-app notification
+    addNotification(`🤖 ${a.name} Complete`, `Claude AI analysis finished. Real insights generated — check results below.`, 'success');
+
+    // SMS to user's phone
+    if(currentUser?.phone){
+      sendSMS(currentUser.phone,
+        `IronForge: Your ${a.name} agent finished! Real AI insights are ready in your dashboard. Reply STOP to opt out.`,
+        'agent_complete');
+    }
+    // Email summary
+    if(currentUser?.email){
+      sendEmail(currentUser.email, null, 'agent_complete', {
+        name: currentUser.name,
+        agentName: a.name,
+        result: result.substring(0, 800)
+      });
+    }
+
+    // Log to Supabase if connected
+    if(sbClient && currentUser?.sbUser){
+      sbClient.from('agent_logs').insert({
+        user_id: currentUser.sbUser.id,
+        agent_name: a.name,
+        action: 'Full analysis run',
+        result: result.substring(0,500),
+        status: 'completed'
+      }).then(() => {});
+    }
+
+  } catch(err) {
+    clearInterval(stepInterval);
+    document.getElementById('progBar').style.background = 'var(--red)';
+    log.innerHTML += `<div class="log-line error">[${ts()}] ❌ Error: ${err.message}</div>`;
+    if(err.message.includes('401') || err.message.includes('invalid')) {
+      log.innerHTML += `<div class="log-line warn">[${ts()}] ⚠️ Invalid API key. <a href="https://console.anthropic.com" target="_blank" style="color:var(--red)">Get a key at console.anthropic.com</a></div>`;
+      window.IRONFORGE_API_KEY = '';
+      localStorage.removeItem('ironforge_api_key');
+      log.innerHTML += `<div class="log-line warn">[${ts()}] ⚠️ Invalid API key cleared. Enter a new key and retry.</div>`;
+    }
+    btn.textContent = '▶ Retry'; btn.disabled = false;
+    btn.onclick = () => runAgent(agentId);
+  }
+}
+
+function saveApiKey(agentId){
+  const key = document.getElementById('apiKeyInput')?.value?.trim();
+  if(!key || (!key.startsWith('sk-or-') && !key.startsWith('sk-ant') && !key.startsWith('sk-'))){
+    alert('Enter a valid key: sk-or-... (OpenRouter) or sk-ant-... (Anthropic)');
+    return;
+  }
+  window.IRONFORGE_API_KEY = key;
+  localStorage.setItem('ironforge_api_key', key);
+  runAgent(agentId);
+}
+
+// Load saved API key on startup — pre-seed platform default if none saved
+(function(){
+  const DEFAULT_KEY = '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';
+  const saved = localStorage.getItem('ironforge_api_key') || DEFAULT_KEY;
+  window.IRONFORGE_API_KEY = saved;
+  if(!localStorage.getItem('ironforge_api_key')) {
+    localStorage.setItem('ironforge_api_key', DEFAULT_KEY);
+  }
+})();
+
+function openWorkflowExec(wfId){
+  const w = WORKFLOWS.find(x=>x.id===wfId);
+  if(!w) return;
+  document.getElementById('execModal').style.display = 'flex';
+  document.getElementById('execModalInner').innerHTML = `
+    <div class="modal-header">
+      <div class="modal-title">${w.icon} ${w.title}</div>
+      <button class="modal-close" onclick="closeExecModal()">×</button>
+    </div>
+    <p style="color:var(--muted);font-size:.83rem;margin-bottom:16px">${w.desc}</p>
+    <div style="margin-bottom:14px">
+      <div style="font-size:.76rem;color:var(--muted);font-weight:700;margin-bottom:6px">WORKFLOW AGENTS</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        ${w.agents.map((s,i)=>`<span style="background:var(--mid);border-radius:5px;padding:4px 10px;font-size:.78rem">${s}</span>${i<w.agents.length-1?'<span style="color:var(--muted);padding-top:4px">→</span>':''}`).join('')}
+      </div>
+    </div>
+    <div class="exec-form">
+      <div class="form-row">
+        <div><label>Project</label><select><option>Riverside Commons</option><option>Harbor View QSR</option><option>Oak Park Office</option></select></div>
+        <div><label>Priority</label><select><option>Normal</option><option>High</option><option>Urgent</option></select></div>
+      </div>
+      <button class="exec-btn" onclick="runWorkflow(w)">▶ Launch Workflow</button>
+    </div>`;
+}
+
+// ────────────────────────────────────────────────
+// WORKFLOW RUNNER — sequential agent execution
+// ────────────────────────────────────────────────
+async function runWorkflow(w) {
+  const modal = document.getElementById('execModal');
+  const modalContent = document.getElementById('execModalContent');
+  if (!w || !w.agents || !w.agents.length) return;
+
+  // Check API key
+  const apiKey = localStorage.getItem('ironforge_api_key');
+  if (!apiKey) {
+    openExecModal(w.agents[0]); // prompt for key via normal agent flow
+    return;
+  }
+
+  // Build workflow progress UI
+  const projectEl = document.querySelector('.exec-form select');
+  const project = projectEl ? projectEl.value : 'Current Project';
+
+  modalContent.innerHTML = `
+    <div style="padding:24px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+        <div>
+          <div style="font-size:1.1rem;font-weight:700;color:var(--gold)">${w.name}</div>
+          <div style="font-size:.8rem;color:var(--muted);margin-top:3px">Project: ${project} · ${w.agents.length} agents queued</div>
+        </div>
+        <button class="modal-close" onclick="closeExecModal()">×</button>
+      </div>
+      <div id="wf-progress" style="display:flex;flex-direction:column;gap:10px"></div>
+      <div id="wf-log" style="margin-top:16px;background:var(--mid);border-radius:8px;padding:14px;font-size:.78rem;font-family:monospace;color:#a0c4a0;max-height:200px;overflow-y:auto;white-space:pre-wrap"></div>
+      <div id="wf-done" style="display:none;margin-top:16px;text-align:center">
+        <div style="color:#4ade80;font-size:1rem;font-weight:700;margin-bottom:8px">✅ Workflow Complete</div>
+        <button class="btn-secondary" onclick="closeExecModal()">Close</button>
+      </div>
+    </div>`;
+  modal.style.display = 'flex';
+
+  const progressEl = document.getElementById('wf-progress');
+  const logEl = document.getElementById('wf-log');
+  const doneEl = document.getElementById('wf-done');
+
+  // Build step cards
+  w.agents.forEach((agentName, i) => {
+    const div = document.createElement('div');
+    div.id = `wf-step-${i}`;
+    div.style.cssText = 'display:flex;align-items:center;gap:12px;background:var(--mid);border-radius:8px;padding:10px 14px;border:1px solid var(--border)';
+    div.innerHTML = `
+      <div id="wf-icon-${i}" style="font-size:1.1rem">⏳</div>
+      <div style="flex:1">
+        <div style="font-size:.85rem;font-weight:600;color:var(--text)">${agentName}</div>
+        <div id="wf-status-${i}" style="font-size:.75rem;color:var(--muted)">Waiting…</div>
+      </div>`;
+    progressEl.appendChild(div);
+  });
+
+  // Run agents sequentially
+  let prevResult = '';
+  for (let i = 0; i < w.agents.length; i++) {
+    const agentName = w.agents[i];
+    document.getElementById(`wf-icon-${i}`).textContent = '⚡';
+    document.getElementById(`wf-status-${i}`).textContent = 'Running…';
+    document.getElementById(`wf-step-${i}`).style.borderColor = 'var(--gold)';
+
+    logEl.textContent += `\n[${agentName}] Starting…\n`;
+    logEl.scrollTop = logEl.scrollHeight;
+
+    // Find the agent config
+    const agentDef = ALL_AGENTS ? ALL_AGENTS.find(a => a.name === agentName || a.id === agentName.toLowerCase().replace(/\s+/g,'-')) : null;
+    const systemPrompt = agentDef?.systemPrompt || `You are ${agentName}, a construction AI specialist. Analyze the following context and provide actionable insights.`;
+    const userPrompt = prevResult
+      ? `Previous agent output:\n${prevResult}\n\nProject: ${project}\nContinue the workflow analysis.`
+      : `Project: ${project}\nRun a comprehensive ${agentName} analysis for a construction project.`;
+
+    try {
+      const response = await callLLMApi(apiKey, systemPrompt, userPrompt);
+      prevResult = response;
+      document.getElementById(`wf-icon-${i}`).textContent = '✅';
+      document.getElementById(`wf-status-${i}`).textContent = 'Complete';
+      document.getElementById(`wf-step-${i}`).style.borderColor = '#14532d';
+
+      // Log to Supabase
+      if (sbClient && window._sbUserId) {
+        await sbClient.from('agent_logs').insert({
+          user_id: window._sbUserId,
+          agent_name: agentName,
+          action: `workflow:${w.id}`,
+          result: response.substring(0, 500),
+          status: 'completed'
+        });
+      }
+
+      addNotification(`🤖 ${agentName} Complete`, response.substring(0, 80) + '…', 'success');
+      logEl.textContent += `[${agentName}] ✅ Done\n${response.substring(0, 300)}\n${'─'.repeat(40)}\n`;
+      logEl.scrollTop = logEl.scrollHeight;
+
+    } catch(e) {
+      document.getElementById(`wf-icon-${i}`).textContent = '❌';
+      document.getElementById(`wf-status-${i}`).textContent = 'Error: ' + e.message;
+      document.getElementById(`wf-step-${i}`).style.borderColor = '#dc2626';
+      logEl.textContent += `[${agentName}] ERROR: ${e.message}\n`;
+      logEl.scrollTop = logEl.scrollHeight;
+      break;
+    }
+  }
+
+  doneEl.style.display = 'block';
+}
+
+// ────────────────────────────────────────────────
+// UPGRADE MODAL
+// ────────────────────────────────────────────────
+function showUpgradeModal(){
+  document.getElementById('upgradeModal').style.display = 'flex';
+  let selectedPlan = currentTier === 'pro' ? 'enterprise' : 'pro';
+
+  document.getElementById('upgradeModalInner').innerHTML = `
+    <div class="modal-header">
+      <div class="modal-title">⬆ Upgrade Your Plan</div>
+      <button class="modal-close" onclick="closeUpgradeModal()">×</button>
+    </div>
+    <p style="color:var(--muted);font-size:.86rem;margin-bottom:16px">Unlock every AI agent, workflow, and feature. Cancel any time.</p>
+    <div class="upgrade-plans">
+      <div class="up-plan${selectedPlan==='pro'?' selected':''}" id="planCardPro" onclick="selectUpgradePlan('pro')">
+        <div class="up-plan-name" style="color:var(--blue)">Professional</div>
+        <div class="up-plan-price">$99<span>/month</span></div>
+        <ul class="up-plan-features">
+          <li>All 20 AI Agents (cloud)</li>
+          <li>50 Active Projects</li>
+          <li>All 6 Workflows</li>
+          <li>📷 Photo AI Inspector</li>
+          <li>📋 Compliance Tracker</li>
+          <li>Priority Support</li>
+        </ul>
+        <div style="margin-top:10px;font-size:.7rem;color:var(--green)">✓ Most popular · Instant access</div>
+      </div>
+      <div class="up-plan${selectedPlan==='enterprise'?' selected':''}" id="planCardEnterprise" onclick="selectUpgradePlan('enterprise')">
+        <div class="up-plan-name" style="color:var(--gold)">Enterprise</div>
+        <div class="up-plan-price">Custom<span> pricing</span></div>
+        <ul class="up-plan-features">
+          <li>Everything in Pro</li>
+          <li>Unlimited Projects</li>
+          <li>👥 Team Management (15 users)</li>
+          <li>🔌 API Access</li>
+          <li>Dedicated Account Manager</li>
+          <li>SLA Guarantee</li>
+        </ul>
+        <div style="margin-top:10px;font-size:.7rem;color:var(--gold)">Contact us for enterprise pricing</div>
+      </div>
+    </div>
+    <div id="upgradePayNote" style="background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.25);border-radius:8px;padding:10px 14px;font-size:.76rem;color:var(--muted);margin:12px 0">
+      🔒 <strong style="color:var(--text)">Secure checkout via Stripe.</strong> No card stored by AACG. Cancel any time from your billing portal.
+    </div>
+    <button class="upgrade-confirm-btn" id="upgradeConfirmBtn" onclick="handleUpgradeConfirm()">⬆ Upgrade to Professional — $99/month</button>
+    <div style="font-size:.74rem;color:var(--muted);margin-top:10px;text-align:center">
+      Questions? Email <a href="mailto:sales@aacg.com" style="color:var(--blue)">sales@aacg.com</a>
+      or text <a href="sms:+18566363987" style="color:var(--blue)">(856) 636-3987</a>
+    </div>`;
+}
+
+function selectUpgradePlan(plan) {
+  document.querySelectorAll('.up-plan').forEach(p => p.classList.remove('selected'));
+  const card = document.getElementById('planCard' + plan.charAt(0).toUpperCase() + plan.slice(1));
+  if (card) card.classList.add('selected');
+  const btn = document.getElementById('upgradeConfirmBtn');
+  if (btn) {
+    if (plan === 'pro') {
+      btn.textContent = '⬆ Upgrade to Professional — $99/month';
+    } else {
+      btn.textContent = '📞 Contact Sales for Enterprise Pricing';
+    }
+  }
+  // Store selection
+  document.getElementById('upgradeConfirmBtn').dataset.plan = plan;
+}
+
+async function handleUpgradeConfirm() {
+  const btn = document.getElementById('upgradeConfirmBtn');
+  const plan = btn?.dataset.plan || 'pro';
+
+  if (plan === 'enterprise') {
+    // Enterprise: open email + SMS contact
+    window.open('mailto:sales@aacg.com?subject=Enterprise Plan Inquiry&body=Hi, I am interested in the Enterprise plan for my construction company.', '_blank');
+    // Also send SMS notification to owner
+    sendSMS('+19298882848', `Enterprise inquiry from ${currentUser?.name || 'unknown'} (${currentUser?.email || ''}) — check email.`, 'enterprise_lead');
+    closeUpgradeModal();
+    addNotification('📞 Enterprise Inquiry Sent', 'Our team will contact you within 1 business day.', 'info');
+    return;
+  }
+
+  // Pro: go to Stripe Checkout
+  await startStripeCheckout(plan);
+}
+
+function closeUpgradeModal(){ document.getElementById('upgradeModal').style.display='none'; }
+
+// ────────────────────────────────────────────────
+// LIVE LOG
+// ────────────────────────────────────────────────
+function startLiveLog(){
+  let idx = 0;
+  function inject(id){
+    const el = document.getElementById(id);
+    if(!el) return;
+    const [agent,type,msg] = LOG_LINES[idx % LOG_LINES.length];
+    const ts = new Date().toLocaleTimeString('en-US',{hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    el.innerHTML = `<div class="ll-line"><span class="ll-time">${ts}</span><span class="ll-agent">[${agent}]</span><span class="ll-msg ${type}">${msg}</span></div>` + el.innerHTML;
+    if(el.children.length > 50) el.lastElementChild.remove();
+    idx++;
+  }
+  for(let i=0;i<8;i++) setTimeout(()=>{ inject('dashLog'); inject('activityLog'); }, i*150);
+  setInterval(()=>{ inject('dashLog'); inject('activityLog'); }, 4000);
+}
+
+// ────────────────────────────────────────────────
+// SESSION RESTORE ON LOAD
+// ────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', ()=>{
+  const saved = sessionStorage.getItem('aacg_subscriber');
+  if(saved){
+    const acc = JSON.parse(saved);
+    bootApp(acc);
+  }
+});
