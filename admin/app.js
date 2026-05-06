@@ -327,7 +327,8 @@ function buildAgentGrid(){
     const btnClass    = isFree ? 'run-btn free-btn' : 'run-btn';
     const btnStyle    = isFree ? '' : `style="background:${a.color}"`;
     const btnLabel    = isFree ? '⚡ Run Free' : '🤖 Run Cloud AI';
-    return `<div class="agent-card ${locked?'locked-card':''}" ${!locked?`onclick="openExecModal('${a.id}')"`:''}>
+    const cardClick = locked ? `onclick="showUpgradeModal()"` : `onclick="openExecModal('${a.id}')"`;
+    return `<div class="agent-card ${locked?'locked-card':''}" ${cardClick} ${locked?'style="cursor:pointer"':''}>
       ${tierBadge}
       <div class="agent-head">
         <div class="agent-icon" style="background:${a.color}22">${a.icon}</div>
@@ -338,7 +339,7 @@ function buildAgentGrid(){
       </div>
       <div class="agent-desc">${a.desc}</div>
       <div class="agent-tags">${a.tags.map(t=>`<span class="tag">${t}</span>`).join('')}</div>
-      ${!locked?`<button class="${btnClass}" ${btnStyle}>${btnLabel}</button>`:''}
+      ${locked?`<button class="run-btn" onclick="event.stopPropagation();showUpgradeModal()" style="background:rgba(201,168,76,.15);color:var(--gold);border:1px solid rgba(201,168,76,.3);width:100%">🔒 Upgrade to Unlock</button>`:`<button class="${btnClass}" ${btnStyle}>${btnLabel}</button>`}
     </div>`;
   }
 
