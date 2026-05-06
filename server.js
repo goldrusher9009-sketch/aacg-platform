@@ -74,6 +74,4 @@ http.createServer((req, res) => {
     res.end(data);
   });
 }).listen(PORT, () => {
-  console.log(`IronForge Platform running at http://localhost:${PORT}`);
-  console.log(`Admin: http://localhost:${PORT}/admin/index.html`);
-});
+  console.log(`IronForge Platform running at http://localhost:${PORT

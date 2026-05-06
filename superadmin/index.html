@@ -1330,31 +1330,4 @@ function startLiveUpdates() {
   const liveMessages = [
     {type:'info',msg:'[Photo Analyzer] New batch queued: 3 photos from PRJ-007'},
     {type:'success',msg:'[Lien Monitor] Scan complete — no critical deadlines in 48h'},
-    {type:'info',msg:'[Crew Dispatcher] Technician TEC-028 checked in at PRJ-003'},
-    {type:'warn',msg:'[Material Tracker] Delivery delay: steel PRJ-007 pushed 2 days'},
-    {type:'success',msg:'[Invoice Generator] Invoice #2849 delivered — $14,200'},
-    {type:'info',msg:'[Compliance Checker] License renewed — Texas Master Plumber #TX-8842'},
-    {type:'success',msg:'[Payment Chaser] Payment received — $88,000 — Warehouse Roofing'},
-  ];
-  let logi = 0;
-  setInterval(()=>{
-    const msg = liveMessages[logi % liveMessages.length];
-    logi++;
-    const now = new Date().toTimeString().substr(0,8);
-    const line = `<div class="log-line"><span class="log-time">[${now}]</span><span class="log-type ${msg.type}">[${msg.type.toUpperCase()}]</span><span class="log-msg">${msg.msg}</span></div>`;
-    ['fullAgentLog','platformFeed'].forEach(id=>{
-      const el = document.getElementById(id);
-      if(el) { el.insertAdjacentHTML('afterbegin', line); const lines = el.querySelectorAll('.log-line'); if(lines.length>60) lines[lines.length-1].remove(); }
-    });
-  }, 3500);
-}
-
-// Panel link for activity feed
-document.addEventListener('click', e=>{
-  if(e.target.id==='panel-activity-feed' || e.target.closest('#panel-activity-feed')) {
-    renderActivityFeed(document.getElementById('platformFeed'));
-  }
-});
-</script>
-</body>
-</html>
+    {type:'info
