@@ -46,6 +46,8 @@ http.createServer((req, res) => {
   if (url === '/admin/')                   url = '/admin/index.html';
   if (url === '/superadmin')               url = '/superadmin/index.html';
   if (url === '/superadmin/')              url = '/superadmin/index.html';
+    if (url.startsWith('/trades/') && !url.includes('.')) url = url + '.html';
+    if (url.startsWith('/sectors/') && !url.includes('.')) url = url + '.html';
 
   const filePath = path.join(BASE, url);
 
