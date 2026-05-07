@@ -3000,9 +3000,10 @@ Current Date: ${new Date().toLocaleDateString('en-US',{weekday:'long',year:'nume
     }
 
     // Log to Supabase if connected
-    if(sbClient && currentUser?.sbUser){
+    const _logUserId = window._sbUserId || currentUser?.sbUser?.id || null;
+    if(sbClient && _logUserId){
       sbClient.from('agent_logs').insert({
-        user_id: currentUser.sbUser.id,
+        user_id: _logUserId,
         agent_name: a.name,
         action: 'Full analysis run',
         result: result.substring(0,500),
