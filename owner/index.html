@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Owner Portal — IronForge AACG</title>
+<style>
+  :root{
+    --bg:#0d0d0f; --surface:#16181d; --mid:#1e2128; --border:#2a2d35;
+    --text:#e8eaf0; --muted:#7a7f8e; --blue:#3b82f6; --green:#22c55e;
+    --orange:#f59e0b; --red:#ef4444; --gold:#d4a843; --purple:#a78bfa;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:'Inter',-apple-system,sans-serif;min-height:100vh}
+  a{color:inherit;text-decoration:none}
+
+  #authScreen{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}
+  .auth-box{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:40px;width:100%;max-width:420px}
+  .auth-logo{font-size:2.2rem;font-weight:900;margin-bottom:6px}
+  .auth-sub{color:var(--muted);font-size:.85rem;margin-bottom:28px}
+  .form-group{margin-bottom:16px}
+  .form-group label{display:block;font-size:.78rem;font-weight:600;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em}
+  .form-group input,.form-group select,.form-group textarea{width:100%;background:var(--mid);border:1px solid var(--border);border-radius:8px;padding:10px 13px;color:var(--text);font-size:.88rem;outline:none;transition:.2s}
+  .form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--gold)}
+  .btn-primary{background:var(--gold);color:#000;border:none;border-radius:8px;padding:11px 20px;font-size:.88rem;font-weight:700;cursor:pointer;transition:.2s;width:100%}
+  .btn-primary:hover{opacity:.9}
+  .btn-secondary{background:var(--mid);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:9px 16px;font-size:.83rem;font-weight:600;cursor:pointer}
+  .btn-green{background:var(--green);color:#fff;border:none;border-radius:8px;padding:9px 16px;font-size:.83rem;font-weight:600;cursor:pointer}
+  .btn-danger{background:var(--red);color:#fff;border:none;border-radius:8px;padding:9px 16px;font-size:.83rem;font-weight:600;cursor:pointer}
+
+  #app{display:none;flex-direction:column;min-height:100vh}
+  .topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;height:56px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:100}
+  .topbar-logo{font-size:1.2rem;font-weight:800;color:var(--gold)}
+  .topbar-label{font-size:.72rem;background:var(--mid);border:1px solid var(--border);padding:2px 8px;border-radius:4px;color:var(--muted)}
+  .topbar-right{margin-left:auto;display:flex;align-items:center;gap:12px}
+  .main{padding:24px;max-width:1100px;margin:0 auto;width:100%}
+  .page-header{margin-bottom:22px}
+  .page-header h1{font-size:1.5rem;font-weight:800}
+
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:12px}
+  .kpi-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:22px}
+  .kpi{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;text-align:center}
+  .kpi-val{font-size:1.8rem;font-weight:800;margin-bottom:4px}
+  .kpi-label{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+
+  .tabs{display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:18px}
+  .tab{padding:10px 18px;background:none;border:none;font-size:.85rem;font-weight:600;color:var(--muted);cursor:pointer;margin-bottom:-2px;transition:.2s}
+  .tab.active{color:var(--gold);border-bottom:3px solid var(--gold);font-weight:700}
+
+  .neg-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:12px}
+  .neg-amounts{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:12px 0}
+  .neg-amount{background:var(--mid);border-radius:8px;padding:10px;text-align:center}
+  .neg-amount-val{font-size:1.2rem;font-weight:800}
+  .neg-amount-label{font-size:.66rem;color:var(--muted);text-transform:uppercase;margin-top:2px}
+  .status-badge{display:inline-block;padding:2px 10px;border-radius:20px;font-size:.72rem;font-weight:600}
+
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1000;display:none;align-items:center;justify-content:center;padding:16px}
+  .modal-box{background:var(--surface);border:1px solid var(--border);border-radius:16px;width:100%;max-width:560px;max-height:90vh;overflow-y:auto}
+  .modal-header{display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid var(--border)}
+  .modal-title{font-size:1rem;font-weight:700}
+  .modal-close{background:none;border:none;font-size:1.5rem;cursor:pointer;color:var(--muted);line-height:1}
+
+  .alert{padding:12px 16px;border-radius:8px;font-size:.83rem;margin-bottom:14px}
+  .alert-warning{background:#7c2d12;border:1px solid var(--orange);color:#fdba74}
+
+  /* Progress timeline */
+  .timeline{display:flex;flex-direction:column;gap:0}
+  .timeline-item{display:flex;gap:14px;padding:14px 0;border-bottom:1px solid var(--border)}
+  .timeline-item:last-child{border-bottom:none}
+  .timeline-dot{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0;margin-top:2px}
+</style>
+</head>
+<body>
+
+<!-- ── Auth Screen ── -->
+<div id="authScreen">
+  <div class="auth-box">
+    <div class="auth-logo">⚡ IronForge</div>
+    <div class="auth-sub">Property Owner Portal</div>
+    <div id="authError" class="alert alert-warning" style="display:none"></div>
+    <div class="form-group">
+      <label>Email</label>
+      <input type="email" id="ownerEmail" placeholder="owner@property.com">
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" id="ownerPassword" placeholder="••••••••" onkeydown="if(event.key==='Enter')ownerLogin()">
+    </div>
+    <button class="btn-primary" onclick="ownerLogin()">Sign In to Owner Portal</button>
+    <div style="margin-top:16px;text-align:center;font-size:.78rem;color:var(--muted)">
+      GC? <a href="/gc/" style="color:var(--gold)">GC Portal →</a> &nbsp;|&nbsp;
+      Sub? <a href="/admin/" style="color:var(--gold)">Sub Portal →</a>
+    </div>
+  </div>
+</div>
+
+<!-- ── App ── -->
+<div id="app">
+  <div class="topbar">
+    <span class="topbar-logo">⚡ IronForge</span>
+    <span class="topbar-label">OWNER PORTAL</span>
+    <div class="topbar-right">
+      <span id="ownerUserName" style="font-size:.82rem;color:var(--muted)"></span>
+      <button class="btn-secondary" onclick="ownerLogout()" style="padding:5px 12px;font-size:.78rem">Sign Out</button>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="page-header">
+      <h1>Project Overview</h1>
+      <p id="ownerCompanyLabel" style="color:var(--muted);font-size:.83rem"></p>
+    </div>
+
+    <div class="kpi-row">
+      <div class="kpi"><div class="kpi-val" id="kpi_awaiting" style="color:var(--orange)">—</div><div class="kpi-label">Awaiting Release</div></div>
+      <div class="kpi"><div class="kpi-val" id="kpi_released" style="color:var(--green)">—</div><div class="kpi-label">Released</div></div>
+      <div class="kpi"><div class="kpi-val" id="kpi_photos" style="color:var(--blue)">—</div><div class="kpi-label">Site Photos</div></div>
+      <div class="kpi"><div class="kpi-val" id="kpi_progress" style="color:var(--gold)">—</div><div class="kpi-label">Avg Progress</div></div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" id="tab_pending" onclick="switchOwnerTab('pending')">🔔 Awaiting My Release</button>
+      <button class="tab" id="tab_timeline" onclick="switchOwnerTab('timeline')">📅 Progress Timeline</button>
+      <button class="tab" id="tab_photos" onclick="switchOwnerTab('photos')">📷 Site Photos</button>
+      <button class="tab" id="tab_history" onclick="switchOwnerTab('history')">✅ Released History</button>
+    </div>
+
+    <div id="owner_section_pending">
+      <div id="pendingList"></div>
+    </div>
+    <div id="owner_section_timeline" style="display:none">
+      <div class="card" style="padding:0;overflow:hidden"><div class="timeline" id="timelineList"></div></div>
+    </div>
+    <div id="owner_section_photos" style="display:none">
+      <div id="ownerPhotoGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px"></div>
+    </div>
+    <div id="owner_section_history" style="display:none">
+      <div id="historyList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Release Modal ── -->
+<div class="modal-overlay" id="releaseModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div class="modal-title" id="releaseModalTitle">Review &amp; Release Payment</div>
+      <button class="modal-close" onclick="closeReleaseModal()">×</button>
+    </div>
+    <div id="releaseModalBody" style="padding:20px;display:flex;flex-direction:column;gap:14px"></div>
+  </div>
+</div>
+
+<script>
+const SB_URL = 'https://tgzohfdbfvoxlwjxlmqh.supabase.co';
+const SB_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRnem9oZmRiZnZveGx3anhsbXFoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY0ODEwNTksImV4cCI6MjA2MjA1NzA1OX0.EtBHNiR6HywQ7jqjV5W8I7_ufT3i5wG5eJOkuIAIKwk';
+
+let sbClient=null, ownerUser=null, ownerProfile=null;
+let allNegotiations=[], allSubmissions=[];
+
+async function initSB(){
+  if(window.supabase) sbClient=window.supabase.createClient(SB_URL,SB_ANON_KEY);
+}
+
+async function ownerLogin(){
+  if(!sbClient){alert('Supabase not loaded.');return;}
+  const email=document.getElementById('ownerEmail').value.trim();
+  const pass=document.getElementById('ownerPassword').value;
+  const errEl=document.getElementById('authError');
+  errEl.style.display='none';
+  try {
+    const {data,error}=await sbClient.auth.signInWithPassword({email,password:pass});
+    if(error) throw error;
+    ownerUser=data.user;
+    await loadOwnerProfile();
+    showApp();
+  } catch(e){ errEl.textContent=e.message||'Sign in failed'; errEl.style.display='block'; }
+}
+
+function ownerLogout(){
+  sbClient.auth.signOut();
+  document.getElementById('app').style.display='none';
+  document.getElementById('authScreen').style.display='flex';
+  ownerUser=null;
+}
+
+async function loadOwnerProfile(){
+  try {
+    const {data}=await sbClient.from('owner_profiles').select('*').eq('id',ownerUser.id).single();
+    if(data){ ownerProfile=data; return; }
+  } catch(e){}
+  try {
+    const {data}=await sbClient.from('profiles').select('*').eq('id',ownerUser.id).single();
+    if(data) ownerProfile=data;
+  } catch(e){}
+}
+
+function showApp(){
+  document.getElementById('authScreen').style.display='none';
+  document.getElementById('app').style.display='flex';
+  document.getElementById('ownerUserName').textContent=ownerProfile?.name||ownerUser.email;
+  document.getElementById('ownerCompanyLabel').textContent=ownerProfile?.company?`${ownerProfile.company} · Owner Portal`:'Property Owner Portal';
+  loadAllData();
+}
+
+async function loadAllData(){
+  if(!sbClient||!ownerUser) return;
+  try {
+    const {data:negs}=await sbClient.from('payment_negotiations')
+      .select('*, photo_submissions(*), profiles(name,company,phone)')
+      .order('submitted_at',{ascending:false});
+    allNegotiations=negs||[];
+  } catch(e){ console.warn('negs fail',e); }
+  try {
+    const {data:subs}=await sbClient.from('photo_submissions')
+      .select('*').order('created_at',{ascending:false}).limit(60);
+    allSubmissions=subs||[];
+  } catch(e){ console.warn('subs fail',e); }
+  updateKPIs();
+  renderPendingTab();
+  renderTimeline();
+  renderPhotosTab();
+  renderHistoryTab();
+}
+
+function updateKPIs(){
+  const awaiting=allNegotiations.filter(n=>n.status==='pending_owner').length;
+  const released=allNegotiations.filter(n=>['approved','paid'].includes(n.status)).length;
+  const photos=allSubmissions.length;
+  const avgProgress=allSubmissions.length
+    ? (allSubmissions.reduce((s,x)=>s+(x.ai_progress_pct||0),0)/allSubmissions.length).toFixed(0)
+    : 0;
+  document.getElementById('kpi_awaiting').textContent=awaiting;
+  document.getElementById('kpi_released').textContent=released;
+  document.getElementById('kpi_photos').textContent=photos;
+  document.getElementById('kpi_progress').textContent=avgProgress+'%';
+}
+
+function switchOwnerTab(tab){
+  ['pending','timeline','photos','history'].forEach(t=>{
+    document.getElementById(`owner_section_${t}`).style.display=t===tab?'block':'none';
+    const btn=document.getElementById(`tab_${t}`);
+    btn.classList.toggle('active',t===tab);
+  });
+}
+
+function statusBadge(status){
+  const map={pending_gc:'#f59e0b',pending_owner:'#a78bfa',approved:'#22c55e',paid:'#3b82f6',rejected:'#ef4444'};
+  const label={pending_gc:'Pending GC',pending_owner:'Awaiting Owner',approved:'Approved',paid:'Paid',rejected:'Rejected'};
+  return `<span class="status-badge" style="background:${map[status]||'#555'}22;color:${map[status]||'#999'};border:1px solid ${map[status]||'#555'}44">${label[status]||status}</span>`;
+}
+
+function renderPendingTab(){
+  const el=document.getElementById('pendingList');
+  const pending=allNegotiations.filter(n=>n.status==='pending_owner');
+  if(!pending.length){
+    el.innerHTML=`<div class="card" style="padding:40px;text-align:center;color:var(--muted)">
+      <div style="font-size:2.5rem;margin-bottom:10px">✅</div>
+      <div>No payments awaiting your release</div>
+    </div>`; return;
+  }
+  el.innerHTML=pending.map(n=>{
+    const sub=n.photo_submissions||{};
+    const subP=n.profiles||{};
+    const ts=new Date(n.submitted_at||n.created_at).toLocaleString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+    const sev=sub.severity||'ok';
+    const sevColor=sev==='critical'?'var(--red)':sev==='warning'?'var(--orange)':'var(--green)';
+    return `<div class="neg-card" style="border-left:3px solid var(--gold)">
+      <div style="display:flex;align-items:flex-start;gap:14px;margin-bottom:12px">
+        ${sub.photo_url?`<img src="${sub.photo_url}" style="width:90px;height:70px;object-fit:cover;border-radius:7px;flex-shrink:0" onerror="this.style.display='none'">`:''}
+        <div style="flex:1">
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:4px">
+            <span style="font-weight:700">${sub.job_name||'Job'}</span>
+            ${statusBadge(n.status)}
+          </div>
+          <div style="font-size:.75rem;color:var(--muted)">Submitted ${ts} · Sub: ${subP.name||subP.company||'Unknown'}</div>
+          <div style="font-size:.75rem;color:${sevColor};margin-top:2px">● ${sev.toUpperCase()} severity · ${sub.ai_progress_pct||0}% progress confirmed by AI</div>
+        </div>
+      </div>
+      <div class="neg-amounts">
+        <div class="neg-amount"><div class="neg-amount-val" style="color:var(--blue)">${n.ai_amount||0}%</div><div class="neg-amount-label">🤖 AI</div></div>
+        <div class="neg-amount"><div class="neg-amount-val" style="color:var(--orange)">${n.sub_requested||0}%</div><div class="neg-amount-label">👷 Sub</div></div>
+        <div class="neg-amount"><div class="neg-amount-val" style="color:var(--green)">${n.gc_approved||0}%</div><div class="neg-amount-label">✅ GC</div></div>
+        <div class="neg-amount" style="border:1px solid var(--gold)44">
+          <div class="neg-amount-val" style="color:var(--gold)">${n.owner_released||n.gc_approved||'—'}</div>
+          <div class="neg-amount-label">🏛 Owner</div>
+        </div>
+      </div>
+      ${n.gc_note?`<div style="font-size:.77rem;color:var(--muted);background:var(--mid);border-radius:6px;padding:8px;margin-bottom:10px">💬 GC note: ${n.gc_note}</div>`:''}
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn-primary" style="flex:1;padding:8px" onclick="openReleaseModal('${n.id}')">🏛 Review &amp; Set Release Amount</button>
+        <button class="btn-green" style="flex:1;padding:8px" onclick="ownerReleaseQuick('${n.id}',${n.gc_approved||n.sub_requested||n.ai_amount||0})">✅ Approve GC Amount (${n.gc_approved||0}%)</button>
+        <button class="btn-danger" style="padding:8px 12px" onclick="ownerRejectNeg('${n.id}')">✗ Reject</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderTimeline(){
+  const el=document.getElementById('timelineList');
+  const items=[...allNegotiations,...allSubmissions]
+    .map(x=>({
+      ts:new Date(x.created_at||x.submitted_at),
+      type: x.gc_approved!==undefined?'negotiation':'photo',
+      data:x
+    }))
+    .sort((a,b)=>b.ts-a.ts)
+    .slice(0,30);
+  if(!items.length){ el.innerHTML=`<div style="padding:30px;text-align:center;color:var(--muted)">No activity yet</div>`; return; }
+  el.innerHTML=items.map(item=>{
+    const isNeg=item.type==='negotiation';
+    const n=item.data;
+    const ts=item.ts.toLocaleString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+    if(isNeg){
+      const sev=n.photo_submissions?.severity||'ok';
+      return `<div class="timeline-item">
+        <div class="timeline-dot" style="background:${n.status==='paid'?'#22c55e22':n.status==='pending_owner'?'#a78bfa22':'#3b82f622'};color:${n.status==='paid'?'var(--green)':n.status==='pending_owner'?'var(--purple)':'var(--blue)'}">💰</div>
+        <div style="flex:1">
+          <div style="font-weight:700;font-size:.85rem">${n.photo_submissions?.job_name||'Payment'}</div>
+          <div style="font-size:.73rem;color:var(--muted);margin-top:2px">${ts} · AI: ${n.ai_amount||0}% → Sub: ${n.sub_requested||0}% → GC: ${n.gc_approved||'—'}%</div>
+        </div>
+        ${statusBadge(n.status)}
+      </div>`;
+    } else {
+      const s=n;
+      const sev=s.severity||'ok';
+      const sevColor=sev==='critical'?'var(--red)':sev==='warning'?'var(--orange)':'var(--green)';
+      return `<div class="timeline-item">
+        <div class="timeline-dot" style="background:var(--mid)">📷</div>
+        <div style="flex:1">
+          <div style="font-weight:700;font-size:.85rem">${s.job_name||'Photo'}</div>
+          <div style="font-size:.73rem;color:var(--muted);margin-top:2px">${ts} · ${s.source||'upload'} · ${s.ai_progress_pct||0}% progress</div>
+          <div style="font-size:.73rem;color:${sevColor};margin-top:2px">● ${sev.toUpperCase()}</div>
+        </div>
+      </div>`;
+    }
+  }).join('');
+}
+
+function renderPhotosTab(){
+  const el=document.getElementById('ownerPhotoGrid');
+  if(!allSubmissions.length){
+    el.innerHTML=`<div class="card" style="grid-column:1/-1;padding:40px;text-align:center;color:var(--muted)"><div style="font-size:2.5rem;margin-bottom:10px">📷</div><div>No site photos yet</div></div>`;
+    return;
+  }
+  el.innerHTML=allSubmissions.map(s=>{
+    const sev=s.severity||'ok';
+    const sevColor=sev==='critical'?'var(--red)':sev==='warning'?'var(--orange)':'var(--green)';
+    const ts=new Date(s.created_at).toLocaleString('en-US',{month:'short',day:'numeric'});
+    return `<div class="card" style="padding:0;overflow:hidden;cursor:pointer" onclick="viewOwnerPhoto('${s.id}')">
+      ${s.photo_url?`<img src="${s.photo_url}" style="width:100%;height:120px;object-fit:cover" onerror="this.style.background='var(--mid)'">`:
+        `<div style="height:120px;background:var(--mid);display:flex;align-items:center;justify-content:center;font-size:2.5rem">📷</div>`}
+      <div style="padding:10px">
+        <div style="font-weight:700;font-size:.83rem;margin-bottom:3px">${s.job_name||'Unknown'}</div>
+        <div style="font-size:.7rem;color:var(--muted);margin-bottom:5px">${ts}</div>
+        <div style="display:flex;gap:8px;font-size:.72rem;flex-wrap:wrap">
+          <span style="color:var(--blue)">📊 ${s.ai_progress_pct||0}%</span>
+          <span style="color:${sevColor}">● ${sev}</span>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderHistoryTab(){
+  const el=document.getElementById('historyList');
+  const done=allNegotiations.filter(n=>['approved','paid'].includes(n.status));
+  if(!done.length){
+    el.innerHTML=`<div class="card" style="padding:40px;text-align:center;color:var(--muted)"><div style="font-size:2.5rem;margin-bottom:10px">📋</div><div>No released payments yet</div></div>`;
+    return;
+  }
+  el.innerHTML=done.map(n=>{
+    const ts=new Date(n.owner_reviewed_at||n.gc_reviewed_at||n.created_at).toLocaleString('en-US',{month:'short',day:'numeric'});
+    return `<div class="neg-card">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <div style="flex:1">
+          <div style="font-weight:700">${n.photo_submissions?.job_name||'Job'}</div>
+          <div style="font-size:.73rem;color:var(--muted);margin-top:2px">${ts}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:1.3rem;font-weight:800;color:var(--gold)">${n.owner_released||n.gc_approved||n.ai_amount||0}%</div>
+          <div style="font-size:.7rem;color:var(--muted)">of contract</div>
+        </div>
+        ${statusBadge(n.status)}
+      </div>
+      <div class="neg-amounts" style="margin-top:10px">
+        <div class="neg-amount"><div class="neg-amount-val" style="color:var(--blue);font-size:.95rem">${n.ai_amount||0}%</div><div class="neg-amount-label">🤖 AI</div></div>
+        <div class="neg-amount"><div class="neg-amount-val" style="color:var(--orange);font-size:.95rem">${n.sub_requested||0}%</div><div class="neg-amount-label">👷 Sub</div></div>
+        <div class="neg-amount"><div class="neg-amount-val" style="color:var(--green);font-size:.95rem">${n.gc_approved||0}%</div><div class="neg-amount-label">✅ GC</div></div>
+        <div class="neg-amount"><div class="neg-amount-val" style="color:var(--gold);font-size:.95rem">${n.owner_released||n.gc_approved||0}%</div><div class="neg-amount-label">🏛 Owner</div></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openReleaseModal(negId){
+  const n=allNegotiations.find(x=>x.id===negId);
+  if(!n) return;
+  const sub=n.photo_submissions||{};
+  document.getElementById('releaseModalTitle').textContent=`Release — ${sub.job_name||'Payment'}`;
+  document.getElementById('releaseModal').style.display='flex';
+  document.getElementById('releaseModalBody').innerHTML=`
+    ${sub.photo_url?`<img src="${sub.photo_url}" style="width:100%;max-height:200px;object-fit:cover;border-radius:8px">`:''}
+    <div style="background:var(--mid);border-radius:8px;padding:12px;font-size:.83rem;line-height:1.5">${(sub.ai_analysis||'No AI analysis available.').substring(0,400)}…</div>
+    <div class="neg-amounts">
+      <div class="neg-amount"><div class="neg-amount-val" style="color:var(--blue)">${n.ai_amount||0}%</div><div class="neg-amount-label">🤖 AI</div></div>
+      <div class="neg-amount"><div class="neg-amount-val" style="color:var(--orange)">${n.sub_requested||0}%</div><div class="neg-amount-label">👷 Sub</div></div>
+      <div class="neg-amount"><div class="neg-amount-val" style="color:var(--green)">${n.gc_approved||0}%</div><div class="neg-amount-label">✅ GC</div></div>
+      <div class="neg-amount" style="border:1px solid var(--gold)55">
+        <input type="number" id="rm_owner_amount" value="${n.owner_released||n.gc_approved||n.sub_requested||n.ai_amount||0}" min="0" max="100" step="0.5"
+          style="width:100%;background:none;border:none;color:var(--gold);font-size:1.2rem;font-weight:800;text-align:center;outline:none">
+        <div class="neg-amount-label">🏛 Owner (edit)</div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Your Note</label>
+      <textarea id="rm_owner_note" rows="2" placeholder="Optional note…">${n.owner_note||''}</textarea>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn-primary" style="flex:1" onclick="ownerRelease('${negId}','approved')">🏛 Release Payment</button>
+      <button class="btn-danger" style="flex:1" onclick="ownerRejectNeg('${negId}')">✗ Reject</button>
+    </div>`;
+}
+
+function closeReleaseModal(){ document.getElementById('releaseModal').style.display='none'; }
+
+async function ownerRelease(negId, newStatus){
+  const amount=parseFloat(document.getElementById('rm_owner_amount').value)||0;
+  const note=document.getElementById('rm_owner_note').value;
+  try {
+    await sbClient.from('payment_negotiations').update({
+      owner_released:amount,
+      owner_note:note,
+      status:newStatus,
+      owner_reviewed_at:new Date().toISOString()
+    }).eq('id',negId);
+    closeReleaseModal();
+    await loadAllData();
+    alert(`✅ Payment released: ${amount}% of contract`);
+  } catch(e){ alert('Error: '+e.message); }
+}
+
+async function ownerReleaseQuick(negId, amount){
+  if(!confirm(`Release payment: ${amount}% of contract?`)) return;
+  try {
+    await sbClient.from('payment_negotiations').update({
+      owner_released:amount,
+      status:'approved',
+      owner_reviewed_at:new Date().toISOString()
+    }).eq('id',negId);
+    await loadAllData();
+    alert(`✅ Payment released: ${amount}% of contract`);
+  } catch(e){ alert('Error: '+e.message); }
+}
+
+async function ownerRejectNeg(negId){
+  if(!confirm('Reject this payment request?')) return;
+  try {
+    await sbClient.from('payment_negotiations').update({status:'rejected',owner_reviewed_at:new Date().toISOString()}).eq('id',negId);
+    closeReleaseModal();
+    await loadAllData();
+  } catch(e){ alert('Error: '+e.message); }
+}
+
+function viewOwnerPhoto(id){
+  const s=allSubmissions.find(x=>x.id===id);
+  if(!s) return;
+  const sev=s.severity||'ok';
+  const sevColor=sev==='critical'?'var(--red)':sev==='warning'?'var(--orange)':'var(--green)';
+  document.getElementById('releaseModalTitle').textContent=`${s.job_name||'Photo'} — AI Analysis`;
+  document.getElementById('releaseModal').style.display='flex';
+  document.getElementById('releaseModalBody').innerHTML=`
+    ${s.photo_url?`<img src="${s.photo_url}" style="width:100%;max-height:220px;object-fit:cover;border-radius:8px">`:''}
+    <div style="display:flex;gap:10px">
+      <div class="neg-amount" style="flex:1"><div class="neg-amount-val" style="color:var(--blue)">${s.ai_progress_pct||0}%</div><div class="neg-amount-label">Progress</div></div>
+      <div class="neg-amount" style="flex:1"><div class="neg-amount-val" style="color:var(--green)">${s.ai_amount||0}%</div><div class="neg-amount-label">AI Suggested</div></div>
+      <div class="neg-amount" style="flex:1"><div class="neg-amount-val" style="color:${sevColor}">${sev.toUpperCase()}</div><div class="neg-amount-label">Severity</div></div>
+    </div>
+    <div style="background:var(--mid);border-radius:8px;padding:14px;font-size:.82rem;line-height:1.6;border-left:3px solid ${sevColor}">${(s.ai_analysis||'No analysis').replace(/\n/g,'<br>')}</div>
+    <button style="width:100%;padding:9px;background:var(--mid);border:1px solid var(--border);color:var(--text);border-radius:8px;cursor:pointer;font-size:.83rem" onclick="closeReleaseModal()">Close</button>`;
+}
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+(async function init(){
+  const s=document.createElement('script');
+  s.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js';
+  s.onload=async()=>{
+    await initSB();
+    const {data:{session}}=await sbClient.auth.getSession();
+    if(session?.user){
+      ownerUser=session.user;
+      await loadOwnerProfile();
+      showApp();
+    }
+  };
+  document.head.appendChild(s);
+})();
+</script>
+</body>
+</html>

@@ -237,6 +237,230 @@ create trigger technicians_updated_at before update on technicians
 alter table profiles add column if not exists stripe_customer_id text;
 alter table profiles add column if not exists stripe_subscription_id text;
 
+-- MIGRATION: Add messaging channel columns to existing profiles table
+-- Run this if profiles table already exists (skip on fresh install)
+alter table profiles add column if not exists wechat_userid text;   -- WeChat Work UserID for WeChat notifications
+
+-- 11. PHOTO INSPECTIONS (AI photo analysis results — Photo AI panel)
+create table if not exists photo_inspections (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references profiles(id) on delete cascade,
+  project_id uuid references jobs(id) on delete set null,
+  project_name text,
+  analysis_type text default 'full',   -- safety | progress | quality | materials | full
+  photo_url text,                       -- URL if stored in Supabase Storage
+  result text,                          -- Full Claude vision analysis text
+  severity text default 'ok',          -- critical | warning | ok
+  status text default 'pending',       -- pending | approved | rejected
+  notes text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+alter table photo_inspections enable row level security;
+create policy "Users see own photo_inspections" on photo_inspections for all using (auth.uid() = user_id);
+create policy "Superadmin sees all photo_inspections" on photo_inspections for select using (
+  exists (select 1 from profiles where id = auth.uid() and role = 'superadmin')
+);
+create trigger photo_inspections_updated_at before update on photo_inspections
+  for each row execute procedure update_updated_at();
+
+-- 12. COMPLIANCE ITEMS (licenses, permits, certs — Compliance panel)
+create table if not exists compliance_items (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references profiles(id) on delete cascade,
+  name text not null,                   -- e.g. "Contractor License CA"
+  category text,                        -- license | permit | insurance | certification
+  issuer text,                          -- e.g. "CSLB"
+  license_number text,
+  deadline date not null,               -- expiry / renewal date
+  reminder_days int default 30,         -- warn X days before deadline
+  status text default 'current',       -- current | expiring | expired | renewed
+  notes text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+alter table compliance_items enable row level security;
+create policy "Users see own compliance_items" on compliance_items for all using (auth.uid() = user_id);
+create policy "Superadmin sees all compliance_items" on compliance_items for select using (
+  exists (select 1 from profiles where id = auth.uid() and role = 'superadmin')
+);
+create trigger compliance_items_updated_at before update on compliance_items
+  for each row execute procedure update_updated_at();
+
+-- 13. TEAM MEMBERS (per-subscriber team invites — Team panel)
+create table if not exists team_members (
+  id uuid default gen_random_uuid() primary key,
+  owner_id uuid references profiles(id) on delete cascade,  -- the subscriber who owns this seat
+  user_id uuid references profiles(id) on delete set null,  -- linked profile if accepted
+  name text not null,
+  email text not null,
+  role text default 'member',           -- owner | admin | manager | field_tech | viewer
+  access_level text default 'standard',-- full | standard | limited | readonly
+  status text default 'pending',       -- pending | active | inactive | offline | online
+  last_active timestamptz,
+  invited_at timestamptz default now(),
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+alter table team_members enable row level security;
+create policy "Users see own team" on team_members for all using (auth.uid() = owner_id);
+create policy "Members see own record" on team_members for select using (auth.uid() = user_id);
+create policy "Superadmin sees all team_members" on team_members for select using (
+  exists (select 1 from profiles where id = auth.uid() and role = 'superadmin')
+);
+create trigger team_members_updated_at before update on team_members
+  for each row execute procedure update_updated_at();
+
+-- ============================================================
+--  PHOTO-TO-PAYMENT SYSTEM (v3)
+--  Tables: photo_submissions, payment_negotiations, gc_profiles, owner_profiles
+-- ============================================================
+
+-- 14. GC PROFILES (General Contractors — separate login portal)
+create table if not exists gc_profiles (
+  id uuid default gen_random_uuid() primary key,
+  email text unique not null,
+  name text,
+  company text,
+  phone text,
+  wechat_userid text,
+  stripe_customer_id text,
+  stripe_account_id text,           -- Stripe Connect account for sending payments
+  notify_channel text default 'sms',-- sms | whatsapp | wechat
+  status text default 'active',     -- active | inactive
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+alter table gc_profiles enable row level security;
+create policy "GC sees own profile" on gc_profiles for all using (auth.uid() = id);
+create policy "Superadmin sees all gc_profiles" on gc_profiles for select using (
+  exists (select 1 from profiles where id = auth.uid() and role = 'superadmin')
+);
+create trigger gc_profiles_updated_at before update on gc_profiles
+  for each row execute procedure update_updated_at();
+
+-- 15. OWNER PROFILES (Property Owners — separate login portal)
+create table if not exists owner_profiles (
+  id uuid default gen_random_uuid() primary key,
+  email text unique not null,
+  name text,
+  company text,
+  phone text,
+  wechat_userid text,
+  stripe_customer_id text,
+  notify_channel text default 'sms',-- sms | whatsapp | wechat
+  status text default 'active',
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+alter table owner_profiles enable row level security;
+create policy "Owner sees own profile" on owner_profiles for all using (auth.uid() = id);
+create policy "Superadmin sees all owner_profiles" on owner_profiles for select using (
+  exists (select 1 from profiles where id = auth.uid() and role = 'superadmin')
+);
+create trigger owner_profiles_updated_at before update on owner_profiles
+  for each row execute procedure update_updated_at();
+
+-- 16. PHOTO SUBMISSIONS (inbound from WhatsApp/WeChat/upload — feeds payment flow)
+create table if not exists photo_submissions (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references profiles(id) on delete cascade,    -- sub-contractor who submitted
+  job_id uuid references jobs(id) on delete set null,
+  job_name text,
+  photo_url text not null,                                    -- Supabase Storage URL
+  source text default 'upload',                              -- upload | whatsapp | wechat
+  source_from text,                                          -- phone number or WeChat UserID
+  ai_analysis text,                                          -- Full Claude Vision result
+  ai_progress_pct numeric,                                   -- 0-100, extracted from analysis
+  ai_amount numeric,                                         -- AI suggested payment amount
+  severity text default 'ok',                                -- critical | warning | ok
+  status text default 'analyzed',                            -- received | analyzing | analyzed | submitted | paid
+  notes text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+alter table photo_submissions enable row level security;
+create policy "Users see own photo_submissions" on photo_submissions for all using (auth.uid() = user_id);
+create policy "Superadmin sees all photo_submissions" on photo_submissions for select using (
+  exists (select 1 from profiles where id = auth.uid() and role = 'superadmin')
+);
+create trigger photo_submissions_updated_at before update on photo_submissions
+  for each row execute procedure update_updated_at();
+
+-- 17. PAYMENT NEGOTIATIONS (the 4-party amount negotiation per photo submission)
+create table if not exists payment_negotiations (
+  id uuid default gen_random_uuid() primary key,
+  photo_submission_id uuid references photo_submissions(id) on delete cascade,
+  job_id uuid references jobs(id) on delete set null,
+  sub_id uuid references profiles(id) on delete set null,     -- sub-contractor
+  gc_id uuid references gc_profiles(id) on delete set null,   -- general contractor
+  owner_id uuid references owner_profiles(id) on delete set null, -- property owner
+
+  -- The 4 negotiation amounts
+  ai_amount numeric,                   -- Claude Vision suggested amount
+  sub_requested numeric,               -- Sub's requested payment
+  gc_approved numeric,                 -- GC's approved amount
+  owner_released numeric,              -- Owner's final released amount
+
+  -- Negotiation notes from each party
+  sub_note text,
+  gc_note text,
+  owner_note text,
+
+  -- Payment
+  payment_method text,                 -- stripe | manual
+  stripe_transfer_id text,             -- Stripe transfer ID if paid via Stripe
+  payment_status text default 'pending', -- pending | gc_approved | owner_approved | paid | rejected
+  paid_at timestamptz,
+
+  -- Workflow state
+  status text default 'pending_gc',    -- pending_gc | pending_owner | approved | paid | rejected
+  submitted_at timestamptz default now(),
+  gc_reviewed_at timestamptz,
+  owner_reviewed_at timestamptz,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+alter table payment_negotiations enable row level security;
+create policy "Sub sees own negotiations" on payment_negotiations for all using (auth.uid() = sub_id);
+create policy "GC sees assigned negotiations" on payment_negotiations for all using (auth.uid() = gc_id);
+create policy "Owner sees assigned negotiations" on payment_negotiations for all using (auth.uid() = owner_id);
+create policy "Superadmin sees all negotiations" on payment_negotiations for select using (
+  exists (select 1 from profiles where id = auth.uid() and role = 'superadmin')
+);
+create trigger payment_negotiations_updated_at before update on payment_negotiations
+  for each row execute procedure update_updated_at();
+
+-- 18. PROJECT DRAWINGS (architectural/engineering plans per job — used by Claude Vision for comparison)
+create table if not exists project_drawings (
+  id uuid default gen_random_uuid() primary key,
+  job_id uuid references jobs(id) on delete cascade not null,
+  user_id uuid references profiles(id) on delete cascade,    -- uploader (sub or admin)
+  drawing_type text not null,                                 -- architectural | structural | electrical | plumbing | mechanical | scope | other
+  title text not null,
+  description text,
+  file_url text not null,                                     -- Supabase Storage URL
+  file_type text default 'pdf',                               -- pdf | image | dwg
+  version text default '1.0',                                 -- drawing revision/version
+  is_current boolean default true,                            -- mark superseded drawings as false
+  notes text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+alter table project_drawings enable row level security;
+create policy "Users see own drawings" on project_drawings for all using (auth.uid() = user_id);
+create policy "Users with job access see drawings" on project_drawings for select using (
+  exists (select 1 from jobs where id = project_drawings.job_id and user_id = auth.uid())
+);
+create policy "Superadmin sees all drawings" on project_drawings for select using (
+  exists (select 1 from profiles where id = auth.uid() and role = 'superadmin')
+);
+create trigger project_drawings_updated_at before update on project_drawings
+  for each row execute procedure update_updated_at();
+
+-- Index for fast lookup of current drawings by job
+create index if not exists idx_project_drawings_job_id on project_drawings (job_id, is_current);
+
 -- ============================================================
 --  SEED: Create initial superadmin account
 --  Run AFTER you've signed up at the auth level

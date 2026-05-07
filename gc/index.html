@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GC Portal — IronForge AACG</title>
+<style>
+  :root{
+    --bg:#0d0d0f; --surface:#16181d; --mid:#1e2128; --border:#2a2d35;
+    --text:#e8eaf0; --muted:#7a7f8e; --blue:#3b82f6; --green:#22c55e;
+    --orange:#f59e0b; --red:#ef4444; --gold:#d4a843;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:'Inter',-apple-system,sans-serif;min-height:100vh}
+  a{color:inherit;text-decoration:none}
+
+  /* ── Auth screen ── */
+  #authScreen{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}
+  .auth-box{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:40px;width:100%;max-width:420px}
+  .auth-logo{font-size:2.2rem;font-weight:900;margin-bottom:6px}
+  .auth-sub{color:var(--muted);font-size:.85rem;margin-bottom:28px}
+  .form-group{margin-bottom:16px}
+  .form-group label{display:block;font-size:.78rem;font-weight:600;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em}
+  .form-group input,.form-group select,.form-group textarea{width:100%;background:var(--mid);border:1px solid var(--border);border-radius:8px;padding:10px 13px;color:var(--text);font-size:.88rem;outline:none;transition:.2s}
+  .form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--blue)}
+  .btn-primary{background:var(--blue);color:#fff;border:none;border-radius:8px;padding:11px 20px;font-size:.88rem;font-weight:600;cursor:pointer;transition:.2s;width:100%}
+  .btn-primary:hover{opacity:.9}
+  .btn-secondary{background:var(--mid);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:9px 16px;font-size:.83rem;font-weight:600;cursor:pointer;transition:.2s}
+  .btn-secondary:hover{border-color:var(--blue);color:var(--blue)}
+  .btn-danger{background:var(--red);color:#fff;border:none;border-radius:8px;padding:9px 16px;font-size:.83rem;font-weight:600;cursor:pointer}
+  .btn-green{background:var(--green);color:#fff;border:none;border-radius:8px;padding:9px 16px;font-size:.83rem;font-weight:600;cursor:pointer}
+
+  /* ── App layout ── */
+  #app{display:none;flex-direction:column;min-height:100vh}
+  .topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;height:56px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:100}
+  .topbar-logo{font-size:1.2rem;font-weight:800;color:var(--blue)}
+  .topbar-label{font-size:.72rem;background:var(--mid);border:1px solid var(--border);padding:2px 8px;border-radius:4px;color:var(--muted)}
+  .topbar-right{margin-left:auto;display:flex;align-items:center;gap:12px}
+  .main{padding:24px;max-width:1100px;margin:0 auto;width:100%}
+  .page-header{margin-bottom:22px}
+  .page-header h1{font-size:1.5rem;font-weight:800}
+  .page-header p{color:var(--muted);font-size:.83rem;margin-top:4px}
+
+  /* ── Cards ── */
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:12px}
+  .kpi-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:22px}
+  .kpi{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;text-align:center}
+  .kpi-val{font-size:1.8rem;font-weight:800;margin-bottom:4px}
+  .kpi-label{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+
+  /* ── Tabs ── */
+  .tabs{display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:18px}
+  .tab{padding:10px 18px;background:none;border:none;font-size:.85rem;font-weight:600;color:var(--muted);cursor:pointer;margin-bottom:-2px;transition:.2s}
+  .tab.active{color:var(--blue);border-bottom:3px solid var(--blue);font-weight:700}
+
+  /* ── Payment negotiation cards ── */
+  .neg-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:12px}
+  .neg-amounts{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:12px 0}
+  .neg-amount{background:var(--mid);border-radius:8px;padding:10px;text-align:center}
+  .neg-amount-val{font-size:1.2rem;font-weight:800}
+  .neg-amount-label{font-size:.66rem;color:var(--muted);text-transform:uppercase;margin-top:2px}
+  .status-badge{display:inline-block;padding:2px 10px;border-radius:20px;font-size:.72rem;font-weight:600}
+
+  /* ── Modal ── */
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1000;display:none;align-items:center;justify-content:center;padding:16px}
+  .modal-box{background:var(--surface);border:1px solid var(--border);border-radius:16px;width:100%;max-width:560px;max-height:90vh;overflow-y:auto}
+  .modal-header{display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid var(--border)}
+  .modal-title{font-size:1rem;font-weight:700}
+  .modal-close{background:none;border:none;font-size:1.5rem;cursor:pointer;color:var(--muted);line-height:1}
+
+  .alert{padding:12px 16px;border-radius:8px;font-size:.83rem;margin-bottom:14px}
+  .alert-info{background:#1e3a5f;border:1px solid var(--blue);color:#93c5fd}
+  .alert-success{background:#14532d;border:1px solid var(--green);color:#86efac}
+  .alert-warning{background:#7c2d12;border:1px solid var(--orange);color:#fdba74}
+</style>
+</head>
+<body>
+
+<!-- ── Auth Screen ── -->
+<div id="authScreen">
+  <div class="auth-box">
+    <div class="auth-logo">⚡ IronForge</div>
+    <div class="auth-sub">General Contractor Portal</div>
+    <div id="authError" class="alert alert-warning" style="display:none"></div>
+    <div class="form-group">
+      <label>Email</label>
+      <input type="email" id="gcEmail" placeholder="gc@company.com">
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" id="gcPassword" placeholder="••••••••" onkeydown="if(event.key==='Enter')gcLogin()">
+    </div>
+    <button class="btn-primary" onclick="gcLogin()">Sign In to GC Portal</button>
+    <div style="margin-top:16px;text-align:center;font-size:.78rem;color:var(--muted)">
+      Sub-contractor? <a href="/admin/" style="color:var(--blue)">Go to Sub Portal →</a>
+    </div>
+  </div>
+</div>
+
+<!-- ── App ── -->
+<div id="app">
+  <div class="topbar">
+    <span class="topbar-logo">⚡ IronForge</span>
+    <span class="topbar-label">GC PORTAL</span>
+    <div class="topbar-right">
+      <span id="gcUserName" style="font-size:.82rem;color:var(--muted)"></span>
+      <button class="btn-secondary" onclick="gcLogout()" style="padding:5px 12px;font-size:.78rem">Sign Out</button>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="page-header">
+      <h1>GC Dashboard</h1>
+      <p id="gcCompanyLabel" style="color:var(--muted);font-size:.83rem"></p>
+    </div>
+
+    <!-- KPIs -->
+    <div class="kpi-row" id="gcKpiRow">
+      <div class="kpi"><div class="kpi-val" id="kpi_pending" style="color:var(--orange)">—</div><div class="kpi-label">Pending Review</div></div>
+      <div class="kpi"><div class="kpi-val" id="kpi_approved" style="color:var(--green)">—</div><div class="kpi-label">Approved</div></div>
+      <div class="kpi"><div class="kpi-val" id="kpi_paid" style="color:var(--blue)">—</div><div class="kpi-label">Paid Out</div></div>
+      <div class="kpi"><div class="kpi-val" id="kpi_total" style="color:var(--gold)">—</div><div class="kpi-label">Total Value</div></div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab active" id="tab_review" onclick="switchGCTab('review')">📋 Payment Requests</button>
+      <button class="tab" id="tab_photos" onclick="switchGCTab('photos')">📷 Site Photos</button>
+      <button class="tab" id="tab_paid" onclick="switchGCTab('paid')">✅ Paid / History</button>
+    </div>
+
+    <!-- Review tab -->
+    <div id="gc_section_review">
+      <div id="reviewList"><div style="color:var(--muted);font-size:.83rem;padding:20px">⏳ Loading payment requests…</div></div>
+    </div>
+
+    <!-- Photos tab -->
+    <div id="gc_section_photos" style="display:none">
+      <div id="photoGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px"></div>
+    </div>
+
+    <!-- History tab -->
+    <div id="gc_section_paid" style="display:none">
+      <div id="paidList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Review / Approve Modal ── -->
+<div class="modal-overlay" id="reviewModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div class="modal-title" id="reviewModalTitle">Review Payment Request</div>
+      <button class="modal-close" onclick="closeReviewModal()">×</button>
+    </div>
+    <div id="reviewModalBody" style="padding:20px;display:flex;flex-direction:column;gap:14px"></div>
+  </div>
+</div>
+
+<script>
+// ── Supabase client (same keys as admin) ─────────────────────────────────────
+const SB_URL = 'https://tgzohfdbfvoxlwjxlmqh.supabase.co';
+const SB_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRnem9oZmRiZnZveGx3anhsbXFoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY0ODEwNTksImV4cCI6MjA2MjA1NzA1OX0.EtBHNiR6HywQ7jqjV5W8I7_ufT3i5wG5eJOkuIAIKwk';
+
+let sbClient = null;
+let gcUser = null;
+let gcProfile = null;
+let allNegotiations = [];
+let allSubmissions = [];
+
+async function initSB(){
+  if(window.supabase) sbClient = window.supabase.createClient(SB_URL, SB_ANON_KEY);
+}
+
+async function gcLogin(){
+  if(!sbClient){ alert('Supabase not loaded — check connection.'); return; }
+  const email = document.getElementById('gcEmail').value.trim();
+  const pass  = document.getElementById('gcPassword').value;
+  const errEl = document.getElementById('authError');
+  errEl.style.display='none';
+  try {
+    const {data,error} = await sbClient.auth.signInWithPassword({email,password:pass});
+    if(error) throw error;
+    gcUser = data.user;
+    await loadGCProfile();
+    showApp();
+  } catch(e){
+    errEl.textContent = e.message||'Sign in failed';
+    errEl.style.display='block';
+  }
+}
+
+function gcLogout(){
+  sbClient.auth.signOut();
+  document.getElementById('app').style.display='none';
+  document.getElementById('authScreen').style.display='flex';
+  gcUser=null; gcProfile=null;
+}
+
+async function loadGCProfile(){
+  // Try gc_profiles first, then fall back to regular profiles
+  try {
+    const {data} = await sbClient.from('gc_profiles').select('*').eq('id', gcUser.id).single();
+    if(data) { gcProfile=data; return; }
+  } catch(e){}
+  try {
+    const {data} = await sbClient.from('profiles').select('*').eq('id', gcUser.id).single();
+    if(data) gcProfile=data;
+  } catch(e){}
+}
+
+function showApp(){
+  document.getElementById('authScreen').style.display='none';
+  document.getElementById('app').style.display='flex';
+  document.getElementById('gcUserName').textContent = gcProfile?.name || gcUser.email;
+  document.getElementById('gcCompanyLabel').textContent = gcProfile?.company ? `${gcProfile.company} · GC Portal` : 'General Contractor Portal';
+  loadAllData();
+}
+
+async function loadAllData(){
+  if(!sbClient || !gcUser) return;
+  // Load negotiations assigned to this GC
+  try {
+    const {data:negs} = await sbClient.from('payment_negotiations')
+      .select('*, photo_submissions(*), profiles(name,phone,company)')
+      .order('submitted_at',{ascending:false});
+    allNegotiations = negs||[];
+  } catch(e){ console.warn('negs load failed',e); }
+  // Load all photo submissions for photos tab
+  try {
+    const {data:subs} = await sbClient.from('photo_submissions')
+      .select('*')
+      .order('created_at',{ascending:false})
+      .limit(50);
+    allSubmissions = subs||[];
+  } catch(e){ console.warn('subs load failed',e); }
+
+  updateKPIs();
+  renderReviewTab();
+  renderPhotosTab();
+  renderPaidTab();
+}
+
+function updateKPIs(){
+  const pending  = allNegotiations.filter(n=>n.status==='pending_gc').length;
+  const approved = allNegotiations.filter(n=>['pending_owner','approved'].includes(n.status)).length;
+  const paid     = allNegotiations.filter(n=>n.status==='paid').length;
+  const total    = allNegotiations.filter(n=>n.gc_approved).reduce((s,n)=>s+(n.gc_approved||0),0);
+  document.getElementById('kpi_pending').textContent  = pending;
+  document.getElementById('kpi_approved').textContent = approved;
+  document.getElementById('kpi_paid').textContent     = paid;
+  document.getElementById('kpi_total').textContent    = total.toFixed(1)+'%';
+}
+
+function switchGCTab(tab){
+  ['review','photos','paid'].forEach(t=>{
+    document.getElementById(`gc_section_${t}`).style.display = t===tab?'block':'none';
+    const btn=document.getElementById(`tab_${t}`);
+    btn.classList.toggle('active',t===tab);
+  });
+}
+
+function statusBadge(status){
+  const map={pending_gc:'#f59e0b',pending_owner:'#3b82f6',approved:'#22c55e',paid:'#a78bfa',rejected:'#ef4444'};
+  const label={pending_gc:'Pending GC',pending_owner:'Sent to Owner',approved:'Approved',paid:'Paid',rejected:'Rejected'};
+  return `<span class="status-badge" style="background:${map[status]||'#555'}22;color:${map[status]||'#999'};border:1px solid ${map[status]||'#555'}44">${label[status]||status}</span>`;
+}
+
+function renderReviewTab(){
+  const el=document.getElementById('reviewList');
+  const pending = allNegotiations.filter(n=>n.status==='pending_gc');
+  if(!pending.length){
+    el.innerHTML=`<div class="card" style="padding:40px;text-align:center;color:var(--muted)">
+      <div style="font-size:2.5rem;margin-bottom:10px">✅</div>
+      <div>No pending payment requests</div>
+    </div>`; return;
+  }
+  el.innerHTML = pending.map(n => renderNegCard(n)).join('');
+}
+
+function renderNegCard(n){
+  const sub = n.photo_submissions;
+  const subProfile = n.profiles;
+  const ts = new Date(n.submitted_at||n.created_at).toLocaleString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+  const sev = sub?.severity||'ok';
+  const sevColor = sev==='critical'?'var(--red)':sev==='warning'?'var(--orange)':'var(--green)';
+  return `<div class="neg-card">
+    <div style="display:flex;align-items:flex-start;gap:14px;margin-bottom:12px">
+      ${sub?.photo_url?`<img src="${sub.photo_url}" style="width:80px;height:60px;object-fit:cover;border-radius:7px;flex-shrink:0" onerror="this.style.display='none'">`:''}
+      <div style="flex:1">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:3px">
+          <span style="font-weight:700">${sub?.job_name||n.job_id||'Job'}</span>
+          ${statusBadge(n.status)}
+        </div>
+        <div style="font-size:.75rem;color:var(--muted)">${ts} · Sub: ${subProfile?.name||subProfile?.company||'Unknown'}</div>
+        <div style="font-size:.75rem;color:${sevColor};margin-top:3px">● ${sev.toUpperCase()} severity</div>
+      </div>
+    </div>
+    <div class="neg-amounts">
+      <div class="neg-amount">
+        <div class="neg-amount-val" style="color:var(--blue)">${n.ai_amount||0}%</div>
+        <div class="neg-amount-label">🤖 AI</div>
+      </div>
+      <div class="neg-amount">
+        <div class="neg-amount-val" style="color:var(--orange)">${n.sub_requested||0}%</div>
+        <div class="neg-amount-label">👷 Sub Req</div>
+      </div>
+      <div class="neg-amount" style="border:1px solid var(--blue)44">
+        <div class="neg-amount-val" style="color:var(--green)">${n.gc_approved||'—'}</div>
+        <div class="neg-amount-label">✅ GC Appr</div>
+      </div>
+      <div class="neg-amount">
+        <div class="neg-amount-val" style="color:var(--muted)">${n.owner_released||'—'}</div>
+        <div class="neg-amount-label">🏛 Owner Rel</div>
+      </div>
+    </div>
+    ${n.sub_note?`<div style="font-size:.77rem;color:var(--muted);margin-bottom:10px;background:var(--mid);border-radius:6px;padding:8px">💬 Sub note: ${n.sub_note}</div>`:''}
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn-primary" style="flex:1;padding:7px" onclick="openReviewModal('${n.id}')">📋 Review &amp; Approve</button>
+      <button class="btn-green" style="flex:1;padding:7px" onclick="gcApproveAndPay('${n.id}')">💳 Approve &amp; Pay Now</button>
+      <button style="padding:7px 12px;background:none;border:1px solid var(--border);color:var(--muted);border-radius:8px;cursor:pointer;font-size:.8rem" onclick="gcForwardToOwner('${n.id}')">📨 Forward to Owner</button>
+    </div>
+  </div>`;
+}
+
+function renderPhotosTab(){
+  const el=document.getElementById('photoGrid');
+  if(!allSubmissions.length){
+    el.innerHTML=`<div class="card" style="grid-column:1/-1;padding:40px;text-align:center;color:var(--muted)"><div style="font-size:2.5rem;margin-bottom:10px">📷</div><div>No site photos yet</div></div>`;
+    return;
+  }
+  el.innerHTML = allSubmissions.map(s=>{
+    const sev=s.severity||'ok';
+    const sevColor=sev==='critical'?'var(--red)':sev==='warning'?'var(--orange)':'var(--green)';
+    const ts=new Date(s.created_at).toLocaleString('en-US',{month:'short',day:'numeric'});
+    return `<div class="card" style="padding:0;overflow:hidden;cursor:pointer" onclick="viewSubmissionDetail('${s.id}')">
+      ${s.photo_url?`<img src="${s.photo_url}" style="width:100%;height:120px;object-fit:cover" onerror="this.style.background='var(--mid)'">`:
+        `<div style="height:120px;background:var(--mid);display:flex;align-items:center;justify-content:center;font-size:2.5rem">📷</div>`}
+      <div style="padding:12px">
+        <div style="font-weight:700;font-size:.85rem;margin-bottom:3px">${s.job_name||'Unknown Job'}</div>
+        <div style="font-size:.72rem;color:var(--muted);margin-bottom:6px">${ts} · ${s.source||'upload'}</div>
+        <div style="display:flex;gap:6px;font-size:.73rem;flex-wrap:wrap">
+          <span style="color:var(--blue)">📊 ${s.ai_progress_pct||0}%</span>
+          <span style="color:${sevColor}">● ${sev}</span>
+          <span style="color:var(--green)">💰 ${s.ai_amount||0}%</span>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderPaidTab(){
+  const el=document.getElementById('paidList');
+  const done = allNegotiations.filter(n=>['paid','approved'].includes(n.status));
+  if(!done.length){
+    el.innerHTML=`<div class="card" style="padding:40px;text-align:center;color:var(--muted)"><div style="font-size:2.5rem;margin-bottom:10px">📋</div><div>No completed payments yet</div></div>`;
+    return;
+  }
+  el.innerHTML = done.map(n=>{
+    const ts=new Date(n.gc_reviewed_at||n.created_at).toLocaleString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+    return `<div class="card" style="padding:14px;display:flex;align-items:center;gap:14px;margin-bottom:10px">
+      <div style="flex:1">
+        <div style="font-weight:700;font-size:.87rem">${n.photo_submissions?.job_name||'Job'}</div>
+        <div style="font-size:.73rem;color:var(--muted);margin-top:3px">${ts} ${n.gc_note?`· ${n.gc_note}`:''}</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:1.1rem;font-weight:700;color:var(--green)">${n.gc_approved||n.ai_amount||0}%</div>
+        <div style="font-size:.7rem;color:var(--muted)">of contract</div>
+      </div>
+      ${statusBadge(n.status)}
+    </div>`;
+  }).join('');
+}
+
+function openReviewModal(negId){
+  const n = allNegotiations.find(x=>x.id===negId);
+  if(!n) return;
+  const sub = n.photo_submissions||{};
+  document.getElementById('reviewModalTitle').textContent = `Review — ${sub.job_name||'Payment Request'}`;
+  document.getElementById('reviewModal').style.display='flex';
+  document.getElementById('reviewModalBody').innerHTML = `
+    ${sub.photo_url?`<img src="${sub.photo_url}" style="width:100%;max-height:200px;object-fit:cover;border-radius:8px">`:''}
+    <div class="neg-amounts">
+      <div class="neg-amount"><div class="neg-amount-val" style="color:var(--blue)">${n.ai_amount||0}%</div><div class="neg-amount-label">🤖 AI</div></div>
+      <div class="neg-amount"><div class="neg-amount-val" style="color:var(--orange)">${n.sub_requested||0}%</div><div class="neg-amount-label">👷 Sub</div></div>
+      <div class="neg-amount" style="border:1px solid var(--blue)44">
+        <input type="number" id="rm_gc_amount" value="${n.gc_approved||n.sub_requested||n.ai_amount||0}" min="0" max="100" step="0.5"
+          style="width:100%;background:none;border:none;color:var(--green);font-size:1.2rem;font-weight:800;text-align:center;outline:none">
+        <div class="neg-amount-label">✅ GC (edit)</div>
+      </div>
+      <div class="neg-amount"><div class="neg-amount-val" style="color:var(--muted)">${n.owner_released||'—'}</div><div class="neg-amount-label">🏛 Owner</div></div>
+    </div>
+    <div class="form-group">
+      <label>Your Note</label>
+      <textarea id="rm_gc_note" rows="2" placeholder="Optional note to sub / owner…">${n.gc_note||''}</textarea>
+    </div>
+    <div class="form-group">
+      <label>Payment Method</label>
+      <select id="rm_payment_method">
+        <option value="manual">Manual / Cheque</option>
+        <option value="stripe">Stripe Transfer</option>
+      </select>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn-primary" style="flex:1" onclick="saveGCApproval('${negId}','pending_gc')">💾 Save Draft</button>
+      <button class="btn-green" style="flex:1" onclick="saveGCApproval('${negId}','approved')">✅ Approve &amp; Release to Sub</button>
+      <button style="flex:1;padding:9px;background:var(--mid);border:1px solid var(--border);color:var(--text);border-radius:8px;cursor:pointer;font-size:.83rem;font-weight:600" onclick="saveGCApproval('${negId}','pending_owner')">📨 Forward to Owner</button>
+    </div>
+    <button style="width:100%;padding:9px;background:none;border:1px solid var(--red)44;color:var(--red);border-radius:8px;cursor:pointer;font-size:.8rem" onclick="gcRejectNeg('${negId}')">✗ Reject</button>`;
+}
+
+function closeReviewModal(){ document.getElementById('reviewModal').style.display='none'; }
+
+async function saveGCApproval(negId, newStatus){
+  const amount = parseFloat(document.getElementById('rm_gc_amount').value)||0;
+  const note   = document.getElementById('rm_gc_note').value;
+  const method = document.getElementById('rm_payment_method').value;
+  try {
+    await sbClient.from('payment_negotiations').update({
+      gc_approved: amount,
+      gc_note: note,
+      payment_method: method,
+      status: newStatus,
+      gc_reviewed_at: new Date().toISOString()
+    }).eq('id',negId);
+    closeReviewModal();
+    await loadAllData();
+    const msgs = {approved:'✅ Payment approved and released to sub.',pending_owner:'📨 Forwarded to owner for review.',pending_gc:'💾 Draft saved.'};
+    alert(msgs[newStatus]||'Saved.');
+  } catch(e){ alert('Error: '+e.message); }
+}
+
+async function gcApproveAndPay(negId){
+  const n=allNegotiations.find(x=>x.id===negId);
+  if(!n) return;
+  const amount = n.sub_requested||n.ai_amount||0;
+  if(!confirm(`Approve and mark as paid: ${amount}% of contract?`)) return;
+  try {
+    await sbClient.from('payment_negotiations').update({
+      gc_approved: amount,
+      status: 'paid',
+      payment_status: 'paid',
+      payment_method: 'manual',
+      gc_reviewed_at: new Date().toISOString(),
+      paid_at: new Date().toISOString()
+    }).eq('id',negId);
+    await sbClient.from('photo_submissions').update({status:'paid'}).eq('id',n.photo_submission_id);
+    await loadAllData();
+    alert('✅ Payment approved and marked as paid.');
+  } catch(e){ alert('Error: '+e.message); }
+}
+
+async function gcForwardToOwner(negId){
+  const n=allNegotiations.find(x=>x.id===negId);
+  if(!n) return;
+  if(!confirm('Forward this payment request to the owner for review?')) return;
+  try {
+    await sbClient.from('payment_negotiations').update({
+      gc_approved: n.sub_requested||n.ai_amount,
+      status: 'pending_owner',
+      gc_reviewed_at: new Date().toISOString()
+    }).eq('id',negId);
+    await loadAllData();
+    alert('📨 Forwarded to owner.');
+  } catch(e){ alert('Error: '+e.message); }
+}
+
+async function gcRejectNeg(negId){
+  if(!confirm('Reject this payment request?')) return;
+  try {
+    await sbClient.from('payment_negotiations').update({status:'rejected',gc_reviewed_at:new Date().toISOString()}).eq('id',negId);
+    closeReviewModal();
+    await loadAllData();
+  } catch(e){ alert('Error: '+e.message); }
+}
+
+async function viewSubmissionDetail(id){
+  const s=allSubmissions.find(x=>x.id===id);
+  if(!s) return;
+  const sev=s.severity||'ok';
+  const sevColor=sev==='critical'?'var(--red)':sev==='warning'?'var(--orange)':'var(--green)';
+  document.getElementById('reviewModalTitle').textContent = `${s.job_name||'Photo'} — AI Analysis`;
+  document.getElementById('reviewModal').style.display='flex';
+  document.getElementById('reviewModalBody').innerHTML = `
+    ${s.photo_url?`<img src="${s.photo_url}" style="width:100%;max-height:220px;object-fit:cover;border-radius:8px">`:''}
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <div class="neg-amount" style="flex:1"><div class="neg-amount-val" style="color:var(--blue)">${s.ai_progress_pct||0}%</div><div class="neg-amount-label">Progress</div></div>
+      <div class="neg-amount" style="flex:1"><div class="neg-amount-val" style="color:var(--green)">${s.ai_amount||0}%</div><div class="neg-amount-label">Suggested</div></div>
+      <div class="neg-amount" style="flex:1"><div class="neg-amount-val" style="color:${sevColor}">${sev.toUpperCase()}</div><div class="neg-amount-label">Severity</div></div>
+    </div>
+    <div style="background:var(--mid);border-radius:8px;padding:14px;font-size:.82rem;line-height:1.6;border-left:3px solid ${sevColor}">${(s.ai_analysis||'No analysis').replace(/\n/g,'<br>')}</div>
+    <button class="modal-close" style="width:100%;padding:9px;background:var(--mid);border:1px solid var(--border);color:var(--text);border-radius:8px;cursor:pointer;font-size:.83rem" onclick="closeReviewModal()">Close</button>`;
+}
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+(async function init(){
+  // Load Supabase CDN
+  const s=document.createElement('script');
+  s.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js';
+  s.onload=async()=>{
+    await initSB();
+    // Check existing session
+    const {data:{session}} = await sbClient.auth.getSession();
+    if(session?.user){
+      gcUser=session.user;
+      await loadGCProfile();
+      showApp();
+    }
+  };
+  document.head.appendChild(s);
+})();
+</script>
+</body>
+</html>
