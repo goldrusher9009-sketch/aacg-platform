@@ -543,13 +543,24 @@ function openReleaseModal(negId){
       <div class="neg-amount"><div class="neg-amount-val" style="color:var(--green)">${n.gc_approved||0}%</div><div class="neg-amount-label">✅ GC</div></div>
       <div class="neg-amount" style="border:1px solid var(--gold)55">
         <input type="number" id="rm_owner_amount" value="${n.owner_released||n.gc_approved||n.sub_requested||n.ai_amount||0}" min="0" max="100" step="0.5"
+          onchange="updateOwnerDollarPreview()"
           style="width:100%;background:none;border:none;color:var(--gold);font-size:1.2rem;font-weight:800;text-align:center;outline:none">
         <div class="neg-amount-label">🏛 Owner (edit)</div>
       </div>
     </div>
     <div class="form-group">
+      <label>Contract Value ($) — enter to see dollar amounts</label>
+      <input type="number" id="rm_owner_contract" placeholder="e.g. 500000" min="0" step="1000"
+        onchange="updateOwnerDollarPreview()"
+        style="width:100%;background:var(--mid);border:1px solid var(--border);border-radius:8px;padding:9px 13px;color:var(--text);font-size:.88rem;outline:none">
+    </div>
+    <div id="rm_owner_dollar_preview" style="background:var(--mid);border-radius:8px;padding:10px;font-size:.82rem;color:var(--muted);display:none;margin-bottom:4px">
+      Releasing <span id="rm_owner_dollar_amt" style="color:var(--gold);font-weight:700"></span> to GC
+      <span style="color:var(--muted)"> · GC pays sub within 7 days (pay-when-paid)</span>
+    </div>
+    <div class="form-group">
       <label>Your Note</label>
-      <textarea id="rm_owner_note" rows="2" placeholder="Optional note…">${n.owner_note||''}</textarea>
+      <textarea id="rm_owner_note" rows="2" placeholder="Optional note to GC…">${n.owner_note||''}</textarea>
     </div>
     <div style="display:flex;gap:8px">
       <button class="btn-primary" style="flex:1" onclick="ownerRelease('${negId}','approved')">🏛 Release Payment</button>
@@ -559,34 +570,57 @@ function openReleaseModal(negId){
 
 function closeReleaseModal(){ document.getElementById('releaseModal').style.display='none'; }
 
+function updateOwnerDollarPreview(){
+  const contractVal = parseFloat(document.getElementById('rm_owner_contract')?.value)||0;
+  const pct = parseFloat(document.getElementById('rm_owner_amount')?.value)||0;
+  const preview = document.getElementById('rm_owner_dollar_preview');
+  if(!preview) return;
+  if(contractVal > 0){
+    const dollarAmt = (contractVal * pct / 100);
+    document.getElementById('rm_owner_dollar_amt').textContent = '$'+dollarAmt.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+    preview.style.display = 'block';
+  } else {
+    preview.style.display = 'none';
+  }
+}
+
 async function ownerRelease(negId, newStatus){
   const amount=parseFloat(document.getElementById('rm_owner_amount').value)||0;
   const note=document.getElementById('rm_owner_note').value;
+  const now=new Date().toISOString();
   try {
-    await sbClient.from('payment_negotiations').update({
+    const updateFields = {
       owner_id:           ownerUser.id,    // claim this negotiation for this owner
       owner_released:     amount,
       owner_note:         note,
       status:             newStatus,
-      owner_reviewed_at:  new Date().toISOString()
-    }).eq('id',negId);
+      owner_reviewed_at:  now
+    };
+    if(newStatus === 'approved' || newStatus === 'paid'){
+      updateFields.payment_status = 'owner_released';
+      updateFields.paid_at = now;
+    }
+    await sbClient.from('payment_negotiations').update(updateFields).eq('id',negId);
     closeReleaseModal();
     await loadAllData();
-    alert(`✅ Payment released: ${amount}% of contract`);
+    alert(`✅ Payment released: ${amount}% of contract. Sub-contractor will be notified.`);
   } catch(e){ alert('Error: '+e.message); }
 }
 
 async function ownerReleaseQuick(negId, amount){
-  if(!confirm(`Release payment: ${amount}% of contract?`)) return;
+  if(!confirm(`Release payment: ${amount}% of contract?\n\nThis will notify the GC to pay the sub-contractor within 7 days.`)) return;
+  const now=new Date().toISOString();
   try {
     await sbClient.from('payment_negotiations').update({
       owner_id:           ownerUser.id,
       owner_released:     amount,
       status:             'approved',
-      owner_reviewed_at:  new Date().toISOString()
+      payment_status:     'owner_released',
+      owner_reviewed_at:  now,
+      paid_at:            now
     }).eq('id',negId);
     await loadAllData();
-    alert(`✅ Payment released: ${amount}% of contract`);
+    alert(`✅ Payment released: ${amount}% of contract. GC will pay sub within 7 days.`);
   } catch(e){ alert('Error: '+e.message); }
 }
 

@@ -1843,18 +1843,18 @@ async function buildBillingContent(){
   el.innerHTML = `<div style="color:var(--muted);font-size:.83rem;padding:20px">⏳ Loading billing…</div>`;
 
   const plans = {
-    starter:    {name:'Starter',    price:0,   priceStr:'Free',        color:'var(--muted)',
-                 features:['5 AI Agents (Free tier)','5 Active Projects','Lien Tracker','Email Support'],
+    starter:    {name:'Starter',    price:49,  priceStr:'$49/month',   color:'var(--muted)',
+                 features:['5 AI Agents (rule-based)','5 Active Projects','Lien Tracker','Email Support','14-day free trial'],
                  limits:{agents:5, projects:5}},
     pro:        {name:'Professional',price:99, priceStr:'$99/month',   color:'var(--blue)',
-                 features:['All 20 AI Agents','50 Active Projects','All 6 Workflows','Photo AI Inspector','Compliance Tracker','Priority Support'],
+                 features:['All 20 AI Agents (AI-powered)','50 Active Projects','All 6 Workflows','Photo AI Inspector','Compliance Tracker','Priority Support'],
                  limits:{agents:20, projects:50}},
     enterprise: {name:'Enterprise', price:0,   priceStr:'Custom',      color:'var(--gold)',
                  features:['All 20 AI Agents','Unlimited Projects','Team Management (15 users)','API Access','Dedicated Account Manager','SLA Guarantee'],
                  limits:{agents:20, projects:999}},
   };
   const p = plans[currentTier];
-  const invoiceAmt = currentTier==='pro'?'$99.00':currentTier==='enterprise'?'Custom':'$0.00';
+  const invoiceAmt = currentTier==='pro'?'$99.00':currentTier==='enterprise'?'Custom':'$49.00';
 
   // Pull real usage counts from Supabase
   let agentRunsMonth = 0, activeProjects = 0, stripeCustomerId = null, sbInvoices = [];
@@ -1918,8 +1918,8 @@ async function buildBillingContent(){
           <div class="card-title">Payment Method</div>
           ${currentTier==='starter'?`
             <div style="padding:14px;text-align:center;color:var(--muted);font-size:.82rem">
-              No payment method required for Starter plan.<br>
-              <button class="btn-primary" style="margin-top:10px" onclick="showUpgradeModal()">Upgrade to add payment</button>
+              Your 14-day free trial is active. After trial: $49/month.<br>
+              <button class="btn-primary" style="margin-top:10px" onclick="showUpgradeModal()">Upgrade to Pro — $99/month</button>
             </div>
           `:`
             <div style="padding:12px;font-size:.82rem;color:var(--muted);margin-bottom:10px">
@@ -1948,7 +1948,7 @@ async function buildBillingContent(){
         </tbody>
       </table>` : `
       <div style="text-align:center;color:var(--muted);padding:24px;font-size:.82rem">
-        ${currentTier==='starter' ? 'No invoices — Starter plan is free.' : 'Invoice history will appear here once billing starts. <button class="btn-secondary" style="margin-left:8px;padding:4px 10px;font-size:.75rem" onclick="openStripePortal()">Open Stripe Portal</button>'}
+        ${currentTier==='starter' ? 'No invoices yet — your 14-day free trial is active. First invoice will be $49.00 after trial ends.' : 'Invoice history will appear here once billing starts. <button class="btn-secondary" style="margin-left:8px;padding:4px 10px;font-size:.75rem" onclick="openStripePortal()">Open Stripe Portal</button>'}
       </div>`}
       ${currentTier !== 'starter' ? `
         <div style="margin-top:14px;padding:12px;background:rgba(42,125,225,.07);border-radius:8px;font-size:.78rem;color:var(--muted)">

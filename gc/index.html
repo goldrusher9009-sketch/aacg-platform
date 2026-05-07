@@ -166,7 +166,7 @@
       <div class="kpi"><div class="kpi-val" id="kpi_pending" style="color:var(--orange)">—</div><div class="kpi-label">Pending Review</div></div>
       <div class="kpi"><div class="kpi-val" id="kpi_approved" style="color:var(--green)">—</div><div class="kpi-label">Approved</div></div>
       <div class="kpi"><div class="kpi-val" id="kpi_paid" style="color:var(--blue)">—</div><div class="kpi-label">Paid Out</div></div>
-      <div class="kpi"><div class="kpi-val" id="kpi_total" style="color:var(--gold)">—</div><div class="kpi-label">Total Value</div></div>
+      <div class="kpi"><div class="kpi-val" id="kpi_total" style="color:var(--gold)">—</div><div class="kpi-label">Total Requests</div></div>
     </div>
 
     <!-- Info alert for new GCs -->
@@ -376,11 +376,11 @@ function updateKPIs(){
   const pending  = allNegotiations.filter(n=>n.status==='pending_gc').length;
   const approved = allNegotiations.filter(n=>['pending_owner','approved'].includes(n.status)).length;
   const paid     = allNegotiations.filter(n=>n.status==='paid').length;
-  const total    = allNegotiations.filter(n=>n.gc_approved).reduce((s,n)=>s+(n.gc_approved||0),0);
+  const total    = allNegotiations.length;
   document.getElementById('kpi_pending').textContent  = pending;
   document.getElementById('kpi_approved').textContent = approved;
   document.getElementById('kpi_paid').textContent     = paid;
-  document.getElementById('kpi_total').textContent    = total.toFixed(1)+'%';
+  document.getElementById('kpi_total').textContent    = total;
 }
 
 function switchGCTab(tab){
@@ -517,6 +517,7 @@ function openReviewModal(negId){
       <div class="neg-amount"><div class="neg-amount-val" style="color:var(--orange)">${n.sub_requested||0}%</div><div class="neg-amount-label">👷 Sub</div></div>
       <div class="neg-amount" style="border:1px solid var(--blue)44">
         <input type="number" id="rm_gc_amount" value="${n.gc_approved||n.sub_requested||n.ai_amount||0}" min="0" max="100" step="0.5"
+          onchange="updateDollarPreview()"
           style="width:100%;background:none;border:none;color:var(--green);font-size:1.2rem;font-weight:800;text-align:center;outline:none">
         <div class="neg-amount-label">✅ GC (edit)</div>
       </div>
@@ -527,9 +528,21 @@ function openReviewModal(negId){
       <textarea id="rm_gc_note" rows="2" placeholder="Optional note to sub / owner…">${n.gc_note||''}</textarea>
     </div>
     <div class="form-group">
+      <label>Contract Value ($) — enter to see dollar amounts</label>
+      <input type="number" id="rm_contract_value" placeholder="e.g. 250000" min="0" step="1000"
+        onchange="updateDollarPreview()"
+        style="width:100%;background:var(--mid);border:1px solid var(--border);border-radius:8px;padding:9px 13px;color:var(--text);font-size:.88rem;outline:none">
+    </div>
+    <div id="rm_dollar_preview" style="background:var(--mid);border-radius:8px;padding:10px;font-size:.82rem;color:var(--muted);display:none;margin-bottom:4px">
+      Approving <span id="rm_dollar_amt" style="color:var(--green);font-weight:700"></span> of <span id="rm_contract_val_display" style="color:var(--text)"></span>
+      <span style="color:var(--muted)"> · 10% retainage = </span><span id="rm_retainage_amt" style="color:var(--orange);font-weight:700"></span>
+    </div>
+    <div class="form-group">
       <label>Payment Method</label>
       <select id="rm_payment_method">
-        <option value="manual">Manual / Cheque</option>
+        <option value="check">Check / Bank Transfer</option>
+        <option value="ach">ACH / Wire</option>
+        <option value="manual">Manual</option>
         <option value="stripe">Stripe Transfer</option>
       </select>
     </div>
@@ -538,24 +551,49 @@ function openReviewModal(negId){
       <button class="btn-green" style="flex:1" onclick="saveGCApproval('${negId}','approved')">✅ Approve &amp; Release to Sub</button>
       <button style="flex:1;padding:9px;background:var(--mid);border:1px solid var(--border);color:var(--text);border-radius:8px;cursor:pointer;font-size:.83rem;font-weight:600" onclick="saveGCApproval('${negId}','pending_owner')">📨 Forward to Owner</button>
     </div>
-    <button style="width:100%;padding:9px;background:none;border:1px solid var(--red)44;color:var(--red);border-radius:8px;cursor:pointer;font-size:.8rem" onclick="gcRejectNeg('${negId}')">✗ Reject</button>`;
+    <button style="width:100%;padding:9px;background:none;border:1px solid var(--red)44;color:var(--red);border-radius:8px;cursor:pointer;font-size:.8rem;margin-top:4px" onclick="gcRejectNeg('${negId}')">✗ Reject</button>`;
 }
 
 function closeReviewModal(){ document.getElementById('reviewModal').style.display='none'; }
 
+function updateDollarPreview(){
+  const contractVal = parseFloat(document.getElementById('rm_contract_value')?.value)||0;
+  const pct = parseFloat(document.getElementById('rm_gc_amount')?.value)||0;
+  const preview = document.getElementById('rm_dollar_preview');
+  if(!preview) return;
+  if(contractVal > 0){
+    const dollarAmt = (contractVal * pct / 100);
+    const retainage = (dollarAmt * 0.10);
+    document.getElementById('rm_dollar_amt').textContent = '$'+dollarAmt.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+    document.getElementById('rm_contract_val_display').textContent = '$'+contractVal.toLocaleString('en-US');
+    document.getElementById('rm_retainage_amt').textContent = '$'+retainage.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+    preview.style.display = 'block';
+  } else {
+    preview.style.display = 'none';
+  }
+}
+
 async function saveGCApproval(negId, newStatus){
-  const amount = parseFloat(document.getElementById('rm_gc_amount').value)||0;
-  const note   = document.getElementById('rm_gc_note').value;
-  const method = document.getElementById('rm_payment_method').value;
+  const amount        = parseFloat(document.getElementById('rm_gc_amount').value)||0;
+  const note          = document.getElementById('rm_gc_note').value;
+  const method        = document.getElementById('rm_payment_method').value;
+  const contractValue = parseFloat(document.getElementById('rm_contract_value')?.value)||null;
   try {
-    await sbClient.from('payment_negotiations').update({
+    const updateFields = {
       gc_id:          gcUser.id,       // claim this negotiation for this GC
       gc_approved:    amount,
       gc_note:        note,
       payment_method: method,
       status:         newStatus,
       gc_reviewed_at: new Date().toISOString()
-    }).eq('id',negId);
+    };
+    if(contractValue) updateFields.contract_value = contractValue;
+    if(newStatus === 'approved'){
+      updateFields.payment_status = 'gc_approved';
+    } else if(newStatus === 'pending_owner'){
+      updateFields.payment_status = 'pending_owner';
+    }
+    await sbClient.from('payment_negotiations').update(updateFields).eq('id',negId);
     closeReviewModal();
     await loadAllData();
     const msgs = {approved:'✅ Payment approved and released to sub.',pending_owner:'📨 Forwarded to owner for review.',pending_gc:'💾 Draft saved.'};
