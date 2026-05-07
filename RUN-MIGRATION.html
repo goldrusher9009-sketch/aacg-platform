@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>AACG — Run Supabase Migration</title>
+<style>
+  body { font-family: monospace; background: #0f1117; color: #e2e8f0; max-width: 800px; margin: 40px auto; padding: 20px; }
+  h1 { color: #ef4444; }
+  .card { background: #1a1f2e; border: 1px solid #2d3748; border-radius: 10px; padding: 20px; margin-bottom: 20px; }
+  .btn { background: #ef4444; color: #fff; border: none; padding: 14px 28px; border-radius: 8px; cursor: pointer; font-size: 1rem; font-weight: 700; width: 100%; margin-top: 10px; }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  .btn-green { background: #10b981; }
+  .log { background: #0a0d14; border-radius: 8px; padding: 14px; margin-top: 14px; font-size: .8rem; line-height: 1.7; min-height: 80px; max-height: 400px; overflow-y: auto; white-space: pre-wrap; }
+  .ok  { color: #10b981; }
+  .err { color: #ef4444; }
+  .info{ color: #60a5fa; }
+  .warn{ color: #f59e0b; }
+  input { width: 100%; padding: 10px; background: #0a0d14; border: 1px solid #2d3748; border-radius: 6px; color: #e2e8f0; font-family: monospace; font-size: .85rem; box-sizing: border-box; margin-top: 6px; }
+  label { font-size: .8rem; color: #94a3b8; }
+  .step { padding: 6px 0; border-bottom: 1px solid #1a1f2e; font-size: .82rem; }
+  .step.done { color: #10b981; }
+  .step.fail { color: #ef4444; }
+  .step.pending { color: #94a3b8; }
+</style>
+</head>
+<body>
+
+<h1>🔧 AACG Supabase Migration Runner</h1>
+<p style="color:#94a3b8;font-size:.85rem">Runs the required ALTER TABLE and CREATE TABLE statements on your live Supabase project.<br>Uses your service role key — never stored anywhere.</p>
+
+<div class="card">
+  <label>Supabase Project URL</label>
+  <input id="sb_url" value="https://wausefmzaqtlomyhqcjf.supabase.co" placeholder="https://xxxx.supabase.co">
+  <label style="margin-top:10px;display:block">Service Role Key (from Supabase → Settings → API)</label>
+  <input id="sb_key" type="password" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...">
+  <div style="font-size:.72rem;color:#ef4444;margin-top:6px">⚠️ Service role key has full DB access — only paste here, never share it. This page runs entirely in your browser.</div>
+</div>
+
+<div class="card">
+  <div style="font-weight:700;margin-bottom:10px;color:#c9a84c">Migration Steps</div>
+  <div id="step_list">
+    <div class="step pending" id="s0">⏳ 1. ALTER payment_negotiations — add payment_status, paid_at, contract_value</div>
+    <div class="step pending" id="s1">⏳ 2. CREATE TABLE gc_profiles (if not exists)</div>
+    <div class="step pending" id="s2">⏳ 3. CREATE TABLE owner_profiles (if not exists)</div>
+    <div class="step pending" id="s3">⏳ 4. Enable RLS + policies on gc_profiles</div>
+    <div class="step pending" id="s4">⏳ 5. Enable RLS + policies on owner_profiles</div>
+    <div class="step pending" id="s5">⏳ 6. Verify tables exist (sanity check)</div>
+  </div>
+  <button class="btn" id="runBtn" onclick="runMigration()">▶ Run Migration Now</button>
+</div>
+
+<div class="card" id="logCard" style="display:none">
+  <div style="font-weight:700;margin-bottom:6px">Migration Log</div>
+  <div class="log" id="log"></div>
+</div>
+
+<div class="card" id="doneCard" style="display:none">
+  <div style="color:#10b981;font-size:1.1rem;font-weight:700;margin-bottom:8px">✅ Migration Complete!</div>
+  <div style="font-size:.83rem;color:#94a3b8">All tables and columns are in place. You can close this page and start testing.</div>
+</div>
+
+<script>
+const MIGRATIONS = [
+  {
+    label: 'ALTER payment_negotiations — add payment_status, paid_at, contract_value',
+    sql: `ALTER TABLE payment_negotiations
+  ADD COLUMN IF NOT EXISTS payment_status TEXT DEFAULT 'pending',
+  ADD COLUMN IF NOT EXISTS paid_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS contract_value NUMERIC;`
+  },
+  {
+    label: 'CREATE TABLE gc_profiles',
+    sql: `CREATE TABLE IF NOT EXISTS gc_profiles (
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  email TEXT,
+  name TEXT,
+  company TEXT,
+  phone TEXT,
+  status TEXT DEFAULT 'active',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);`
+  },
+  {
+    label: 'CREATE TABLE owner_profiles',
+    sql: `CREATE TABLE IF NOT EXISTS owner_profiles (
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  email TEXT,
+  name TEXT,
+  company TEXT,
+  phone TEXT,
+  status TEXT DEFAULT 'active',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);`
+  },
+  {
+    label: 'RLS + policies on gc_profiles',
+    sql: `ALTER TABLE gc_profiles ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='gc_profiles' AND policyname='GCs can read own profile') THEN
+    CREATE POLICY "GCs can read own profile" ON gc_profiles FOR SELECT USING (auth.uid() = id);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='gc_profiles' AND policyname='GCs can insert own profile') THEN
+    CREATE POLICY "GCs can insert own profile" ON gc_profiles FOR INSERT WITH CHECK (auth.uid() = id);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='gc_profiles' AND policyname='GCs can update own profile') THEN
+    CREATE POLICY "GCs can update own profile" ON gc_profiles FOR UPDATE USING (auth.uid() = id);
+  END IF;
+END $$;`
+  },
+  {
+    label: 'RLS + policies on owner_profiles',
+    sql: `ALTER TABLE owner_profiles ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='owner_profiles' AND policyname='Owners can read own profile') THEN
+    CREATE POLICY "Owners can read own profile" ON owner_profiles FOR SELECT USING (auth.uid() = id);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='owner_profiles' AND policyname='Owners can insert own profile') THEN
+    CREATE POLICY "Owners can insert own profile" ON owner_profiles FOR INSERT WITH CHECK (auth.uid() = id);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='owner_profiles' AND policyname='Owners can update own profile') THEN
+    CREATE POLICY "Owners can update own profile" ON owner_profiles FOR UPDATE USING (auth.uid() = id);
+  END IF;
+END $$;`
+  },
+  {
+    label: 'Verify tables (sanity check)',
+    sql: `SELECT table_name FROM information_schema.tables
+WHERE table_schema = 'public'
+  AND table_name IN ('gc_profiles','owner_profiles','payment_negotiations')
+ORDER BY table_name;`
+  }
+];
+
+function log(msg, cls='info') {
+  const el = document.getElementById('log');
+  el.innerHTML += `<span class="${cls}">${msg}</span>\n`;
+  el.scrollTop = el.scrollHeight;
+}
+
+function setStep(i, state, msg) {
+  const el = document.getElementById('s'+i);
+  if (!el) return;
+  el.className = 'step ' + state;
+  const icons = { done: '✅', fail: '❌', pending: '⏳', running: '⚡' };
+  el.textContent = `${icons[state]||'•'} ${i+1}. ${msg || MIGRATIONS[i]?.label || ''}`;
+}
+
+async function runSQL(url, key, sql) {
+  const res = await fetch(`${url}/rest/v1/rpc/`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': key,
+      'Authorization': `Bearer ${key}`,
+      'Prefer': 'return=minimal'
+    },
+    body: JSON.stringify({ query: sql })
+  });
+  // Try Management API (pg endpoint) if rpc fails
+  if (!res.ok && res.status !== 200) {
+    throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+  }
+  return res;
+}
+
+async function runSQLViaManagement(projectRef, key, sql) {
+  // Use Supabase Management API SQL execution endpoint
+  const res = await fetch(`https://api.supabase.com/v1/projects/${projectRef}/database/query`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${key}`
+    },
+    body: JSON.stringify({ query: sql })
+  });
+  const text = await res.text();
+  if (!res.ok) throw new Error(`HTTP ${res.status}: ${text}`);
+  return JSON.parse(text);
+}
+
+async function runMigration() {
+  const url   = document.getElementById('sb_url').value.trim().replace(/\/$/, '');
+  const key   = document.getElementById('sb_key').value.trim();
+
+  if (!url || !key) {
+    alert('Please fill in both the Supabase URL and Service Role Key.');
+    return;
+  }
+
+  // Extract project ref from URL: https://XXXX.supabase.co
+  const match = url.match(/https:\/\/([^.]+)\.supabase\.co/);
+  if (!match) { alert('Invalid Supabase URL format.'); return; }
+  const projectRef = match[1];
+
+  const btn = document.getElementById('runBtn');
+  btn.disabled = true; btn.textContent = '⏳ Running…';
+  document.getElementById('logCard').style.display = 'block';
+  document.getElementById('doneCard').style.display = 'none';
+
+  log(`🚀 Starting migration on project: ${projectRef}`, 'info');
+  log(`📡 Using Management API endpoint`, 'info');
+
+  let allOk = true;
+
+  for (let i = 0; i < MIGRATIONS.length; i++) {
+    const m = MIGRATIONS[i];
+    setStep(i, 'running', m.label);
+    log(`\n⚡ Step ${i+1}: ${m.label}`, 'info');
+
+    try {
+      const result = await runSQLViaManagement(projectRef, key, m.sql);
+      log(`   ✅ Success${result && Array.isArray(result) ? ` — ${result.length} rows` : ''}`, 'ok');
+      if (Array.isArray(result) && result.length > 0) {
+        result.forEach(r => log(`   • ${JSON.stringify(r)}`, 'ok'));
+      }
+      setStep(i, 'done', m.label);
+    } catch (err) {
+      log(`   ❌ Error: ${err.message}`, 'err');
+      setStep(i, 'fail', m.label + ' — FAILED');
+      allOk = false;
+
+      // If it's the verify step failing, don't block — might just be auth
+      if (i < MIGRATIONS.length - 1) {
+        log(`   ⚠️ Continuing with remaining steps…`, 'warn');
+      }
+    }
+  }
+
+  if (allOk) {
+    log('\n✅ All migration steps completed successfully!', 'ok');
+    document.getElementById('doneCard').style.display = 'block';
+    btn.textContent = '✅ Migration Complete';
+    btn.className = 'btn btn-green';
+  } else {
+    log('\n⚠️ Some steps had errors. Check the log above.', 'warn');
+    log('💡 Tip: If you see "invalid_grant" errors, the Management API requires a Personal Access Token,', 'warn');
+    log('   not the service role key. Get one at: https://supabase.com/dashboard/account/tokens', 'warn');
+    log('   Then paste it in the key field and run again.', 'warn');
+    btn.disabled = false;
+    btn.textContent = '↻ Retry Migration';
+  }
+}
+</script>
+</body>
+</html>

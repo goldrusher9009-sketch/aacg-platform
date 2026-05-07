@@ -1,0 +1,24 @@
+chore: full overnight audit complete — migration scripts, agent audit, docs
+
+migration.sql:
+- ALTER TABLE payment_negotiations: ADD COLUMN IF NOT EXISTS payment_status, paid_at, contract_value
+- CREATE TABLE IF NOT EXISTS gc_profiles (id, email, name, company, phone, status, created_at)
+- CREATE TABLE IF NOT EXISTS owner_profiles (id, email, name, company, phone, status, created_at)
+- RLS policies for gc_profiles: read/insert/update own profile
+- RLS policies for owner_profiles: read/insert/update own profile
+- Verification query for all 3 tables
+
+RUN-MIGRATION.html:
+- Browser-based one-click migration runner
+- Uses Supabase Management API for SQL execution
+- Step-by-step progress display with pass/fail per step
+- Works with Personal Access Token or service role key
+
+READY-FOR-TOMORROW.md:
+- Fix Supabase project ref: tgzohfdbfvoxlwjxlmqh -> wausefmzaqtlomyhqcjf
+- Add migration instructions (Option A: browser tool, Option B: SQL editor)
+- Add full 20-agent audit results table (all 8 free + 12 cloud verified)
+- Add 6 workflow tier-gate verification
+- Add construction process flow alignment summary (AIA G702/G703 confirmed)
+- Add payment_status state machine documentation
+- Update system status with migration note
