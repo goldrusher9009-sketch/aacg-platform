@@ -18,9 +18,15 @@
   #authScreen{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}
   .auth-box{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:40px;width:100%;max-width:420px}
   .auth-logo{font-size:2.2rem;font-weight:900;margin-bottom:6px}
-  .auth-sub{color:var(--muted);font-size:.85rem;margin-bottom:28px}
-  .form-group{margin-bottom:16px}
-  .form-group label{display:block;font-size:.78rem;font-weight:600;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em}
+  .auth-sub{color:var(--muted);font-size:.85rem;margin-bottom:22px}
+
+  /* auth tabs */
+  .auth-tabs{display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:22px}
+  .auth-tab{flex:1;padding:8px;background:none;border:none;font-size:.83rem;font-weight:600;color:var(--muted);cursor:pointer;margin-bottom:-2px;transition:.2s;text-align:center}
+  .auth-tab.active{color:var(--blue);border-bottom:3px solid var(--blue)}
+
+  .form-group{margin-bottom:14px}
+  .form-group label{display:block;font-size:.78rem;font-weight:600;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.04em}
   .form-group input,.form-group select,.form-group textarea{width:100%;background:var(--mid);border:1px solid var(--border);border-radius:8px;padding:10px 13px;color:var(--text);font-size:.88rem;outline:none;transition:.2s}
   .form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--blue)}
   .btn-primary{background:var(--blue);color:#fff;border:none;border-radius:8px;padding:11px 20px;font-size:.88rem;font-weight:600;cursor:pointer;transition:.2s;width:100%}
@@ -72,6 +78,9 @@
   .alert-info{background:#1e3a5f;border:1px solid var(--blue);color:#93c5fd}
   .alert-success{background:#14532d;border:1px solid var(--green);color:#86efac}
   .alert-warning{background:#7c2d12;border:1px solid var(--orange);color:#fdba74}
+
+  .portal-links{margin-top:20px;text-align:center;font-size:.78rem;color:var(--muted);line-height:1.8}
+  .portal-links a{color:var(--blue)}
 </style>
 </head>
 <body>
@@ -81,18 +90,56 @@
   <div class="auth-box">
     <div class="auth-logo">⚡ IronForge</div>
     <div class="auth-sub">General Contractor Portal</div>
+
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="atab_signin" onclick="switchAuthTab('signin')">Sign In</button>
+      <button class="auth-tab" id="atab_signup" onclick="switchAuthTab('signup')">Create Account</button>
+    </div>
+
     <div id="authError" class="alert alert-warning" style="display:none"></div>
-    <div class="form-group">
-      <label>Email</label>
-      <input type="email" id="gcEmail" placeholder="gc@company.com">
+    <div id="authSuccess" class="alert alert-success" style="display:none"></div>
+
+    <!-- Sign In -->
+    <div id="signinForm">
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="gcEmail" placeholder="gc@company.com">
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="gcPassword" placeholder="••••••••" onkeydown="if(event.key==='Enter')gcLogin()">
+      </div>
+      <button class="btn-primary" onclick="gcLogin()">Sign In to GC Portal</button>
     </div>
-    <div class="form-group">
-      <label>Password</label>
-      <input type="password" id="gcPassword" placeholder="••••••••" onkeydown="if(event.key==='Enter')gcLogin()">
+
+    <!-- Sign Up -->
+    <div id="signupForm" style="display:none">
+      <div class="form-group">
+        <label>Full Name</label>
+        <input type="text" id="gcSignupName" placeholder="John Smith">
+      </div>
+      <div class="form-group">
+        <label>Company Name</label>
+        <input type="text" id="gcSignupCompany" placeholder="Smith General Contracting LLC">
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="gcSignupEmail" placeholder="gc@company.com">
+      </div>
+      <div class="form-group">
+        <label>Phone</label>
+        <input type="tel" id="gcSignupPhone" placeholder="+1 (555) 000-0000">
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="gcSignupPass" placeholder="Minimum 8 characters">
+      </div>
+      <button class="btn-primary" onclick="gcSignup()">Create GC Account</button>
     </div>
-    <button class="btn-primary" onclick="gcLogin()">Sign In to GC Portal</button>
-    <div style="margin-top:16px;text-align:center;font-size:.78rem;color:var(--muted)">
-      Sub-contractor? <a href="/admin/" style="color:var(--blue)">Go to Sub Portal →</a>
+
+    <div class="portal-links">
+      Sub-contractor? <a href="/admin/">Sub Portal →</a><br>
+      Property Owner? <a href="/owner/">Owner Portal →</a>
     </div>
   </div>
 </div>
@@ -120,6 +167,12 @@
       <div class="kpi"><div class="kpi-val" id="kpi_approved" style="color:var(--green)">—</div><div class="kpi-label">Approved</div></div>
       <div class="kpi"><div class="kpi-val" id="kpi_paid" style="color:var(--blue)">—</div><div class="kpi-label">Paid Out</div></div>
       <div class="kpi"><div class="kpi-val" id="kpi_total" style="color:var(--gold)">—</div><div class="kpi-label">Total Value</div></div>
+    </div>
+
+    <!-- Info alert for new GCs -->
+    <div id="newGCAlert" class="alert alert-info" style="display:none;margin-bottom:18px">
+      👋 <strong>Welcome!</strong> Payment requests appear here once a sub-contractor submits a photo for one of your jobs.
+      Share your GC Portal link with subs so they can link jobs to you.
     </div>
 
     <!-- Tabs -->
@@ -158,7 +211,7 @@
 </div>
 
 <script>
-// ── Supabase client (same keys as admin) ─────────────────────────────────────
+// ── Supabase client ───────────────────────────────────────────────────────────
 const SB_URL = 'https://tgzohfdbfvoxlwjxlmqh.supabase.co';
 const SB_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRnem9oZmRiZnZveGx3anhsbXFoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY0ODEwNTksImV4cCI6MjA2MjA1NzA1OX0.EtBHNiR6HywQ7jqjV5W8I7_ufT3i5wG5eJOkuIAIKwk';
 
@@ -172,12 +225,22 @@ async function initSB(){
   if(window.supabase) sbClient = window.supabase.createClient(SB_URL, SB_ANON_KEY);
 }
 
+// ── Auth tab switching ────────────────────────────────────────────────────────
+function switchAuthTab(tab){
+  document.getElementById('signinForm').style.display  = tab==='signin'  ? 'block':'none';
+  document.getElementById('signupForm').style.display  = tab==='signup'  ? 'block':'none';
+  document.getElementById('atab_signin').classList.toggle('active', tab==='signin');
+  document.getElementById('atab_signup').classList.toggle('active', tab==='signup');
+  document.getElementById('authError').style.display   = 'none';
+  document.getElementById('authSuccess').style.display = 'none';
+}
+
+// ── Sign In ───────────────────────────────────────────────────────────────────
 async function gcLogin(){
   if(!sbClient){ alert('Supabase not loaded — check connection.'); return; }
   const email = document.getElementById('gcEmail').value.trim();
   const pass  = document.getElementById('gcPassword').value;
-  const errEl = document.getElementById('authError');
-  errEl.style.display='none';
+  showAuthMsg('error','');
   try {
     const {data,error} = await sbClient.auth.signInWithPassword({email,password:pass});
     if(error) throw error;
@@ -185,23 +248,80 @@ async function gcLogin(){
     await loadGCProfile();
     showApp();
   } catch(e){
-    errEl.textContent = e.message||'Sign in failed';
-    errEl.style.display='block';
+    showAuthMsg('error', e.message||'Sign in failed. Check your email and password.');
   }
 }
 
+// ── Sign Up ───────────────────────────────────────────────────────────────────
+async function gcSignup(){
+  if(!sbClient){ alert('Supabase not loaded.'); return; }
+  const name    = document.getElementById('gcSignupName').value.trim();
+  const company = document.getElementById('gcSignupCompany').value.trim();
+  const email   = document.getElementById('gcSignupEmail').value.trim();
+  const phone   = document.getElementById('gcSignupPhone').value.trim();
+  const pass    = document.getElementById('gcSignupPass').value;
+
+  if(!name||!email||!pass){ showAuthMsg('error','Name, email, and password are required.'); return; }
+  if(pass.length < 8){ showAuthMsg('error','Password must be at least 8 characters.'); return; }
+
+  showAuthMsg('error','');
+  const btn = document.querySelector('#signupForm .btn-primary');
+  btn.textContent='Creating account…'; btn.disabled=true;
+
+  try {
+    // 1. Create Supabase auth user
+    const {data,error} = await sbClient.auth.signUp({email, password:pass});
+    if(error) throw error;
+    const userId = data.user?.id;
+    if(!userId) throw new Error('No user ID returned — check Supabase email confirmation settings.');
+
+    // 2. Insert into gc_profiles
+    const {error:profileErr} = await sbClient.from('gc_profiles').insert({
+      id:      userId,
+      email:   email,
+      name:    name,
+      company: company||null,
+      phone:   phone||null,
+      status:  'active'
+    });
+    if(profileErr && !profileErr.message.includes('duplicate')) throw profileErr;
+
+    btn.textContent='Create GC Account'; btn.disabled=false;
+    showAuthMsg('success', '✅ Account created! Check your email to confirm, then sign in.');
+    switchAuthTab('signin');
+    document.getElementById('gcEmail').value = email;
+  } catch(e){
+    btn.textContent='Create GC Account'; btn.disabled=false;
+    showAuthMsg('error', e.message||'Sign up failed.');
+  }
+}
+
+function showAuthMsg(type, msg){
+  const errEl = document.getElementById('authError');
+  const sucEl = document.getElementById('authSuccess');
+  if(type==='error'){
+    errEl.textContent = msg; errEl.style.display = msg ? 'block':'none';
+    sucEl.style.display='none';
+  } else {
+    sucEl.textContent = msg; sucEl.style.display = msg ? 'block':'none';
+    errEl.style.display='none';
+  }
+}
+
+// ── Logout ────────────────────────────────────────────────────────────────────
 function gcLogout(){
   sbClient.auth.signOut();
   document.getElementById('app').style.display='none';
   document.getElementById('authScreen').style.display='flex';
-  gcUser=null; gcProfile=null;
+  gcUser=null; gcProfile=null; allNegotiations=[]; allSubmissions=[];
 }
 
+// ── Load profile ──────────────────────────────────────────────────────────────
 async function loadGCProfile(){
   // Try gc_profiles first, then fall back to regular profiles
   try {
     const {data} = await sbClient.from('gc_profiles').select('*').eq('id', gcUser.id).single();
-    if(data) { gcProfile=data; return; }
+    if(data){ gcProfile=data; return; }
   } catch(e){}
   try {
     const {data} = await sbClient.from('profiles').select('*').eq('id', gcUser.id).single();
@@ -209,24 +329,31 @@ async function loadGCProfile(){
   } catch(e){}
 }
 
+// ── Show app ──────────────────────────────────────────────────────────────────
 function showApp(){
   document.getElementById('authScreen').style.display='none';
   document.getElementById('app').style.display='flex';
   document.getElementById('gcUserName').textContent = gcProfile?.name || gcUser.email;
-  document.getElementById('gcCompanyLabel').textContent = gcProfile?.company ? `${gcProfile.company} · GC Portal` : 'General Contractor Portal';
+  document.getElementById('gcCompanyLabel').textContent = gcProfile?.company
+    ? `${gcProfile.company} · GC Portal`
+    : 'General Contractor Portal';
   loadAllData();
 }
 
+// ── Load all data — SCOPED to this GC ────────────────────────────────────────
 async function loadAllData(){
   if(!sbClient || !gcUser) return;
-  // Load negotiations assigned to this GC
+
   try {
+    // Load negotiations where gc_id = this GC, OR where gc_id is null (newly submitted, not yet assigned)
+    // In practice we fetch all and let RLS filter; but we also client-side filter as safety net
     const {data:negs} = await sbClient.from('payment_negotiations')
       .select('*, photo_submissions(*), profiles(name,phone,company)')
+      .or(`gc_id.eq.${gcUser.id},gc_id.is.null`)
       .order('submitted_at',{ascending:false});
     allNegotiations = negs||[];
   } catch(e){ console.warn('negs load failed',e); }
-  // Load all photo submissions for photos tab
+
   try {
     const {data:subs} = await sbClient.from('photo_submissions')
       .select('*')
@@ -234,6 +361,10 @@ async function loadAllData(){
       .limit(50);
     allSubmissions = subs||[];
   } catch(e){ console.warn('subs load failed',e); }
+
+  // Show welcome alert if no data yet
+  document.getElementById('newGCAlert').style.display =
+    allNegotiations.length === 0 ? 'block' : 'none';
 
   updateKPIs();
   renderReviewTab();
@@ -372,6 +503,7 @@ function renderPaidTab(){
   }).join('');
 }
 
+// ── Review Modal ──────────────────────────────────────────────────────────────
 function openReviewModal(negId){
   const n = allNegotiations.find(x=>x.id===negId);
   if(!n) return;
@@ -417,10 +549,11 @@ async function saveGCApproval(negId, newStatus){
   const method = document.getElementById('rm_payment_method').value;
   try {
     await sbClient.from('payment_negotiations').update({
-      gc_approved: amount,
-      gc_note: note,
+      gc_id:          gcUser.id,       // claim this negotiation for this GC
+      gc_approved:    amount,
+      gc_note:        note,
       payment_method: method,
-      status: newStatus,
+      status:         newStatus,
       gc_reviewed_at: new Date().toISOString()
     }).eq('id',negId);
     closeReviewModal();
@@ -437,12 +570,13 @@ async function gcApproveAndPay(negId){
   if(!confirm(`Approve and mark as paid: ${amount}% of contract?`)) return;
   try {
     await sbClient.from('payment_negotiations').update({
-      gc_approved: amount,
-      status: 'paid',
+      gc_id:          gcUser.id,
+      gc_approved:    amount,
+      status:         'paid',
       payment_status: 'paid',
       payment_method: 'manual',
       gc_reviewed_at: new Date().toISOString(),
-      paid_at: new Date().toISOString()
+      paid_at:        new Date().toISOString()
     }).eq('id',negId);
     await sbClient.from('photo_submissions').update({status:'paid'}).eq('id',n.photo_submission_id);
     await loadAllData();
@@ -456,8 +590,9 @@ async function gcForwardToOwner(negId){
   if(!confirm('Forward this payment request to the owner for review?')) return;
   try {
     await sbClient.from('payment_negotiations').update({
-      gc_approved: n.sub_requested||n.ai_amount,
-      status: 'pending_owner',
+      gc_id:          gcUser.id,
+      gc_approved:    n.sub_requested||n.ai_amount,
+      status:         'pending_owner',
       gc_reviewed_at: new Date().toISOString()
     }).eq('id',negId);
     await loadAllData();
@@ -468,7 +603,11 @@ async function gcForwardToOwner(negId){
 async function gcRejectNeg(negId){
   if(!confirm('Reject this payment request?')) return;
   try {
-    await sbClient.from('payment_negotiations').update({status:'rejected',gc_reviewed_at:new Date().toISOString()}).eq('id',negId);
+    await sbClient.from('payment_negotiations').update({
+      gc_id:          gcUser.id,
+      status:         'rejected',
+      gc_reviewed_at: new Date().toISOString()
+    }).eq('id',negId);
     closeReviewModal();
     await loadAllData();
   } catch(e){ alert('Error: '+e.message); }
@@ -489,17 +628,15 @@ async function viewSubmissionDetail(id){
       <div class="neg-amount" style="flex:1"><div class="neg-amount-val" style="color:${sevColor}">${sev.toUpperCase()}</div><div class="neg-amount-label">Severity</div></div>
     </div>
     <div style="background:var(--mid);border-radius:8px;padding:14px;font-size:.82rem;line-height:1.6;border-left:3px solid ${sevColor}">${(s.ai_analysis||'No analysis').replace(/\n/g,'<br>')}</div>
-    <button class="modal-close" style="width:100%;padding:9px;background:var(--mid);border:1px solid var(--border);color:var(--text);border-radius:8px;cursor:pointer;font-size:.83rem" onclick="closeReviewModal()">Close</button>`;
+    <button style="width:100%;padding:9px;background:var(--mid);border:1px solid var(--border);color:var(--text);border-radius:8px;cursor:pointer;font-size:.83rem" onclick="closeReviewModal()">Close</button>`;
 }
 
-// ── Init ─────────────────────────────────────────────────────────────────────
+// ── Init ──────────────────────────────────────────────────────────────────────
 (async function init(){
-  // Load Supabase CDN
   const s=document.createElement('script');
   s.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js';
   s.onload=async()=>{
     await initSB();
-    // Check existing session
     const {data:{session}} = await sbClient.auth.getSession();
     if(session?.user){
       gcUser=session.user;

@@ -462,6 +462,31 @@ create trigger project_drawings_updated_at before update on project_drawings
 create index if not exists idx_project_drawings_job_id on project_drawings (job_id, is_current);
 
 -- ============================================================
+--  JOBS TABLE EXTENSIONS — link jobs to GC and Owner portals
+--  Run these ALTER statements once if upgrading an existing DB
+-- ============================================================
+
+-- Add gc_id FK so jobs can be linked directly to a GC portal user
+alter table jobs add column if not exists gc_id uuid references gc_profiles(id) on delete set null;
+
+-- Add owner_id FK so jobs can be linked directly to an Owner portal user
+alter table jobs add column if not exists owner_id uuid references owner_profiles(id) on delete set null;
+
+-- Allow GCs to view jobs that are assigned to them
+create policy if not exists "GC sees assigned jobs" on jobs for select using (
+  auth.uid() = gc_id
+);
+
+-- Allow Owners to view jobs that are assigned to them
+create policy if not exists "Owner sees assigned jobs" on jobs for select using (
+  auth.uid() = owner_id
+);
+
+-- Indexes for fast GC/Owner job lookups
+create index if not exists idx_jobs_gc_id on jobs (gc_id);
+create index if not exists idx_jobs_owner_id on jobs (owner_id);
+
+-- ============================================================
 --  SEED: Create initial superadmin account
 --  Run AFTER you've signed up at the auth level
 -- ============================================================

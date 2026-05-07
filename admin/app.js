@@ -1500,8 +1500,22 @@ async function viewPhotoSubmission(id){
 }
 
 // ── Submit to GC modal ────────────────────────────────────────────────────────
-function openSubmitToGCModal(submissionId, jobName, aiAmount, progressPct){
+async function openSubmitToGCModal(submissionId, jobName, aiAmount, progressPct){
   document.getElementById('execModal').style.display='flex';
+
+  // Load GC profiles for selector
+  let gcOptions = '<option value="">— Select GC —</option>';
+  if(USE_SB){
+    try {
+      const {data: gcList} = await sbClient.from('gc_profiles').select('id,name,company').order('name');
+      if(gcList && gcList.length){
+        gcOptions += gcList.map(g=>`<option value="${g.id}">${g.name}${g.company?` (${g.company})`:''}</option>`).join('');
+      } else {
+        gcOptions = '<option value="">No GC accounts found — ask your GC to sign up</option>';
+      }
+    } catch(e){ gcOptions = '<option value="">Could not load GC list</option>'; }
+  }
+
   document.getElementById('execModalInner').innerHTML = `
     <div class="modal-header">
       <div class="modal-title">📤 Submit to GC — ${jobName}</div>
@@ -1514,6 +1528,11 @@ function openSubmitToGCModal(submissionId, jobName, aiAmount, progressPct){
           <span>📊 Progress: <strong>${progressPct}%</strong></span>
           <span>💰 AI Suggested: <strong>${aiAmount}% of contract</strong></span>
         </div>
+      </div>
+      <div class="form-group">
+        <label>Select General Contractor <span style="color:#e74c3c">*</span></label>
+        <select id="sub_gc_id" style="width:100%">${gcOptions}</select>
+        <div style="font-size:.72rem;color:var(--muted);margin-top:4px">Your GC must have a portal account. If they aren't listed, ask them to sign up at /gc/</div>
       </div>
       <div class="form-group">
         <label>Your Requested Amount (% of contract)</label>
@@ -1531,7 +1550,14 @@ function openSubmitToGCModal(submissionId, jobName, aiAmount, progressPct){
 async function submitToGC(submissionId){
   const reqAmount = parseFloat(document.getElementById('sub_req_amount').value)||0;
   const note = document.getElementById('sub_note').value;
+  const gcId = document.getElementById('sub_gc_id')?.value || null;
   const btn = document.querySelector('#execModalInner .btn-primary:last-child');
+
+  if(!gcId){
+    addNotification('⚠️ Select a GC', 'Please select the General Contractor to send this to.', 'warning');
+    return;
+  }
+
   btn.disabled=true; btn.textContent='⏳ Submitting…';
   try {
     if(USE_SB && window._sbUserId){
@@ -1539,11 +1565,12 @@ async function submitToGC(submissionId){
       await sbClient.from('photo_submissions').update({status:'submitted',updated_at:new Date().toISOString()}).eq('id',submissionId);
       // Pull submission for context
       const {data:sub} = await sbClient.from('photo_submissions').select('*').eq('id',submissionId).single();
-      // Create payment_negotiations record
+      // Create payment_negotiations record — include gc_id so GC portal can filter to it immediately
       await sbClient.from('payment_negotiations').insert({
         photo_submission_id: submissionId,
         job_id: sub?.job_id||null,
         sub_id: window._sbUserId,
+        gc_id: gcId,
         ai_amount: sub?.ai_amount||0,
         sub_requested: reqAmount,
         sub_note: note,

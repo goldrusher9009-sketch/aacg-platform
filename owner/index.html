@@ -17,9 +17,15 @@
   #authScreen{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}
   .auth-box{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:40px;width:100%;max-width:420px}
   .auth-logo{font-size:2.2rem;font-weight:900;margin-bottom:6px}
-  .auth-sub{color:var(--muted);font-size:.85rem;margin-bottom:28px}
-  .form-group{margin-bottom:16px}
-  .form-group label{display:block;font-size:.78rem;font-weight:600;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em}
+  .auth-sub{color:var(--muted);font-size:.85rem;margin-bottom:22px}
+
+  /* auth tabs */
+  .auth-tabs{display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:22px}
+  .auth-tab{flex:1;padding:8px;background:none;border:none;font-size:.83rem;font-weight:600;color:var(--muted);cursor:pointer;margin-bottom:-2px;transition:.2s;text-align:center}
+  .auth-tab.active{color:var(--gold);border-bottom:3px solid var(--gold)}
+
+  .form-group{margin-bottom:14px}
+  .form-group label{display:block;font-size:.78rem;font-weight:600;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.04em}
   .form-group input,.form-group select,.form-group textarea{width:100%;background:var(--mid);border:1px solid var(--border);border-radius:8px;padding:10px 13px;color:var(--text);font-size:.88rem;outline:none;transition:.2s}
   .form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--gold)}
   .btn-primary{background:var(--gold);color:#000;border:none;border-radius:8px;padding:11px 20px;font-size:.88rem;font-weight:700;cursor:pointer;transition:.2s;width:100%}
@@ -62,12 +68,16 @@
 
   .alert{padding:12px 16px;border-radius:8px;font-size:.83rem;margin-bottom:14px}
   .alert-warning{background:#7c2d12;border:1px solid var(--orange);color:#fdba74}
+  .alert-success{background:#14532d;border:1px solid var(--green);color:#86efac}
+  .alert-info{background:#1e2d4a;border:1px solid var(--gold);color:var(--gold)}
 
-  /* Progress timeline */
   .timeline{display:flex;flex-direction:column;gap:0}
   .timeline-item{display:flex;gap:14px;padding:14px 0;border-bottom:1px solid var(--border)}
   .timeline-item:last-child{border-bottom:none}
   .timeline-dot{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0;margin-top:2px}
+
+  .portal-links{margin-top:20px;text-align:center;font-size:.78rem;color:var(--muted);line-height:1.8}
+  .portal-links a{color:var(--gold)}
 </style>
 </head>
 <body>
@@ -77,19 +87,56 @@
   <div class="auth-box">
     <div class="auth-logo">⚡ IronForge</div>
     <div class="auth-sub">Property Owner Portal</div>
+
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="atab_signin" onclick="switchAuthTab('signin')">Sign In</button>
+      <button class="auth-tab" id="atab_signup" onclick="switchAuthTab('signup')">Create Account</button>
+    </div>
+
     <div id="authError" class="alert alert-warning" style="display:none"></div>
-    <div class="form-group">
-      <label>Email</label>
-      <input type="email" id="ownerEmail" placeholder="owner@property.com">
+    <div id="authSuccess" class="alert alert-success" style="display:none"></div>
+
+    <!-- Sign In -->
+    <div id="signinForm">
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="ownerEmail" placeholder="owner@property.com">
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="ownerPassword" placeholder="••••••••" onkeydown="if(event.key==='Enter')ownerLogin()">
+      </div>
+      <button class="btn-primary" onclick="ownerLogin()">Sign In to Owner Portal</button>
     </div>
-    <div class="form-group">
-      <label>Password</label>
-      <input type="password" id="ownerPassword" placeholder="••••••••" onkeydown="if(event.key==='Enter')ownerLogin()">
+
+    <!-- Sign Up -->
+    <div id="signupForm" style="display:none">
+      <div class="form-group">
+        <label>Full Name</label>
+        <input type="text" id="ownerSignupName" placeholder="Jane Doe">
+      </div>
+      <div class="form-group">
+        <label>Company / Property Name (optional)</label>
+        <input type="text" id="ownerSignupCompany" placeholder="Doe Properties LLC">
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="ownerSignupEmail" placeholder="owner@property.com">
+      </div>
+      <div class="form-group">
+        <label>Phone</label>
+        <input type="tel" id="ownerSignupPhone" placeholder="+1 (555) 000-0000">
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="ownerSignupPass" placeholder="Minimum 8 characters">
+      </div>
+      <button class="btn-primary" onclick="ownerSignup()">Create Owner Account</button>
     </div>
-    <button class="btn-primary" onclick="ownerLogin()">Sign In to Owner Portal</button>
-    <div style="margin-top:16px;text-align:center;font-size:.78rem;color:var(--muted)">
-      GC? <a href="/gc/" style="color:var(--gold)">GC Portal →</a> &nbsp;|&nbsp;
-      Sub? <a href="/admin/" style="color:var(--gold)">Sub Portal →</a>
+
+    <div class="portal-links">
+      GC? <a href="/gc/">GC Portal →</a> &nbsp;|&nbsp;
+      Sub? <a href="/admin/">Sub Portal →</a>
     </div>
   </div>
 </div>
@@ -116,6 +163,12 @@
       <div class="kpi"><div class="kpi-val" id="kpi_released" style="color:var(--green)">—</div><div class="kpi-label">Released</div></div>
       <div class="kpi"><div class="kpi-val" id="kpi_photos" style="color:var(--blue)">—</div><div class="kpi-label">Site Photos</div></div>
       <div class="kpi"><div class="kpi-val" id="kpi_progress" style="color:var(--gold)">—</div><div class="kpi-label">Avg Progress</div></div>
+    </div>
+
+    <!-- Welcome alert for new owners -->
+    <div id="newOwnerAlert" class="alert alert-info" style="display:none;margin-bottom:18px">
+      👋 <strong>Welcome!</strong> Payment releases appear here once a General Contractor forwards them for your approval.
+      Your GC needs your Owner ID: <strong id="ownerIdDisplay" style="font-family:monospace"></strong>
     </div>
 
     <div class="tabs">
@@ -162,28 +215,96 @@ async function initSB(){
   if(window.supabase) sbClient=window.supabase.createClient(SB_URL,SB_ANON_KEY);
 }
 
+// ── Auth tab switching ─────────────────────────────────────────────────────────
+function switchAuthTab(tab){
+  document.getElementById('signinForm').style.display  = tab==='signin'  ? 'block':'none';
+  document.getElementById('signupForm').style.display  = tab==='signup'  ? 'block':'none';
+  document.getElementById('atab_signin').classList.toggle('active', tab==='signin');
+  document.getElementById('atab_signup').classList.toggle('active', tab==='signup');
+  document.getElementById('authError').style.display   = 'none';
+  document.getElementById('authSuccess').style.display = 'none';
+}
+
+// ── Sign In ────────────────────────────────────────────────────────────────────
 async function ownerLogin(){
   if(!sbClient){alert('Supabase not loaded.');return;}
   const email=document.getElementById('ownerEmail').value.trim();
   const pass=document.getElementById('ownerPassword').value;
-  const errEl=document.getElementById('authError');
-  errEl.style.display='none';
+  showAuthMsg('error','');
   try {
     const {data,error}=await sbClient.auth.signInWithPassword({email,password:pass});
     if(error) throw error;
     ownerUser=data.user;
     await loadOwnerProfile();
     showApp();
-  } catch(e){ errEl.textContent=e.message||'Sign in failed'; errEl.style.display='block'; }
+  } catch(e){ showAuthMsg('error', e.message||'Sign in failed. Check your credentials.'); }
 }
 
+// ── Sign Up ────────────────────────────────────────────────────────────────────
+async function ownerSignup(){
+  if(!sbClient){alert('Supabase not loaded.');return;}
+  const name    = document.getElementById('ownerSignupName').value.trim();
+  const company = document.getElementById('ownerSignupCompany').value.trim();
+  const email   = document.getElementById('ownerSignupEmail').value.trim();
+  const phone   = document.getElementById('ownerSignupPhone').value.trim();
+  const pass    = document.getElementById('ownerSignupPass').value;
+
+  if(!name||!email||!pass){ showAuthMsg('error','Name, email, and password are required.'); return; }
+  if(pass.length < 8){ showAuthMsg('error','Password must be at least 8 characters.'); return; }
+
+  showAuthMsg('error','');
+  const btn = document.querySelector('#signupForm .btn-primary');
+  btn.textContent='Creating account…'; btn.disabled=true;
+
+  try {
+    // 1. Create Supabase auth user
+    const {data,error}=await sbClient.auth.signUp({email, password:pass});
+    if(error) throw error;
+    const userId=data.user?.id;
+    if(!userId) throw new Error('No user ID returned — check Supabase email confirmation settings.');
+
+    // 2. Insert into owner_profiles
+    const {error:profileErr}=await sbClient.from('owner_profiles').insert({
+      id:      userId,
+      email:   email,
+      name:    name,
+      company: company||null,
+      phone:   phone||null,
+      status:  'active'
+    });
+    if(profileErr && !profileErr.message.includes('duplicate')) throw profileErr;
+
+    btn.textContent='Create Owner Account'; btn.disabled=false;
+    showAuthMsg('success','✅ Account created! Check your email to confirm, then sign in.');
+    switchAuthTab('signin');
+    document.getElementById('ownerEmail').value=email;
+  } catch(e){
+    btn.textContent='Create Owner Account'; btn.disabled=false;
+    showAuthMsg('error', e.message||'Sign up failed.');
+  }
+}
+
+function showAuthMsg(type, msg){
+  const errEl=document.getElementById('authError');
+  const sucEl=document.getElementById('authSuccess');
+  if(type==='error'){
+    errEl.textContent=msg; errEl.style.display=msg?'block':'none';
+    sucEl.style.display='none';
+  } else {
+    sucEl.textContent=msg; sucEl.style.display=msg?'block':'none';
+    errEl.style.display='none';
+  }
+}
+
+// ── Logout ─────────────────────────────────────────────────────────────────────
 function ownerLogout(){
   sbClient.auth.signOut();
   document.getElementById('app').style.display='none';
   document.getElementById('authScreen').style.display='flex';
-  ownerUser=null;
+  ownerUser=null; ownerProfile=null; allNegotiations=[]; allSubmissions=[];
 }
 
+// ── Load profile ───────────────────────────────────────────────────────────────
 async function loadOwnerProfile(){
   try {
     const {data}=await sbClient.from('owner_profiles').select('*').eq('id',ownerUser.id).single();
@@ -195,27 +316,46 @@ async function loadOwnerProfile(){
   } catch(e){}
 }
 
+// ── Show app ───────────────────────────────────────────────────────────────────
 function showApp(){
   document.getElementById('authScreen').style.display='none';
   document.getElementById('app').style.display='flex';
   document.getElementById('ownerUserName').textContent=ownerProfile?.name||ownerUser.email;
-  document.getElementById('ownerCompanyLabel').textContent=ownerProfile?.company?`${ownerProfile.company} · Owner Portal`:'Property Owner Portal';
+  document.getElementById('ownerCompanyLabel').textContent=ownerProfile?.company
+    ?`${ownerProfile.company} · Owner Portal`
+    :'Property Owner Portal';
   loadAllData();
 }
 
+// ── Load all data — SCOPED to this Owner ──────────────────────────────────────
 async function loadAllData(){
   if(!sbClient||!ownerUser) return;
+
   try {
+    // Fetch negotiations where owner_id = this owner, OR pending_owner status (not yet assigned)
     const {data:negs}=await sbClient.from('payment_negotiations')
       .select('*, photo_submissions(*), profiles(name,company,phone)')
+      .or(`owner_id.eq.${ownerUser.id},and(status.eq.pending_owner,owner_id.is.null)`)
       .order('submitted_at',{ascending:false});
     allNegotiations=negs||[];
   } catch(e){ console.warn('negs fail',e); }
+
   try {
     const {data:subs}=await sbClient.from('photo_submissions')
       .select('*').order('created_at',{ascending:false}).limit(60);
     allSubmissions=subs||[];
   } catch(e){ console.warn('subs fail',e); }
+
+  // Show welcome + owner ID if no negotiations yet
+  const alertEl = document.getElementById('newOwnerAlert');
+  const idEl    = document.getElementById('ownerIdDisplay');
+  if(allNegotiations.length===0){
+    alertEl.style.display='block';
+    idEl.textContent = ownerUser.id.substring(0,8)+'…';
+  } else {
+    alertEl.style.display='none';
+  }
+
   updateKPIs();
   renderPendingTab();
   renderTimeline();
@@ -228,8 +368,8 @@ function updateKPIs(){
   const released=allNegotiations.filter(n=>['approved','paid'].includes(n.status)).length;
   const photos=allSubmissions.length;
   const avgProgress=allSubmissions.length
-    ? (allSubmissions.reduce((s,x)=>s+(x.ai_progress_pct||0),0)/allSubmissions.length).toFixed(0)
-    : 0;
+    ?(allSubmissions.reduce((s,x)=>s+(x.ai_progress_pct||0),0)/allSubmissions.length).toFixed(0)
+    :0;
   document.getElementById('kpi_awaiting').textContent=awaiting;
   document.getElementById('kpi_released').textContent=released;
   document.getElementById('kpi_photos').textContent=photos;
@@ -299,20 +439,14 @@ function renderPendingTab(){
 function renderTimeline(){
   const el=document.getElementById('timelineList');
   const items=[...allNegotiations,...allSubmissions]
-    .map(x=>({
-      ts:new Date(x.created_at||x.submitted_at),
-      type: x.gc_approved!==undefined?'negotiation':'photo',
-      data:x
-    }))
-    .sort((a,b)=>b.ts-a.ts)
-    .slice(0,30);
+    .map(x=>({ts:new Date(x.created_at||x.submitted_at),type:x.gc_approved!==undefined?'negotiation':'photo',data:x}))
+    .sort((a,b)=>b.ts-a.ts).slice(0,30);
   if(!items.length){ el.innerHTML=`<div style="padding:30px;text-align:center;color:var(--muted)">No activity yet</div>`; return; }
   el.innerHTML=items.map(item=>{
     const isNeg=item.type==='negotiation';
     const n=item.data;
     const ts=item.ts.toLocaleString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
     if(isNeg){
-      const sev=n.photo_submissions?.severity||'ok';
       return `<div class="timeline-item">
         <div class="timeline-dot" style="background:${n.status==='paid'?'#22c55e22':n.status==='pending_owner'?'#a78bfa22':'#3b82f622'};color:${n.status==='paid'?'var(--green)':n.status==='pending_owner'?'var(--purple)':'var(--blue)'}">💰</div>
         <div style="flex:1">
@@ -393,6 +527,7 @@ function renderHistoryTab(){
   }).join('');
 }
 
+// ── Release Modal ──────────────────────────────────────────────────────────────
 function openReleaseModal(negId){
   const n=allNegotiations.find(x=>x.id===negId);
   if(!n) return;
@@ -429,10 +564,11 @@ async function ownerRelease(negId, newStatus){
   const note=document.getElementById('rm_owner_note').value;
   try {
     await sbClient.from('payment_negotiations').update({
-      owner_released:amount,
-      owner_note:note,
-      status:newStatus,
-      owner_reviewed_at:new Date().toISOString()
+      owner_id:           ownerUser.id,    // claim this negotiation for this owner
+      owner_released:     amount,
+      owner_note:         note,
+      status:             newStatus,
+      owner_reviewed_at:  new Date().toISOString()
     }).eq('id',negId);
     closeReleaseModal();
     await loadAllData();
@@ -444,9 +580,10 @@ async function ownerReleaseQuick(negId, amount){
   if(!confirm(`Release payment: ${amount}% of contract?`)) return;
   try {
     await sbClient.from('payment_negotiations').update({
-      owner_released:amount,
-      status:'approved',
-      owner_reviewed_at:new Date().toISOString()
+      owner_id:           ownerUser.id,
+      owner_released:     amount,
+      status:             'approved',
+      owner_reviewed_at:  new Date().toISOString()
     }).eq('id',negId);
     await loadAllData();
     alert(`✅ Payment released: ${amount}% of contract`);
@@ -456,7 +593,11 @@ async function ownerReleaseQuick(negId, amount){
 async function ownerRejectNeg(negId){
   if(!confirm('Reject this payment request?')) return;
   try {
-    await sbClient.from('payment_negotiations').update({status:'rejected',owner_reviewed_at:new Date().toISOString()}).eq('id',negId);
+    await sbClient.from('payment_negotiations').update({
+      owner_id:          ownerUser.id,
+      status:            'rejected',
+      owner_reviewed_at: new Date().toISOString()
+    }).eq('id',negId);
     closeReleaseModal();
     await loadAllData();
   } catch(e){ alert('Error: '+e.message); }
@@ -480,7 +621,7 @@ function viewOwnerPhoto(id){
     <button style="width:100%;padding:9px;background:var(--mid);border:1px solid var(--border);color:var(--text);border-radius:8px;cursor:pointer;font-size:.83rem" onclick="closeReleaseModal()">Close</button>`;
 }
 
-// ── Init ─────────────────────────────────────────────────────────────────────
+// ── Init ───────────────────────────────────────────────────────────────────────
 (async function init(){
   const s=document.createElement('script');
   s.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js';
