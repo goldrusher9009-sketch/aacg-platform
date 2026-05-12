@@ -300,24 +300,6 @@
   <div class="login-box">
     <div class="login-logo">IronForge</div>
     <div class="login-sub">Client Dashboard — Secure Access</div>
-    <div class="demo-accounts">
-      <h4>Demo Accounts — Click "Use" to auto-fill</h4>
-      <div class="demo-row">
-        <span class="demo-tier" style="color:var(--muted)">Starter</span>
-        <span class="demo-cred">starter@demo.com / Starter123!</span>
-        <button class="use-btn" onclick="fillDemo('starter@demo.com','Starter123!')">Use</button>
-      </div>
-      <div class="demo-row">
-        <span class="demo-tier" style="color:var(--blue)">Pro</span>
-        <span class="demo-cred">pro@demo.com / Pro2026!</span>
-        <button class="use-btn" onclick="fillDemo('pro@demo.com','Pro2026!')">Use</button>
-      </div>
-      <div class="demo-row">
-        <span class="demo-tier" style="color:var(--gold)">Enterprise</span>
-        <span class="demo-cred">enterprise@demo.com / Ent2026!</span>
-        <button class="use-btn" onclick="fillDemo('enterprise@demo.com','Ent2026!')">Use</button>
-      </div>
-    </div>
     <div class="form-group">
       <label>Email Address</label>
       <input type="email" id="loginEmail" placeholder="your@company.com">
@@ -331,6 +313,9 @@
     <div class="login-footer">
       <a href="../index.html">← Back to Website</a> &nbsp;|&nbsp;
       <a href="../superadmin/">Super Admin ↗</a>
+    </div>
+    <div style="margin-top:14px;font-size:.8rem;color:var(--muted)">
+      Don't have an account? <a href="../aacg-website.html#signup" style="color:var(--blue);font-weight:700">Sign Up</a>
     </div>
   </div>
 </div>
@@ -655,12 +640,13 @@ async function sbLogin(email, password) {
         trial_end: new Date(Date.now() + 14*86400000).toISOString()
       });
     }
-    const p = profile || { email, name: userMeta.name || email, company: userMeta.company || '', plan: userMeta.plan || 'starter' };
+    const p = profile || { email, name: userMeta.name || email, company: userMeta.company || '', plan: userMeta.plan || 'starter', account_type: userMeta.account_type || '' };
     return {
       email: p.email,
       name: p.name || email,
       company: p.company || '',
       tier: p.plan || 'starter',
+      account_type: p.account_type || userMeta.account_type || '',
       avatar: (p.name||email).split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2),
       color: '#ff3a2d',
       sbUser: data.user,

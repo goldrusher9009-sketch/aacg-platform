@@ -1,0 +1,15 @@
+# ============================================================
+# Add these rules to your public_html/.htaccess on HostGator
+# ABOVE the existing WordPress rules
+# ============================================================
+
+# Redirect /platform and /platform/* to Railway
+RewriteEngine On
+
+# Platform proxy - forward to Railway
+RewriteRule ^platform$ https://web-production-b2192.up.railway.app/admin/index.html [R=301,L]
+RewriteRule ^platform/(.*)$ https://web-production-b2192.up.railway.app/$1 [R=301,L]
+
+# ============================================================
+# (Keep your existing WordPress rules below this line)
+# ============================================================

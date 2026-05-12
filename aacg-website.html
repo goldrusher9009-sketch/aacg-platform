@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -12,18 +12,18 @@ const SB_KEY = window.SUPABASE_ANON || '';
 const USE_SB = SB_URL.startsWith('https://') && SB_KEY.length > 10;
 const sb = USE_SB ? supabase.createClient(SB_URL, SB_KEY) : null;
 
-async function sbSignUp(name, email, phone, company, plan, password) {
+async function sbSignUp(name, email, phone, company, plan, password, account_type) {
   if (!sb) return null;
   try {
     const { data, error } = await sb.auth.signUp({
       email: email,
       password: password,
-      options: { data: { name, phone, company, plan, role: 'subscriber' } }
+      options: { data: { name, phone, company, plan, account_type, role: 'subscriber' } }
     });
     if (error) throw error;
     if (data.user) {
       await sb.from('profiles').upsert({
-        id: data.user.id, email, name, phone, company, plan,
+        id: data.user.id, email, name, phone, company, plan, account_type,
         role: 'subscriber', status: 'trial',
         trial_start: new Date().toISOString(),
         trial_end: new Date(Date.now() + 14*86400000).toISOString()
@@ -401,6 +401,16 @@ footer{background:var(--navy2);border-top:1px solid var(--border);padding:56px 2
     <input class="su-input" id="suEmail" type="email" placeholder="Work Email">
     <input class="su-input" id="suPhone" type="tel" placeholder="Phone Number">
     <input class="su-input" id="suPassword" type="password" placeholder="Create Password (min 8 chars)">
+    <div style="margin-bottom:12px">
+      <label style="display:block;font-size:12px;font-weight:700;color:var(--text2);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px">Account Type</label>
+      <select class="su-input" id="suAccountType" style="width:100%;background:#080f24;border:1px solid rgba(255,58,45,0.2);color:#e8edf5;padding:10px 14px;border-radius:8px;font-size:14px;outline:none;">
+        <option value="">-- Select Account Type --</option>
+        <option value="Sub-Contractor">Sub-Contractor</option>
+        <option value="General Contractor (GC)">General Contractor (GC)</option>
+        <option value="Property Owner">Property Owner</option>
+        <option value="Vendor">Vendor</option>
+      </select>
+    </div>
     <button class="su-submit" onclick="submitSignup()">Start Free Trial →</button>
     <div class="su-divider">Already have an account? <span class="su-login-link" onclick="goToLogin()">Log in here</span></div>
     <div class="su-note">🔒 Your data is encrypted & never shared. By signing up you agree to our Terms of Service.</div>
@@ -487,7 +497,7 @@ footer{background:var(--navy2);border-top:1px solid var(--border);padding:56px 2
       <a href="#faq" class="nav-link">Q&amp;A</a>
       <a href="#contact" class="nav-link">Contact</a>
       <div class="nav-sep"></div>
-      <a href="/admin" class="nav-login">⚙️ Admin</a>
+      <a href="/admin/" class="nav-login">Sign In</a>
       <button class="nav-signup" onclick="openSignup('starter')">Sign Up</button>
     </div>
     <a href="tel:9298882848" class="nav-cta">📞 929-888-2848</a>
@@ -1013,32 +1023,12 @@ footer{background:var(--navy2);border-top:1px solid var(--border);padding:56px 2
     </div>
   </div>
 </footer>
-<!-- ===== CHATBOT ===== -->
-<div class="chatbot-btn" id="chatbotBtn" onclick="toggleChat()">
-  <div class="cb-pulse"></div>
-  <div class="cb-icon">
-    <div class="cb-hex"></div>
-    <span class="cb-label">AI</span>
-  </div>
-</div>
-<div class="chatbot-window" id="chatWindow">
-  <div class="cw-header">
-    <div class="cw-title">
-      <div class="cw-dot"></div>
-      AACG Super Agent
-    </div>
-    <button class="cw-close" onclick="toggleChat()">✕</button>
-  </div>
-  <div class="cw-messages" id="cwMessages">
-    <div class="cw-msg cw-bot">
-      <strong>👋 Hey! I'm the AACG Super Agent.</strong><br>
-      I can help you with lien filing, pricing, onboarding, or connecting you with our team. What do you need?
-    </div>
-  </div>
-  <div class="cw-input-row">
-    <input type="text" id="cwInput" placeholder="Ask anything about AACG..." onkeydown="if(event.key==='Enter')sendChat()">
-    <button onclick="sendChat()" class="cw-send">→</button>
-  </div>
+<!-- ===== CONTACT SUPPORT ===== -->
+<div class="call-support-btn">
+  <a href="tel:9298882848" style="display:flex;align-items:center;gap:10px;color:#fff;text-decoration:none;font-weight:700;font-size:0.95rem;">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13.6 19.79 19.79 0 0 1 1.6 5a2 2 0 0 1 1.99-2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 10.6a16 16 0 0 0 5.51 5.51l.97-.97a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+    Call us: 929-888-2848
+  </a>
 </div>
 <!-- ===== EXTRA CSS for new sections ===== -->
 <style>
@@ -1111,30 +1101,9 @@ footer{background:var(--navy2);border-top:1px solid var(--border);padding:56px 2
 .fs-link:hover{border-color:var(--electric);color:var(--electric)}
 .footer-cta-box{background:rgba(255,58,45,0.07);border:1px solid var(--border);border-radius:10px;padding:16px;margin-top:24px;font-size:0.85rem;color:var(--text2)}
 .footer-bottom{border-top:1px solid var(--border);padding:24px 0;margin-top:48px;font-size:0.8rem;color:var(--text2);text-align:center}
-/* Chatbot */
-.chatbot-btn{position:fixed;bottom:28px;right:28px;z-index:9900;width:62px;height:62px;cursor:pointer}
-.cb-pulse{position:absolute;inset:-6px;border-radius:50%;background:var(--electric);opacity:0.15;animation:cb-ring 2s ease-in-out infinite}
-.cb-icon{width:62px;height:62px;background:linear-gradient(135deg,var(--electric),var(--crimson));border-radius:50%;display:flex;align-items:center;justify-content:center;position:relative;box-shadow:0 0 24px rgba(255,58,45,0.5);transition:transform .2s}
-.chatbot-btn:hover .cb-icon{transform:scale(1.1)}
-.cb-hex{position:absolute;width:28px;height:28px;background:rgba(255,255,255,0.15);clip-path:polygon(50% 0%,93% 25%,93% 75%,50% 100%,7% 75%,7% 25%)}
-.cb-label{font-size:0.7rem;font-weight:900;color:#fff;position:relative;z-index:1;letter-spacing:1px}
-@keyframes cb-ring{0%,100%{transform:scale(1);opacity:0.15}50%{transform:scale(1.3);opacity:0}}
-.chatbot-window{position:fixed;bottom:104px;right:28px;z-index:9899;width:340px;background:var(--navy2);border:1px solid var(--border);border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,0.7);display:none;flex-direction:column;overflow:hidden}
-.chatbot-window.open{display:flex}
-.cw-header{background:linear-gradient(90deg,var(--electric),var(--crimson));padding:14px 18px;display:flex;justify-content:space-between;align-items:center}
-.cw-title{font-size:0.9rem;font-weight:700;color:var(--navy);display:flex;align-items:center;gap:8px}
-.cw-dot{width:8px;height:8px;background:var(--navy);border-radius:50%;animation:pulse-dot 1.5s ease-in-out infinite}
-@keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:0.3}}
-.cw-close{background:none;border:none;color:var(--navy);font-size:1.1rem;cursor:pointer;font-weight:700;padding:0}
-.cw-messages{flex:1;max-height:300px;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px}
-.cw-msg{font-size:0.84rem;line-height:1.5;padding:10px 14px;border-radius:10px;max-width:88%}
-.cw-bot{background:var(--navy3);color:var(--text);border:1px solid var(--border);align-self:flex-start}
-.cw-user{background:linear-gradient(135deg,var(--electric),var(--electric2));color:var(--navy);align-self:flex-end;font-weight:600}
-.cw-input-row{display:flex;border-top:1px solid var(--border);padding:10px 12px;gap:8px}
-.cw-input-row input{flex:1;background:var(--navy3);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--text);font-size:0.85rem;outline:none}
-.cw-input-row input:focus{border-color:var(--electric)}
-.cw-send{background:var(--electric);border:none;color:var(--navy);font-weight:900;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:1rem;transition:background .2s}
-.cw-send:hover{background:var(--electric2)}
+/* Call Support Button */
+.call-support-btn{position:fixed;bottom:28px;right:28px;z-index:9900;background:linear-gradient(135deg,var(--electric),var(--crimson));border-radius:50px;padding:14px 22px;box-shadow:0 4px 24px rgba(255,58,45,0.4);cursor:pointer;transition:transform .2s,box-shadow .2s}
+.call-support-btn:hover{transform:translateY(-3px);box-shadow:0 8px 32px rgba(255,58,45,0.5)}
 </style>
 <!-- ===== JAVASCRIPT ===== -->
 <script>
@@ -1183,8 +1152,13 @@ async function submitSignup(){
   var emailEl=document.getElementById('suEmail');
   var phoneEl=document.getElementById('suPhone');
   var compEl=document.getElementById('suCompany');
+  var acctTypeEl=document.getElementById('suAccountType');
   if(!firstEl||!firstEl.value.trim()||!emailEl||!emailEl.value.trim()){
     alert('Please fill in your name and email.');return;
+  }
+  var acctType=acctTypeEl?acctTypeEl.value.trim():'';
+  if(!acctType){
+    alert('Please select your account type.');return;
   }
   var pwdEl=document.getElementById('suPassword');
   var name=firstEl.value.trim();
@@ -1205,15 +1179,16 @@ async function submitSignup(){
   sessionStorage.setItem('aacg_signup_name',name);
   sessionStorage.setItem('aacg_signup_email',email);
   sessionStorage.setItem('aacg_signup_password',password);
+  sessionStorage.setItem('aacg_account_type',acctType);
   sessionStorage.setItem('aacg_new_signup','1');
 
   // Try Supabase signup (if configured)
   if(USE_SB && sb) {
-    try { await sbSignUp(name, email, phone, company, selectedPlan, password); } catch(e) { console.error('Signup error:', e); }
+    try { await sbSignUp(name, email, phone, company, selectedPlan, password, acctType); } catch(e) { console.error('Signup error:', e); }
   }
 
-  if(btn){btn.textContent='Start Free Trial →';btn.disabled=false;}
-  window.location.href='/admin?plan='+encodeURIComponent(selectedPlan)+'&new=1';
+  if(btn){btn.textContent='Start Free Trial';btn.disabled=false;}
+  window.location.href='/admin/?plan='+encodeURIComponent(selectedPlan)+'&new=1';
 }
 function goToLogin(){
   closeSignup();
@@ -1221,13 +1196,31 @@ function goToLogin(){
 }
 var _sm=document.getElementById('signupModal');
 if(_sm){_sm.addEventListener('click',function(e){if(e.target===this)closeSignup();});}
-function submitContact(e){
+async function submitContact(e){
   e.preventDefault();
-  var btn=e.target.querySelector('button[type=submit]');
-  btn.textContent='Message Sent! ✓';
-  btn.style.background='var(--green)';
-  btn.style.color='var(--navy)';
-  btn.disabled=true;
+  var btn = e.target.querySelector('button[type=submit]');
+  var name    = (e.target.querySelector('#ctName,   [name=name]'.replace(/ /g,''))   || {value:''}).value.trim();
+  var company = (e.target.querySelector('#ctCompany,[name=company]'.replace(/ /g,'')) || {value:''}).value.trim();
+  var email   = (e.target.querySelector('#ctEmail,  [name=email]'.replace(/ /g,''))  || {value:''}).value.trim();
+  var phone   = (e.target.querySelector('#ctPhone,  [name=phone]'.replace(/ /g,''))  || {value:''}).value.trim();
+  var trade   = (e.target.querySelector('#ctTrade,  [name=trade]'.replace(/ /g,''))  || {value:''}).value.trim();
+  var message = (e.target.querySelector('textarea') || {value:''}).value.trim();
+  if(USE_SB && sb){
+    try{
+      var res = await sb.from('contact_submissions').insert([{
+        name: name, company: company, email: email,
+        phone: phone, trade: trade, message: message,
+        created_at: new Date().toISOString()
+      }]);
+      if(res.error) console.error('contact_submissions insert error', res.error);
+    } catch(err){ console.error('contact_submissions insert failed', err); }
+  }
+  if(btn){
+    btn.textContent = 'We got your message.';
+    btn.style.background = 'var(--green)';
+    btn.style.color = 'var(--navy)';
+    btn.disabled = true;
+  }
 }
 
 /* ---- FAQ Accordion ---- */
@@ -1244,59 +1237,7 @@ function toggleFaq(btn){
   }
 }
 
-/* ---- Chatbot ---- */
-var chatOpen=false;
-function toggleChat(){
-  chatOpen=!chatOpen;
-  var w=document.getElementById('chatWindow');
-  w.classList.toggle('open',chatOpen);
-  if(chatOpen)document.getElementById('cwInput').focus();
-}
-var botResponses={
-  lien:['Our Lien Management AI files mechanics liens, preliminary notices, and bond claims in all 50 states — automatically. Just connect your job and we track payment deadlines for you.','For lien help, call us: <strong>929-888-2848</strong>'],
-  price:['Starter is $49/mo (5 agents), Pro is $99/mo (20 agents), Enterprise is custom. All plans start with a 14-day free trial — no credit card needed.','Ready to start? <button onclick="openSignup(\'pro\')" style="background:var(--electric);border:none;color:var(--navy);padding:4px 12px;border-radius:6px;cursor:pointer;font-weight:700">Pick Your Plan</button>'],
-  pay:['We never auto-charge. After your 14-day trial you receive an invoice by email. Pay by card or ACH. Cancel any time — no penalties.'],
-  signup:['Click any Start Free Trial button or call <strong>929-888-2848</strong> and we\'ll onboard you personally.','<button onclick="openSignup(\'pro\')" style="background:var(--electric);border:none;color:var(--navy);padding:6px 16px;border-radius:8px;cursor:pointer;font-weight:700;margin-top:4px">Start Free Trial →</button>'],
-  call:['Call or text us at <strong><a href="tel:9298882848" style="color:var(--electric)">929-888-2848</a></strong> — Mon–Sat, 7AM–9PM EST. We pick up fast.'],
-  agent:['AACG has 20+ AI agents covering: Lien Management, Contracts, HR, Payroll, Finance, Insurance, Compliance, Safety, Permits, Scheduling, Fleet, Estimating, and more. Each agent runs 24/7 on your account.'],
-  trade:['AACG works for every trade — General Contractors, Electricians, Plumbers, HVAC, Roofers, Masons, Carpenters, Painters, Landscapers, Welders, Solar Installers, and 20+ more.'],
-  default:['Great question! For the fastest answer, call our team at <strong><a href="tel:9298882848" style="color:var(--electric)">929-888-2848</a></strong> — we\'re here Mon–Sat, 7AM–9PM EST.']
-};
-function sendChat(){
-  var inp=document.getElementById('cwInput');
-  var msg=inp.value.trim();
-  if(!msg)return;
-  addChatMsg(msg,'user');
-  inp.value='';
-  var low=msg.toLowerCase();
-  var resp=botResponses.default;
-  if(/lien|mechanic|prelim|notice|claim/i.test(low))resp=botResponses.lien;
-  else if(/price|cost|how much|plan|starter|pro|enterprise|fee/i.test(low))resp=botResponses.price;
-  else if(/pay|payment|charge|invoice|billing|cancel/i.test(low))resp=botResponses.pay;
-  else if(/sign.?up|register|start|trial|join/i.test(low))resp=botResponses.signup;
-  else if(/call|phone|contact|talk|reach|number/i.test(low))resp=botResponses.call;
-  else if(/agent|ai|automat|tool|feature/i.test(low))resp=botResponses.agent;
-  else if(/trade|electric|plumb|hvac|roof|mason|carp|paint|landscape|weld|solar/i.test(low))resp=botResponses.trade;
-  var delay=600;
-  resp.forEach(function(r){
-    setTimeout(function(){addChatMsg(r,'bot');},delay);
-    delay+=900;
-  });
-}
-function addChatMsg(html,type){
-  var msgs=document.getElementById('cwMessages');
-  var div=document.createElement('div');
-  div.className='cw-msg cw-'+type;
-  div.innerHTML=html;
-  msgs.appendChild(div);
-  msgs.scrollTop=msgs.scrollHeight;
-}
-setTimeout(function(){
-  if(!sessionStorage.getItem('aacg_chat_opened')){
-    toggleChat();
-    sessionStorage.setItem('aacg_chat_opened','1');
-  }
-},8000);
+/* ---- Chatbot removed: contact us at 929-888-2848 ---- */
 
 /* ---- Counter Animation ---- */
 function animateCounters(){

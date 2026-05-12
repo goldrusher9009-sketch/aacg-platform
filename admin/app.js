@@ -1,11 +1,6 @@
-// ────────────────────────────────────────────────
+﻿// ────────────────────────────────────────────────
 // DATA
 // ────────────────────────────────────────────────
-const ACCOUNTS = [
-  {email:'starter@demo.com',    pass:'Starter123!', name:'Alex Starter',  company:'Starter Build Co.',     tier:'starter',    avatar:'AS', color:'#6b7280'},
-  {email:'pro@demo.com',        pass:'Pro2026!',    name:'Maria Pro',     company:'Pro Contractors LLC',   tier:'pro',        avatar:'MP', color:'#2a7de1'},
-  {email:'enterprise@demo.com', pass:'Ent2026!',    name:'Scott G.',      company:'All American Group',    tier:'enterprise', avatar:'SG', color:'#c9a84c'},
-];
 
 const TIER_FEATURES = {
   starter:    {agentLimit:5,  workflows:false, photoai:false, compliance:false, analytics:false, team:false, projectLimit:5},
@@ -72,27 +67,22 @@ let activePanel  = 'dashboard';
 // ────────────────────────────────────────────────
 // AUTH
 // ────────────────────────────────────────────────
-function fillDemo(email, pass){
-  document.getElementById('loginEmail').value = email;
-  document.getElementById('loginPass').value  = pass;
-}
-
 async function doLogin(){
   const email = document.getElementById('loginEmail').value.trim().toLowerCase();
   const pass  = document.getElementById('loginPass').value;
   const btn = document.querySelector('.login-btn');
   if(btn){btn.textContent='Signing in...';btn.disabled=true;}
 
-  // Try Supabase first (if configured)
+  // Supabase authentication only — no demo accounts
   let acc = null;
   if(USE_SB){
     acc = await sbLogin(email, pass);
     if(acc && acc.sbUser) window._sbUserId = acc.sbUser.id;
-  }
-
-  // Fall back to demo accounts
-  if(!acc){
-    acc = ACCOUNTS.find(a => a.email === email && a.pass === pass);
+  } else {
+    if(btn){btn.textContent='Sign In to Dashboard';btn.disabled=false;}
+    document.getElementById('loginErr').textContent = 'Authentication service not configured. Contact support@aacgplatform.com';
+    document.getElementById('loginErr').style.display='block';
+    return;
   }
 
   if(btn){btn.textContent='Sign In to Dashboard';btn.disabled=false;}
@@ -142,7 +132,8 @@ function initApp(){
   const tierLabels  = {starter:'Starter Plan', pro:'Professional', enterprise:'Enterprise'};
   const tierClasses = {starter:'tier-starter',  pro:'tier-pro',     enterprise:'tier-enterprise'};
   const tb = document.getElementById('tierBadge');
-  tb.textContent = tierLabels[currentTier];
+  const accountTypeLabel = currentUser.account_type ? ` · ${currentUser.account_type}` : '';
+  tb.textContent = tierLabels[currentTier] + accountTypeLabel;
   tb.className   = 'tier-badge ' + tierClasses[currentTier];
 
   if(currentTier === 'enterprise') document.getElementById('upgradeTopBtn').style.display = 'none';
@@ -152,7 +143,6 @@ function initApp(){
   buildAgentGrid();
   buildWorkflowGrid();
   startLiveLog();
-  seedNotifications();
   renderNotifPanel();
   // Remaining panels are lazy-loaded on first navigation via showPanel()
 }
@@ -261,30 +251,30 @@ async function buildDashboard(){
   const hasReal = sbProjects.length > 0;
   const fmtVal = v => v >= 1000000 ? `$${(v/1000000).toFixed(1)}M` : v >= 1000 ? `$${(v/1000).toFixed(0)}K` : `$${v}`;
 
-  const activeProjects = hasReal ? sbProjects.filter(p=>p.status==='active').length : {starter:5,pro:22,enterprise:47}[currentTier];
-  const openLiens = sbLiens.length > 0 ? sbLiens.filter(l=>l.status!=='satisfied').length : {starter:2,pro:7,enterprise:12}[currentTier];
-  const revenueStr = sbRevenue > 0 ? fmtVal(sbRevenue) : {starter:'$48K',pro:'$284K',enterprise:'$2.4M'}[currentTier];
-  const agentStr = sbAgentRuns > 0 ? `${sbAgentRuns} runs` : {starter:'11 runs',pro:'47 runs',enterprise:'134 runs'}[currentTier];
+  const activeProjectsCount = hasReal ? sbProjects.filter(p=>p.status==='active').length : 0;
+  const openLiens = sbLiens.length > 0 ? sbLiens.filter(l=>l.status!=='satisfied').length : 0;
+  const revenueStr = sbRevenue > 0 ? fmtVal(sbRevenue) : '$0';
+  const agentStr = sbAgentRuns > 0 ? `${sbAgentRuns} runs` : '0 runs';
 
   const kpis = currentTier === 'starter' ? [
-    {l:'Active Projects',v:String(activeProjects),i:'🏗️',c:'var(--blue)',  d:hasReal?`of ${sbProjects.length} total`:'+1 this week',p:true},
-    {l:'Open Liens',     v:String(openLiens),     i:'⚖️', c:'var(--orange)',d:openLiens>0?`${openLiens} need attention`:'All clear',p:openLiens===0},
-    {l:'Agents Available',v:'5 of 20',            i:'🤖',c:'var(--green)', d:'Upgrade for all 20',p:true},
-    {l:'Agent Runs',     v:agentStr,              i:'📊',c:'var(--gold)',  d:'This month',p:true},
+    {l:'Active Projects',v:String(activeProjectsCount),i:'🏗️',c:'var(--blue)',  d:hasReal?`of ${sbProjects.length} total`:'Add your first project to get started',p:activeProjectsCount>0},
+    {l:'Open Liens',     v:String(openLiens),          i:'⚖️', c:'var(--orange)',d:openLiens>0?`${openLiens} need attention`:'No liens yet',p:openLiens===0},
+    {l:'Agents Available',v:'5 of 20',                 i:'🤖',c:'var(--green)', d:'Upgrade for all 20',p:true},
+    {l:'Agent Runs',     v:agentStr,                   i:'📊',c:'var(--gold)',  d:'This month',p:sbAgentRuns>0},
   ] : currentTier === 'pro' ? [
-    {l:'Active Projects',v:String(activeProjects),i:'🏗️',c:'var(--blue)',  d:hasReal?`of ${sbProjects.length} total`:'+3 this week',p:true},
-    {l:'Contract Value', v:revenueStr,            i:'💰',c:'var(--green)', d:hasReal?'Real contract data':'Across active projects',p:true},
-    {l:'Open Liens',     v:String(openLiens),     i:'⚖️', c:'var(--orange)',d:openLiens>2?`${openLiens} need attention`:'Healthy',p:openLiens<=2},
-    {l:'Agents Unlocked',v:'20 / 20',             i:'🤖',c:'var(--purple)',d:'All cloud agents available',p:true},
-    {l:'Agent Runs',     v:agentStr,              i:'📊',c:'var(--cyan)',  d:'Total logged runs',p:true},
-    {l:'Clients',        v:sbClients>0?String(sbClients):'24',i:'🤝',c:'var(--gold)',d:sbClients>0?'From Supabase':'Active clients',p:true},
+    {l:'Active Projects',v:String(activeProjectsCount),i:'🏗️',c:'var(--blue)',  d:hasReal?`of ${sbProjects.length} total`:'Add your first project to get started',p:activeProjectsCount>0},
+    {l:'Contract Value', v:revenueStr,                 i:'💰',c:'var(--green)', d:sbRevenue>0?'Real contract data':'No contract data yet',p:sbRevenue>0},
+    {l:'Open Liens',     v:String(openLiens),          i:'⚖️', c:'var(--orange)',d:openLiens>2?`${openLiens} need attention`:'No open liens',p:openLiens<=2},
+    {l:'Agents Unlocked',v:'20 / 20',                  i:'🤖',c:'var(--purple)',d:'All cloud agents available',p:true},
+    {l:'Agent Runs',     v:agentStr,                   i:'📊',c:'var(--cyan)',  d:'Total logged runs',p:sbAgentRuns>0},
+    {l:'Clients',        v:sbClients>0?String(sbClients):'0',i:'🤝',c:'var(--gold)',d:sbClients>0?'Active clients':'Add your first client',p:sbClients>0},
   ] : [
-    {l:'Active Projects',v:String(activeProjects),i:'🏗️',c:'var(--blue)',  d:hasReal?`of ${sbProjects.length} total`:'+6 this week',p:true},
-    {l:'Contract Value', v:revenueStr,            i:'💰', c:'var(--green)', d:hasReal?'Real contract data':'+22% MoM',p:true},
-    {l:'Open Liens',     v:String(openLiens),     i:'⚖️', c:'var(--orange)',d:openLiens>4?`${openLiens} need attention`:'Healthy',p:openLiens<=4},
-    {l:'All 20 Agents',  v:'20 Live',             i:'🤖',c:'var(--purple)',d:'Full Enterprise access',p:true},
-    {l:'Agent Runs',     v:agentStr,              i:'📊',c:'var(--cyan)',  d:'Total logged runs',p:true},
-    {l:'Clients',        v:sbClients>0?String(sbClients):'–',i:'🤝',c:'var(--gold)',d:sbClients>0?'Active clients':'Enterprise accounts',p:true},
+    {l:'Active Projects',v:String(activeProjectsCount),i:'🏗️',c:'var(--blue)',  d:hasReal?`of ${sbProjects.length} total`:'Add your first project to get started',p:activeProjectsCount>0},
+    {l:'Contract Value', v:revenueStr,                 i:'💰', c:'var(--green)', d:sbRevenue>0?'Real contract data':'No contract data yet',p:sbRevenue>0},
+    {l:'Open Liens',     v:String(openLiens),          i:'⚖️', c:'var(--orange)',d:openLiens>4?`${openLiens} need attention`:'No open liens',p:openLiens<=4},
+    {l:'All 20 Agents',  v:'20 Live',                  i:'🤖',c:'var(--purple)',d:'Full Enterprise access',p:true},
+    {l:'Agent Runs',     v:agentStr,                   i:'📊',c:'var(--cyan)',  d:'Total logged runs',p:sbAgentRuns>0},
+    {l:'Clients',        v:sbClients>0?String(sbClients):'0',i:'🤝',c:'var(--gold)',d:sbClients>0?'Active clients':'Add your first client',p:sbClients>0},
   ];
 
   document.getElementById('dashKpis').innerHTML = kpis.map(k=>`
@@ -303,52 +293,49 @@ async function buildDashboard(){
       if(data && data.length) recentLogs = data;
     } catch(e){}
   }
-  document.getElementById('agentRunCount').textContent = recentLogs.length > 0 ? `${recentLogs.length} recent` : '4 running';
-  document.getElementById('dashAgentList').innerHTML = (recentLogs.length > 0 ? recentLogs : AGENTS.slice(0,4)).map((item,i)=>{
-    const name = item.agent_name || item.name;
-    const icon = item.icon || AGENTS.find(a=>a.name===name)?.icon || '🤖';
-    const status = item.agent_name ? 'Completed' : 'Available';
-    const color = item.agent_name ? 'var(--green)' : 'var(--muted)';
-    const ts = item.created_at ? new Date(item.created_at).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'}) : '';
-    return `<div style="padding:9px 0;border-bottom:1px solid var(--border)">
-      <div style="display:flex;justify-content:space-between;margin-bottom:3px;font-size:.8rem">
-        <span>${icon} ${name}</span>
-        <span style="color:${color};font-size:.7rem">${ts || '● ready'}</span>
-      </div>
-      <div style="color:var(--muted);font-size:.72rem">${item.result ? item.result.substring(0,60)+'…' : status}</div>
-    </div>`;
-  }).join('');
-
-  // Projects table — real data or fallback
-  const displayProjects = hasReal ? sbProjects.slice(0,5) : [
-    {name:'Riverside Commons',status:'active',   contract_value:1200000},
-    {name:'Oak Park Office',  status:'planning', contract_value:480000},
-    {name:'Harbor View QSR',  status:'active',   contract_value:290000},
-    {name:'Summit Industrial',status:'closeout', contract_value:890000},
-  ];
-  document.getElementById('projectsTable').innerHTML = displayProjects.map(p=>{
-    const s = p.status||'active';
-    const pillClass = s==='active'?'pill-green':s==='planning'?'pill-blue':s==='closeout'?'pill-orange':'pill-red';
-    return `<tr><td>${p.name}</td>
-      <td><span class="status-pill ${pillClass}">${s.replace('_',' ')}</span></td>
-      <td style="color:var(--gold);font-weight:700">${fmtVal(p.contract_value||0)}</td></tr>`;
-  }).join('');
-
-  // Revenue chart — real monthly revenue from Supabase or tier-based fallback
-  let chartVals = {starter:[30,42,48,38,52,48], pro:[180,220,260,240,280,284], enterprise:[1400,1800,2100,1950,2300,2400]}[currentTier];
-  if(sbRevenue > 0){
-    // Scale last bar to real revenue (K), others as gradual build-up
-    const revK = Math.round(sbRevenue / 1000);
-    chartVals = [Math.round(revK*.6), Math.round(revK*.7), Math.round(revK*.8), Math.round(revK*.75), Math.round(revK*.9), revK];
+  document.getElementById('agentRunCount').textContent = recentLogs.length > 0 ? `${recentLogs.length} recent` : '';
+  if(recentLogs.length > 0){
+    document.getElementById('dashAgentList').innerHTML = recentLogs.map((item)=>{
+      const name = item.agent_name || item.name || 'Agent';
+      const icon = AGENTS.find(a=>a.name===name)?.icon || '🤖';
+      const ts = item.created_at ? new Date(item.created_at).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'}) : '';
+      return `<div style="padding:9px 0;border-bottom:1px solid var(--border)">
+        <div style="display:flex;justify-content:space-between;margin-bottom:3px;font-size:.8rem">
+          <span>${icon} ${name}</span>
+          <span style="color:var(--green);font-size:.7rem">${ts}</span>
+        </div>
+        <div style="color:var(--muted);font-size:.72rem">${item.result ? item.result.substring(0,60)+'…' : 'Completed'}</div>
+      </div>`;
+    }).join('');
+  } else {
+    document.getElementById('dashAgentList').innerHTML = `<div style="color:var(--muted);font-size:.82rem;padding:16px 0;text-align:center">No agent runs yet. Click any agent to get started.</div>`;
   }
-  const labs  = ['Dec','Jan','Feb','Mar','Apr','May'];
-  const maxV  = Math.max(...chartVals);
-  document.getElementById('revenueChart').innerHTML = chartVals.map((v,i)=>`
-    <div class="chart-bar" style="width:13%;height:${Math.round(v/maxV*100)}%;background:var(--blue);opacity:${i===5?1:.55}"></div>`).join('');
-  document.getElementById('revenueLabels').innerHTML = labs.map(l=>`<span>${l}</span>`).join('');
+
+  // Projects table — real data only
   if(hasReal){
-    const revenueLabel = document.querySelector('.card-title');
-    // Add data source indicator
+    document.getElementById('projectsTable').innerHTML = sbProjects.slice(0,5).map(p=>{
+      const s = p.status||'active';
+      const pillClass = s==='active'?'pill-green':s==='planning'?'pill-blue':s==='closeout'?'pill-orange':'pill-red';
+      return `<tr><td>${p.name}</td>
+        <td><span class="status-pill ${pillClass}">${s.replace('_',' ')}</span></td>
+        <td style="color:var(--gold);font-weight:700">${fmtVal(p.contract_value||0)}</td></tr>`;
+    }).join('');
+  } else {
+    document.getElementById('projectsTable').innerHTML = `<tr><td colspan="3" style="text-align:center;color:var(--muted);padding:20px;font-size:.82rem">Add your first project to get started</td></tr>`;
+  }
+
+  // Revenue chart — real data only, empty state when no data
+  if(sbRevenue > 0){
+    const revK = Math.round(sbRevenue / 1000);
+    const chartVals = [Math.round(revK*.6), Math.round(revK*.7), Math.round(revK*.8), Math.round(revK*.75), Math.round(revK*.9), revK];
+    const labs  = ['Dec','Jan','Feb','Mar','Apr','May'];
+    const maxV  = Math.max(...chartVals, 1);
+    document.getElementById('revenueChart').innerHTML = chartVals.map((v,i)=>`
+      <div class="chart-bar" style="width:13%;height:${Math.round(v/maxV*100)}%;background:var(--blue);opacity:${i===5?1:.55}"></div>`).join('');
+    document.getElementById('revenueLabels').innerHTML = labs.map(l=>`<span>${l}</span>`).join('');
+  } else {
+    document.getElementById('revenueChart').innerHTML = `<div style="width:100%;text-align:center;color:var(--muted);font-size:.8rem;padding:20px 0;align-self:center">No revenue data yet</div>`;
+    document.getElementById('revenueLabels').innerHTML = '';
   }
 }
 
@@ -447,16 +434,18 @@ async function buildLienContent(){
     } catch(e){ console.warn('[Liens] Supabase read failed, using demo data', e); }
   }
 
-  // Demo fallback
   if(!liens.length){
-    liens = [
-      {id:'L001', project:'Harbor View QSR', amount:18500, status:'draft', deadline:'2026-06-15', notes:'Prelim not sent'},
-      {id:'L002', project:'Riverside Commons', amount:142000, status:'prelim', deadline:'2026-05-01', notes:'Certified mail sent'},
-      {id:'L003', project:'Oak Park Office', amount:64200, status:'filed', deadline:'2026-04-12', notes:'Filed with county recorder'},
-      {id:'L004', project:'Summit East', amount:28000, status:'filed', deadline:'2026-03-28', notes:'Mechanics lien filed'},
-      {id:'L005', project:'Marina Hotel', amount:95000, status:'satisfied', deadline:'2026-04-30', notes:'Final waiver received'},
-      {id:'L006', project:'Downtown Tower', amount:220000, status:'disputed', deadline:'2026-06-08', notes:'Hearing scheduled'},
-    ];
+    window._liensCache = [];
+    el.innerHTML = `
+      <div class="action-bar">
+        <button class="btn-primary" onclick="openAddLienModal()">+ New Lien</button>
+      </div>
+      <div class="card" style="padding:40px;text-align:center;color:var(--muted)">
+        <div style="font-size:2.5rem;margin-bottom:12px">⚖️</div>
+        <div style="font-size:.9rem;margin-bottom:6px;color:var(--text)">No liens yet.</div>
+        <div style="font-size:.8rem">Click + New Lien to track your first lien.</div>
+      </div>`;
+    return;
   }
 
   const statusMap = {
@@ -632,13 +621,18 @@ async function buildProjectsContent(){
   }
 
   if(!projects.length){
-    projects = [
-      {id:'PRJ-001',name:'Riverside Commons',  sector:'QSR Restaurant',   status:'active',   contract_value:1200000, deadline:'2026-06-30'},
-      {id:'PRJ-002',name:'Oak Park Office',     sector:'Commercial Office', status:'planning', contract_value:480000,  deadline:'2026-09-15'},
-      {id:'PRJ-003',name:'Harbor View QSR',     sector:'Restaurant',       status:'active',   contract_value:290000,  deadline:'2026-08-01'},
-      {id:'PRJ-004',name:'Summit Industrial',   sector:'Industrial',       status:'closeout', contract_value:890000,  deadline:'2026-05-28'},
-      {id:'PRJ-005',name:'Marina Renovation',   sector:'Hospitality',      status:'on_hold',  contract_value:340000,  deadline:'2026-10-01'},
-    ];
+    // No projects yet — show empty state
+    window._projectsCache = [];
+    el.innerHTML = `
+      <div class="action-bar">
+        <button class="btn-primary" onclick="openAddProjectModal()">+ New Project</button>
+      </div>
+      <div class="card" style="padding:40px;text-align:center;color:var(--muted)">
+        <div style="font-size:2.5rem;margin-bottom:12px">🏗️</div>
+        <div style="font-size:.9rem;margin-bottom:6px;color:var(--text)">No projects yet.</div>
+        <div style="font-size:.8rem">Click + Add Project to create your first one.</div>
+      </div>`;
+    return;
   }
 
   // Cache for viewProject / archiveProject lookups
@@ -877,12 +871,11 @@ async function buildAnalyticsContent(){
     } catch(e){ console.warn('[Analytics] Supabase read failed', e); }
   }
 
-  // Fallback to demo values if no real data
-  const fmtRev = v => v >= 1000000 ? `$${(v/1000000).toFixed(1)}M` : v >= 1000 ? `$${(v/1000).toFixed(0)}K` : v > 0 ? `$${v}` : '$2.4M';
+  const fmtRev = v => v >= 1000000 ? `$${(v/1000000).toFixed(1)}M` : v >= 1000 ? `$${(v/1000).toFixed(0)}K` : v > 0 ? `$${v}` : '$0';
   const revenueDisplay = fmtRev(totalRevenue);
-  const jobsDisplay = totalJobs > 0 ? `${activeJobs} Active` : '14 Active';
-  const agentsDisplay = totalAgentRuns > 0 ? `${totalAgentRuns}` : '182';
-  const clientsDisplay = totalClients > 0 ? `${totalClients}` : '24';
+  const jobsDisplay = totalJobs > 0 ? `${activeJobs} Active` : '0';
+  const agentsDisplay = totalAgentRuns > 0 ? `${totalAgentRuns}` : '0';
+  const clientsDisplay = totalClients > 0 ? `${totalClients}` : '0';
 
   el.innerHTML = `
     <div class="three-col">
@@ -900,26 +893,16 @@ async function buildAnalyticsContent(){
     </div>
     <div class="two-col">
       <div class="card">
-        <div class="card-title">Revenue by Trade <span style="font-size:.7rem;color:var(--muted);font-weight:400">(demo distribution)</span></div>
-        ${[['Plumbing','$480K',80],['Electrical','$390K',65],['HVAC','$320K',53],['Concrete','$280K',47],['Roofing','$210K',35]].map(r=>`
-          <div style="margin-bottom:11px">
-            <div style="display:flex;justify-content:space-between;font-size:.8rem;margin-bottom:4px">
-              <span>${r[0]}</span><span style="color:var(--gold)">${r[1]}</span>
-            </div>
-            <div style="background:var(--border);border-radius:3px;height:5px">
-              <div style="width:${r[2]}%;height:100%;background:var(--blue);border-radius:3px"></div>
-            </div>
-          </div>`).join('')}
+        <div class="card-title">Revenue by Trade</div>
+        ${totalRevenue > 0
+          ? `<div style="color:var(--muted);font-size:.82rem;padding:8px 0">Connect your projects with trade data to see revenue by trade breakdown.</div>`
+          : `<div style="text-align:center;color:var(--muted);padding:24px 0;font-size:.82rem">Connect your projects to see revenue analytics</div>`}
       </div>
       <div class="card">
         <div class="card-title">Top Agent Runs</div>
-        ${AGENTS.slice(0,5).map((a,i)=>{
-          const saves=['$42K','$28K','$18K','$15K','$12K'][i];
-          return `<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:.8rem">
-            <span>${a.icon} ${a.name}</span>
-            <span style="color:var(--green);font-weight:700">Est. ${saves} saved</span>
-          </div>`;
-        }).join('')}
+        ${totalAgentRuns > 0
+          ? `<div style="color:var(--muted);font-size:.82rem;padding:8px 0">${totalAgentRuns} total agent runs logged.</div>`
+          : `<div style="text-align:center;color:var(--muted);padding:24px 0;font-size:.82rem">No agent runs yet. Run an agent to see activity here.</div>`}
       </div>
     </div>`;
   document.getElementById('analyticsContent').dataset.built = currentTier;
@@ -942,13 +925,16 @@ async function buildClientsContent(){
   }
 
   if(!clients.length){
-    clients = [
-      {id:'C001', name:'Harborview Hospitality',  sector:'Enterprise',   project_count:8,  total_revenue:1400000, phone:'(503) 555-0102', email:'gm@harborview.com',  status:'active'},
-      {id:'C002', name:'Pacific QSR Group',        sector:'Commercial',   project_count:5,  total_revenue:620000,  phone:'(503) 555-0234', email:'ops@pacificqsr.com', status:'active'},
-      {id:'C003', name:'Summit Office Partners',   sector:'Commercial',   project_count:3,  total_revenue:480000,  phone:'(503) 555-0345', email:'pm@summitop.com',    status:'active'},
-      {id:'C004', name:'City of Portland',         sector:'Government',   project_count:2,  total_revenue:890000,  phone:'(503) 555-0456', email:'capital@portland.gov',status:'active'},
-      {id:'C005', name:'Sunrise Residential',      sector:'Residential',  project_count:12, total_revenue:340000,  phone:'(503) 555-0567', email:'info@sunrisedev.com', status:'active'},
-    ];
+    el.innerHTML = `
+      <div class="action-bar">
+        <button class="btn-primary" onclick="openAddClientModal()">+ Add Client</button>
+      </div>
+      <div class="card" style="padding:40px;text-align:center;color:var(--muted)">
+        <div style="font-size:2.5rem;margin-bottom:12px">🤝</div>
+        <div style="font-size:.9rem;margin-bottom:6px;color:var(--text)">No clients yet.</div>
+        <div style="font-size:.8rem">Click + Add Client to add your first client.</div>
+      </div>`;
+    return;
   }
 
   const fmtVal = v => v >= 1000000 ? `$${(v/1000000).toFixed(1)}M` : v >= 1000 ? `$${(v/1000).toFixed(0)}K` : `$${v}`;
@@ -1075,13 +1061,16 @@ async function buildTechContent(){
   }
 
   if(!techs.length){
-    techs = [
-      {id:'T001', name:'Carlos Martinez', role:'Lead Electrician',  current_site:'Riverside Commons',  status:'on_site',  trade:'Electrical', phone:'(503) 555-1001', license:'EL-4421'},
-      {id:'T002', name:'Jesse Williams',  role:'Plumber II',         current_site:'Harbor View QSR',    status:'on_site',  trade:'Plumbing',   phone:'(503) 555-1002', license:'PL-2210'},
-      {id:'T003', name:'Tony Reyes',      role:'HVAC Tech',          current_site:'Oak Park Office',    status:'transit',  trade:'HVAC',       phone:'(503) 555-1003', license:'HVAC-891'},
-      {id:'T004', name:'Dana Kim',        role:'Safety Inspector',   current_site:'Summit Industrial',  status:'reporting',trade:'Safety',     phone:'(503) 555-1004', license:'OSHA-30'},
-      {id:'T005', name:'Mike Torres',     role:'Foreman',            current_site:'Marina Renovation',  status:'off_site', trade:'General',    phone:'(503) 555-1005', license:'GC-1155'},
-    ];
+    el.innerHTML = `
+      <div class="action-bar">
+        <button class="btn-primary" onclick="openAddTechModal()">+ Add Technician</button>
+      </div>
+      <div class="card" style="padding:40px;text-align:center;color:var(--muted)">
+        <div style="font-size:2.5rem;margin-bottom:12px">👷</div>
+        <div style="font-size:.9rem;margin-bottom:6px;color:var(--text)">No technicians yet.</div>
+        <div style="font-size:.8rem">Click + Add Technician to add your first field team member.</div>
+      </div>`;
+    return;
   }
 
   const statusEmoji = {on_site:'✅ On-site', transit:'🔧 In Transit', reporting:'📝 Reporting', off_site:'🏠 Off-site', unavailable:'❌ Unavailable'};
@@ -1865,14 +1854,17 @@ async function buildComplianceContent(){
   }
 
   if(!items.length){
-    const now = new Date();
-    items = [
-      {id:'C001', name:'Permit #P-2204 — Riverside', type:'Permit',     deadline:'2026-06-08', status:'expiring', notes:'Expires in 37 days'},
-      {id:'C002', name:'OSHA 300 Log — Q2',          type:'OSHA',       deadline:'2026-07-01', status:'current',  notes:'Due Q2 filing'},
-      {id:'C003', name:'Business License Renewal',   type:'License',    deadline:'2026-08-15', status:'current',  notes:'Annual renewal'},
-      {id:'C004', name:'Contractor Bond — State',    type:'Bond',       deadline:'2026-09-30', status:'current',  notes:'State bond current'},
-      {id:'C005', name:'Insurance COI — Summit',     type:'Insurance',  deadline:'2026-05-31', status:'critical', notes:'Expires in 29 days'},
-    ];
+    window._complianceCache = [];
+    el.innerHTML = `
+      <div class="action-bar">
+        <button class="btn-primary" onclick="openAddComplianceModal()">+ Add Compliance Item</button>
+      </div>
+      <div class="card" style="padding:40px;text-align:center;color:var(--muted)">
+        <div style="font-size:2.5rem;margin-bottom:12px">📋</div>
+        <div style="font-size:.9rem;margin-bottom:6px;color:var(--text)">No compliance items yet.</div>
+        <div style="font-size:.8rem">Click + Add Compliance Item to track permits, licenses, and deadlines.</div>
+      </div>`;
+    return;
   }
 
   // Cache for editComplianceItem lookups
@@ -2163,10 +2155,9 @@ async function openStripePortal(){
       if(data?.url){ window.open(data.url, '_blank'); return; }
     } catch(e){ console.warn('[Portal]', e); }
   }
-  // Fallback: open Stripe customer portal directly
-  // Replace with your Stripe billing portal link from Stripe Dashboard → Billing → Customer portal
-  const STRIPE_PORTAL_URL = 'https://billing.stripe.com/p/login/test_00g00000000000000000';
-  window.open(STRIPE_PORTAL_URL, '_blank');
+  // Billing portal not configured - show message
+  addNotification('Billing Portal', 'Billing portal not configured -- contact support@aacgplatform.com', 'info');
+  alert('Billing portal not configured. Please contact support@aacgplatform.com to manage your subscription.');
 }
 
 // ────────────────────────────────────────────────
@@ -2701,16 +2692,6 @@ function timeAgo(d){
   return d.toLocaleDateString();
 }
 
-// Seed initial notifications on login
-function seedNotifications(){
-  addNotification('🔴 Permit Expiring', 'Oak Park Office P-2216 expires in 6 days. Take action now.', 'alert');
-  addNotification('⚖️ Lien Deadline', 'Downtown Tower lien hearing in 37 days — review documents.', 'alert');
-  addNotification('🤖 Agent Complete', 'Schedule Optimizer saved 4.2 days on Riverside Commons critical path.', 'success');
-  addNotification('💳 Invoice Sent', 'Invoice #1087 for $41,200 sent to Harborview Hospitality.', 'success');
-  addNotification('⚠️ Safety Alert', 'PPE violation flagged by Photo Inspector — Riverside Commons Lot 3.', 'warn');
-  addNotification('📦 Material Delay', 'Roofing membrane delayed 5 days — alternate supplier recommended.', 'warn');
-  addNotification('✅ Payroll Cleared', 'Certified payroll for 34 workers verified. $157.50 on hold — needs supervisor sign-off.', 'info');
-}
 
 // ────────────────────────────────────────────────
 // EXECUTION MODAL
@@ -2787,250 +2768,52 @@ const AGENT_PROMPTS = {
   revenue: `You are the IronForge Revenue Forecaster AI Agent — a construction finance expert. When run, you: (1) calculate projected billings for current month based on schedule of values and % complete, (2) forecast next 3 months revenue by project using contract milestone schedules, (3) identify projects at risk of revenue shortfall (behind schedule = behind billing), (4) calculate backlog burn rate and months of backlog remaining, (5) generate a revenue waterfall chart data showing billed vs. earned vs. collected.`
 };
 
-// ── FREE AGENT RUNNER — instant deterministic logic, no API key needed ──
-const FREE_AGENT_RESULTS = {
-  permit: `## Permit Status Report — ${new Date().toLocaleDateString()}
-
-**Active Permits Across All Projects**
-
-| Project | Permit # | Type | Status | Expires |
-|---|---|---|---|---|
-| Riverside Commons | P-2201 | Building | ✅ Active | 2025-09-14 |
-| Riverside Commons | P-2202 | Electrical | ✅ Active | 2025-08-30 |
-| Harbor View QSR | P-2208 | Mechanical | ⚠️ Expires in 12 days | 2025-05-14 |
-| Oak Park Office | P-2215 | Fire Suppression | ✅ Active | 2025-11-20 |
-| Oak Park Office | P-2216 | Plumbing | 🔴 Expires in 6 days | 2025-05-08 |
-| Summit Industrial | P-2199 | Grading | ✅ Finaled | — |
-
-**Action Required:**
-- **Oak Park Office P-2216** — renew plumbing permit by May 8. Contact AHJ: City of Oak Park Building Dept (555) 234-5678
-- **Harbor View QSR P-2208** — mechanical inspection due before expiry. Schedule with inspector Jones
-
-**Upcoming Inspections (next 14 days):**
-- May 5: Rough framing — Riverside Commons (Inspector: Kim)
-- May 8: Final plumbing — Oak Park Office (URGENT — permit expires same day)
-- May 11: HVAC rough-in — Harbor View QSR
-
-**Summary:** 6 active permits tracked. 2 require immediate action. 0 failed inspections pending re-inspection.`,
-
-  daily: `## Daily Site Monitor — Morning Digest
-**${new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}**
-
-### 🌤 Weather Holds
-- Riverside Commons: Clear, 68°F — No holds ✅
-- Harbor View QSR: Rain forecasted 2pm (0.4") — Concrete pour POSTPONED ⚠️
-- Oak Park Office: Clear, 71°F — No holds ✅
-- Summit Industrial: Wind 22mph — Monitor; flag if exceeds 25mph
-
-### 👷 Crew Check-In Status
-| Project | Scheduled | Checked In | Status |
-|---|---|---|---|
-| Riverside Commons | 22 | 21 | ⚠️ 1 no-show — foreman notified |
-| Harbor View QSR | 14 | 14 | ✅ Full crew |
-| Oak Park Office | 18 | 18 | ✅ Full crew |
-| Summit Industrial | 8 | 6 | 🔴 2 absent — call sub PM |
-
-### 📦 Today's Deliveries
-- 7:00am — Lumber package ($18,400) → Riverside Commons ✅ Confirmed
-- 10:00am — HVAC units (4 RTUs) → Harbor View QSR ✅ On schedule
-- 2:00pm — Concrete pour (40 CY) → Oak Park Office — ⚠️ Reschedule if rain moves north
-
-### 🔴 Top Issues Requiring PM Attention
-1. **Harbor View QSR** — Concrete pour postponed; reschedule with batch plant (lead time 3 days)
-2. **Summit Industrial** — 2 crew absences; production will be 25% below forecast
-3. **Riverside Commons** — 1 no-show; check if framing crew is understaffed for today's tasks`,
-
-  material: `## Material Tracker — Procurement Status Report
-
-### Open Purchase Orders
-| PO # | Material | Supplier | Ordered | Due Date | Status | Variance |
-|---|---|---|---|---|---|---|
-| PO-4401 | Structural Steel — W8x31 | Metro Steel | $42,000 | May 7 | ✅ On Time | — |
-| PO-4402 | Roofing Membrane (4,200 SF) | RoofPro Supply | $18,600 | May 3 | 🔴 Delayed +5 days | -$0 |
-| PO-4403 | Electrical Panel (200A, 42ckt) | Consolidated Elec | $3,200 | May 5 | ✅ On Time | — |
-| PO-4404 | Ready-Mix Concrete (120 CY) | Valley Concrete | $14,400 | May 8 | ✅ Confirmed | — |
-| PO-4405 | Aluminum Storefront | Glass Masters | $28,900 | May 21 | ⚠️ Lead time risk | +3 wks |
-
-### 🔴 Critical Delays
-- **PO-4402 Roofing Membrane** — supplier backorder, arriving May 8. Impact: roofing crew idle 5 days → ~$3,200 lost productivity. **Action:** contact alternate supplier (Pacific Roofing Supply — call 555-887-2200) for split delivery.
-
-### ⚠️ Lead Time Risks
-- **PO-4405 Aluminum Storefront** — Glass Masters confirmed 14-week lead from order date. This pushes install to June 15. Check if critical path activity — if so, alternate vendor (City Glass, 12-week lead) should be evaluated.
-
-### 📦 On-Site Inventory vs. 2-Week Forecast
-- Lumber: 840 BF on hand | Need 1,200 BF → **Order 360 BF by May 6**
-- Drywall: 420 sheets | Need 380 sheets → ✅ Sufficient
-- Conduit (½"): 240 LF | Need 600 LF → **Order 400 LF by May 5**
-
-**Summary:** 5 POs tracked. 1 critical delay (roofing). 2 items need reorder this week.`,
-
-  drawing: `## Drawing Revision Agent — Distribution Report
-
-### Drawing Log Summary
-**Latest Revision: Rev D (issued April 28, 2025)**
-
-### ⚠️ Superseded Drawings Still In Field
-| Sheet | Old Rev | Current Rev | Location | Action |
-|---|---|---|---|---|
-| A2.01 | Rev B | Rev D | Riverside Commons site trailer | 🔴 Retrieve immediately |
-| S3.00 | Rev C | Rev D | Harbor View framing crew binder | ⚠️ Replace by EOD |
-| E1.01 | Rev A | Rev C | Summit Industrial electrical sub | 🔴 2 revisions behind |
-
-### ASI Tracking
-- **ASI-007** (issued Apr 22): Door hardware schedule updated. Affects sheets A8.01–A8.04. Rev D issued ✅
-- **ASI-008** (issued Apr 29): Structural connection detail at grid B-4 revised. Sheet S3.00 Rev D. ⚠️ Not yet distributed to Harbor View framing crew.
-- **ASI-009** (PENDING): Architect has not issued — RFI #31 response overdue 4 days. **Escalate to architect.**
-
-### RFI-to-Drawing Changes
-| RFI # | Response Date | Drawing Impact | Rev Issued |
-|---|---|---|---|
-| RFI-28 | Apr 20 | MEP coordination — sheet M3.01 | Rev C ✅ |
-| RFI-31 | OVERDUE | Structural — sheet S3.00 | Pending ASI-009 🔴 |
-
-**Action Required:** Distribute Rev D to all field teams. Retrieve and destroy Rev B/C prints. Escalate RFI-31 to architect.`,
-
-  warranty: `## Warranty Tracker — Equipment & Labor Guarantee Report
-
-### Active Warranties
-| Equipment / System | Project | Warranty Start | Warranty End | Provider | Status |
-|---|---|---|---|---|---|
-| Carrier RTU-3 (5 ton) | Harbor View QSR | Oct 14, 2024 | Oct 14, 2025 | Carrier Corp | ✅ Active |
-| Electrical Service (200A) | Riverside Commons | Jan 3, 2025 | Jan 3, 2026 | Labor Warranty | ✅ Active |
-| Roofing System (TPO) | Summit Industrial | Nov 2, 2023 | Nov 2, 2033 | Firestone | ✅ 10-yr active |
-| Fire Suppression System | Oak Park Office | Mar 15, 2025 | Mar 15, 2026 | Simplex Grinnell | ✅ Active |
-| HVAC Controls (BAS) | Riverside Commons | Feb 20, 2025 | Feb 20, 2026 | JCI | ⚠️ Preventive maintenance due |
-
-### ⚠️ Expiring in 90 Days
-- **Carrier RTU-3** — expires Oct 14, 2025. Schedule final warranty inspection by Sep 14. Contact: Carrier Regional (555) 445-2310
-
-### 🔧 Preventive Maintenance Required (to keep warranty valid)
-- **JCI BAS Controls** — quarterly filter service due May 15. Failure to document voids warranty. Schedule with JCI service tech.
-
-### Open Warranty Claims
-| Claim # | System | Filed | Status | Contractor Action |
-|---|---|---|---|---|
-| WC-001 | RTU-3 Compressor vibration | Apr 10 | 🔄 In review | Carrier tech visit scheduled May 6 |
-
-**Summary:** 5 active warranties tracked. 1 expiring within 90 days. 1 PM required to maintain coverage. 1 open claim in progress.`,
-
-  payroll: `## Payroll Verification Report — Pay Period Ending May 2, 2025
-
-### Timesheet vs. GPS Verification
-| Worker | Project | Hours Claimed | GPS Verified | Variance | Flag |
-|---|---|---|---|---|---|
-| J. Martinez | Riverside Commons | 44h | 44h | $0 | ✅ Clear |
-| R. Thompson | Riverside Commons | 40h | 38.5h | 1.5h unverified | ⚠️ Review |
-| K. Nguyen | Harbor View QSR | 48h | 48h | $0 | ✅ Clear |
-| D. Williams | Oak Park Office | 40h | 40h | $0 | ✅ Clear |
-| M. Johnson | Oak Park Office | 52h | 49h | 3h unverified | 🔴 Flag >$50 |
-
-### Certified Payroll (Prevailing Wage — Davis-Bacon)
-**Harbor View QSR — Federal project threshold: $2,000**
-- Carpenter (Journeyman): $42.85/hr base + $18.20 fringe = $61.05/hr ✅ Compliant
-- Electrician: $58.40/hr base + $21.10 fringe = $79.50/hr ✅ Compliant
-- Laborer: $31.20/hr base + $14.80 fringe = $46.00/hr ✅ Compliant
-
-### Overtime Calculations
-- R. Thompson: 4h OT @ $52.50 = $210.00 | State rule: 1.5x after 8h/day ✅ Correct
-- K. Nguyen: 8h OT @ $87.60 = $700.80 | Federal project 1.5x ✅ Correct
-- M. Johnson: 12h OT — **3h unverified by GPS. Hold $157.50 pending supervisor sign-off**
-
-### Anomaly Flags (>$50)
-🔴 M. Johnson — 3 unverified overtime hours = **$157.50 held**. Supervisor: please verify and approve by May 5.
-
-**WH-347 Report:** Ready to generate for Harbor View QSR. 3 workers covered under Davis-Bacon. All wage rates compliant.
-
-**Summary:** 5 workers reviewed. 2 flagged (1 minor, 1 held). $157.50 in disputed pay requires supervisor sign-off before release.`,
-
-  rfi: `## RFI Manager — Status Report
-**${new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}**
-
-### Open RFIs by Discipline
-| # | Subject | Discipline | Project | Submitted | Due | Status |
-|---|---|---|---|---|---|---|
-| RFI-28 | MEP coordination at grid C-3 | MEP | Riverside | Apr 20 | Apr 27 | ✅ Closed |
-| RFI-29 | Slab edge condition at entry | Structural | Harbor View | Apr 25 | May 2 | ✅ Answered today |
-| RFI-30 | Light fixture mounting height | Architectural | Oak Park | Apr 26 | May 3 | ⚠️ Response due tomorrow |
-| RFI-31 | Beam connection detail at B-4 | Structural | Summit | Apr 25 | May 2 | 🔴 OVERDUE 1 day |
-| RFI-32 | Fire-rating at stairwell smoke curtain | Fire/Life Safety | Riverside | Apr 30 | May 7 | 🕐 Open |
-| RFI-33 | Plumbing fixture rough-in heights | MEP | Harbor View | May 1 | May 8 | 🕐 Open |
-
-### 🔴 Overdue RFIs (Action Required)
-**RFI-31** — Structural, Summit Industrial. Sent to ENG: Rodriguez & Assoc. **4 business days since submittal, no response.** Draft follow-up email being generated:
-
-> *"Subject: OVERDUE — RFI-31 Beam Connection Detail B-4 | Summit Industrial*
-> *This is a follow-up on RFI-31 submitted April 25. We require a response by May 5 to avoid a schedule impact of 2–3 days on critical path steel erection. Please confirm receipt and ETA."*
-
-### ⚠️ Schedule Impact RFIs
-- **RFI-31** — Steel erection on hold pending structural clarification. **Impact: 2–3 days float consumption on critical path.**
-
-### Summary
-- Total Open: 5 | Overdue: 1 | Schedule Impact: 1
-- Average response time (last 10 RFIs): 4.2 days
-- Recommendation: Add RFI-31 to tomorrow's OAC agenda.`,
-
-  schedule: `## Schedule Optimizer — Lookahead & Conflict Report
-**Week of ${new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}**
-
-### Earned Value Summary
-| Project | Planned % | Actual % | SPI | CPI | Status |
-|---|---|---|---|---|---|
-| Riverside Commons | 68% | 65% | 0.96 | 1.02 | ⚠️ Slightly behind |
-| Harbor View QSR | 32% | 30% | 0.94 | 0.98 | ⚠️ Monitor |
-| Oak Park Office | 84% | 82% | 0.98 | 1.04 | ✅ On track |
-| Summit Industrial | 100% | 100% | 1.00 | 0.96 | ✅ Closeout |
-
-### 🔴 Critical Path Activities at Risk
-- **Riverside Commons — Exterior glazing** (Activity RC-44): 3 days of float remaining. Storefront fabrication delayed. If not resolved by May 8, this hits critical path.
-- **Harbor View QSR — Concrete pour** (Activity HV-12): Weather hold today pushes MEP rough-in by 1 day. 1 day of float consumed. **No more float for this activity.**
-
-### Resource Loading Conflicts
-| Crew | Week of May 5 | Conflict |
-|---|---|---|
-| Framing Crew A | Riverside + Oak Park overlap | ⚠️ Double-booked Wed–Thu |
-| Electrical Sub (Volt Pro) | Harbor View + Summit | ⚠️ Exceeds capacity by 30% |
-
-### Recommended Recovery Actions
-1. **Shift Framing Crew A** to Riverside Mon–Wed, Oak Park Thu–Fri. Saves 0.5 days net.
-2. **Authorize overtime** for Volt Pro electrical sub (5 hours, ~$1,400) to clear Harbor View rough-in before pour.
-3. **Expedite** storefront fabrication for Riverside Commons — call Glass Masters VP directly for priority commitment.
-
-### 3-Week Lookahead (Condensed)
-- **May 5–9**: Framing closeout (Riverside), MEP rough-in (Harbor View), drywall hang Phase 1 (Oak Park)
-- **May 12–16**: Roof insulation (Riverside), concrete flatwork (Harbor View), drywall tape/finish Phase 1 (Oak Park)
-- **May 19–23**: Roof membrane (Riverside), HVAC start-up (Harbor View), painting (Oak Park)`
-};
-
+// -- FREE AGENT RUNNER -- fetches real Supabase data, no API key needed --
 async function runFreeAgent(agentId){
   const a = AGENTS.find(x=>x.id===agentId);
   const btn = document.getElementById('execRunBtn');
   const log = document.getElementById('execLog');
-  btn.disabled = true; btn.textContent = '⏳ Running…';
+  btn.disabled = true; btn.textContent = 'Running...';
   document.getElementById('progSec').classList.add('show');
   log.innerHTML = '';
 
   a.steps.forEach((_,i) => {
     const el = document.getElementById(`ss-${i}`);
-    if(el){ el.className = 'step-status'; el.textContent = '○'; }
+    if(el){ el.className = 'step-status'; el.textContent = 'o'; }
   });
 
   const ts = () => new Date().toLocaleTimeString('en-US',{hour12:false});
-  log.innerHTML += `<div class="log-line info">[${ts()}] ⚡ IronForge Free Engine initializing…</div>`;
+  log.innerHTML += `<div class="log-line info">[${ts()}] Fetching your real data from Supabase...</div>`;
   log.scrollTop = log.scrollHeight;
 
-  // Animate steps quickly (free = fast)
-  let stepIdx = 0;
+  // Fetch real data for this user
+  let projects = [], liens = [], complianceItems = [], agentLogs = [];
+  if(USE_SB && window._sbUserId){
+    try {
+      const [pRes, lRes, cRes, aRes] = await Promise.all([
+        sbQuery(sbClient.from('jobs').select('*').eq('user_id', window._sbUserId).order('created_at',{ascending:false})),
+        sbQuery(sbClient.from('liens').select('*').eq('user_id', window._sbUserId)),
+        sbQuery(sbClient.from('compliance_items').select('*').eq('user_id', window._sbUserId).order('deadline',{ascending:true})),
+        sbQuery(sbClient.from('agent_logs').select('*').eq('user_id', window._sbUserId).order('created_at',{ascending:false}).limit(10)),
+      ]);
+      if(pRes.data) projects = pRes.data;
+      if(lRes.data) liens = lRes.data;
+      if(cRes.data) complianceItems = cRes.data;
+      if(aRes.data) agentLogs = aRes.data;
+    } catch(e){ console.warn('[FreeAgent] Supabase read failed', e); }
+  }
+
+  // Animate steps
   const totalSteps = a.steps.length;
   const delay = 400;
-
   for(let i = 0; i < totalSteps; i++){
     await new Promise(r => setTimeout(r, delay));
     if(i > 0){
       const prev = document.getElementById(`ss-${i-1}`);
-      if(prev){ prev.className='step-status done-s'; prev.textContent='✓'; }
+      if(prev){ prev.className='step-status done-s'; prev.textContent='v'; }
     }
     const el = document.getElementById(`ss-${i}`);
-    if(el){ el.className='step-status running-s'; el.textContent='…'; }
+    if(el){ el.className='step-status running-s'; el.textContent='...'; }
     const si = document.getElementById(`si-${i}`);
     if(si) si.style.background='rgba(16,185,129,.06)';
     document.getElementById('progBar').style.background = 'var(--green)';
@@ -3038,46 +2821,67 @@ async function runFreeAgent(agentId){
     log.innerHTML += `<div class="log-line info">[${ts()}] ${a.steps[i]}</div>`;
     log.scrollTop = log.scrollHeight;
   }
-
   await new Promise(r => setTimeout(r, 300));
-
-  // Mark all done
   a.steps.forEach((_,i) => {
     const el = document.getElementById(`ss-${i}`);
-    if(el){ el.className='step-status done-s'; el.textContent='✓'; }
+    if(el){ el.className='step-status done-s'; el.textContent='v'; }
   });
   document.getElementById('progBar').style.width = '100%';
   document.getElementById('progBar').style.background = 'var(--green)';
 
-  // Render result
-  const rawResult = FREE_AGENT_RESULTS[agentId] || `## ${a.name} — Task Complete\n\nAll checks passed. No issues requiring immediate attention across active projects.\n\n**Next recommended run:** Tomorrow morning.`;
-  const formatted = rawResult
-    .replace(/^### (.+)$/gm, '<div style="color:var(--green);font-weight:700;margin-top:12px;font-size:.85rem">$1</div>')
-    .replace(/^## (.+)$/gm, '<div style="color:var(--text);font-weight:700;margin-top:14px;font-size:.9rem;border-bottom:1px solid var(--border);padding-bottom:4px">$1</div>')
-    .replace(/^\*\*(.+)\*\*$/gm, '<div style="color:var(--text);font-weight:700;margin-top:8px">$1</div>')
-    .replace(/\*\*(.+?)\*\*/g, '<strong style="color:var(--text)">$1</strong>')
-    .replace(/^- (.+)$/gm, '<div style="padding:2px 0 2px 12px;border-left:2px solid var(--green);margin:3px 0;color:var(--muted)">$1</div>')
-    .replace(/^(\d+)\. (.+)$/gm, '<div style="padding:2px 0 2px 8px;color:var(--muted);margin:3px 0"><span style="color:var(--green);font-weight:700">$1.</span> $2</div>')
-    .replace(/\|(.+)\|/g, (m)=>{
-      const cells = m.split('|').filter(c=>c.trim());
-      return '<div style="display:flex;gap:8px;font-size:.75rem;padding:3px 0;border-bottom:1px solid var(--border)">'
-        + cells.map(c=>`<span style="flex:1;color:var(--muted)">${c.trim()}</span>`).join('')
-        +'</div>';
-    })
-    .replace(/🔴/g,'<span style="color:var(--red)">🔴</span>')
-    .replace(/⚠️/g,'<span style="color:var(--orange)">⚠️</span>')
-    .replace(/✅/g,'<span style="color:var(--green)">✅</span>')
-    .replace(/\n\n/g, '<br><br>')
-    .replace(/\n/g, '<br>');
+  // Build real summary from actual data
+  let summary = '';
+  const noData = !projects.length && !liens.length && !complianceItems.length;
+  if(noData){
+    summary = `<div style="text-align:center;color:var(--muted);padding:20px;font-size:.85rem">No data available yet -- add your projects first.</div>`;
+  } else {
+    const fmtVal = v => v >= 1000000 ? `$${(v/1000000).toFixed(1)}M` : v >= 1000 ? `$${(v/1000).toFixed(0)}K` : `$${v}`;
+    const now = new Date();
+    let lines_out = [];
+    lines_out.push(`<div style="font-weight:700;font-size:.9rem;margin-bottom:10px;color:var(--text)">${a.name} -- Live Data Summary</div>`);
+    if(projects.length){
+      lines_out.push(`<div style="margin-bottom:8px"><strong>Projects (${projects.length}):</strong></div>`);
+      projects.slice(0,10).forEach(p => {
+        const val = p.contract_value ? fmtVal(p.contract_value) : '--';
+        const daysLeft = p.deadline ? Math.ceil((new Date(p.deadline)-now)/86400000) : null;
+        const deadlineStr = daysLeft !== null ? ` | Due in ${daysLeft} days` : '';
+        lines_out.push(`<div style="padding:3px 0 3px 12px;border-left:2px solid var(--blue);margin:3px 0;color:var(--muted);font-size:.8rem">${p.name} -- ${p.status||'active'} -- ${val}${deadlineStr}</div>`);
+      });
+    }
+    if(liens.length){
+      const openLiens = liens.filter(l=>l.status!=='satisfied');
+      lines_out.push(`<div style="margin-top:10px;margin-bottom:8px"><strong>Liens (${liens.length} total, ${openLiens.length} open):</strong></div>`);
+      openLiens.slice(0,5).forEach(l => {
+        const daysLeft = l.deadline ? Math.ceil((new Date(l.deadline)-now)/86400000) : null;
+        const urgency = daysLeft !== null && daysLeft <= 30 ? ' -- URGENT' : '';
+        lines_out.push(`<div style="padding:3px 0 3px 12px;border-left:2px solid var(--orange);margin:3px 0;color:var(--muted);font-size:.8rem">${l.project||'--'} -- $${(l.amount||0).toLocaleString()} -- ${l.status}${daysLeft !== null ? `` | ${daysLeft} days`` : ''}${urgency}</div>`);
+      });
+    }
+    if(complianceItems.length){
+      const critical = complianceItems.filter(c=>{ const d=Math.ceil((new Date(c.deadline)-now)/86400000); return d<=30&&d>=0; });
+      lines_out.push(`<div style="margin-top:10px;margin-bottom:8px"><strong>Compliance (${complianceItems.length} items, ${critical.length} critical):</strong></div>`);
+      critical.slice(0,5).forEach(c => {
+        const daysLeft = Math.ceil((new Date(c.deadline)-now)/86400000);
+        lines_out.push(`<div style="padding:3px 0 3px 12px;border-left:2px solid var(--red);margin:3px 0;color:var(--muted);font-size:.8rem">${c.name||c.item_name||'--'} -- expires in ${daysLeft} days</div>`);
+      });
+    }
+    if(agentLogs.length){
+      lines_out.push(`<div style="margin-top:10px;margin-bottom:8px"><strong>Recent Agent Activity (${agentLogs.length} runs):</strong></div>`);
+      agentLogs.slice(0,3).forEach(l => {
+        const ts2 = new Date(l.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric'});
+        lines_out.push(`<div style="padding:3px 0 3px 12px;border-left:2px solid var(--green);margin:3px 0;color:var(--muted);font-size:.8rem">${l.agent_name||'Agent'} -- ${ts2} -- ${(l.result||'completed').substring(0,60)}</div>`);
+      });
+    }
+    summary = lines_out.join('');
+  }
 
-  log.innerHTML += `<div style="margin-top:12px;padding:14px;background:var(--mid);border-radius:8px;border-left:3px solid var(--green);font-size:.82rem;line-height:1.6">${formatted}</div>`;
-  log.innerHTML += `<div class="log-line success">[${ts()}] ✅ ${a.name} completed — IronForge Free Engine (no API key used)</div>`;
+  log.innerHTML += `<div style="margin-top:12px;padding:14px;background:var(--mid);border-radius:8px;border-left:3px solid var(--green);font-size:.82rem;line-height:1.6">${summary}</div>`;
+  log.innerHTML += `<div class="log-line success">[${ts()}] ${a.name} completed -- data fetched live from your account</div>`;
   log.scrollTop = log.scrollHeight;
-  btn.textContent = '✅ Completed';
+  btn.textContent = 'Done';
   btn.style.background = 'var(--green)';
-  // Fire notification
-  addNotification(`⚡ ${a.name} Complete`, `Free agent finished instantly — no API key used. Check results.`, 'success');
-  sbLogAgent(a.name, 'free_run', 'Completed');
+  addNotification(`${a.name} Complete`, noData ? 'No data yet -- add projects first.' : 'Real data summary generated from your account.', 'success');
+  sbLogAgent(a.name, 'free_run', noData ? 'no_data' : 'data_summarized');
 }
 
 // ── REAL AI AGENT RUNNER — calls Claude API via Anthropic ──
@@ -3151,12 +2955,19 @@ async function runAgent(agentId){
     }
   }, 900);
 
-  // Get job context from current user's projects
-  const jobContext = currentUser ? `
-Contractor: ${currentUser.name} at ${currentUser.company}
-Active Projects: Riverside Commons ($1.2M GC contract, 65% complete), Harbor View QSR ($480K, 30% complete), Oak Park Office ($2.1M, 82% complete)
-Current Date: ${new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}
-` : '';
+  // Get real job context from Supabase
+  let realJobsContext = 'No projects on file yet.';
+  if(USE_SB && window._sbUserId){
+    try {
+      const {data:realJobs} = await sbQuery(sbClient.from('jobs').select('name,status,contract_value,deadline').eq('user_id', window._sbUserId).order('created_at',{ascending:false}).limit(10));
+      if(realJobs && realJobs.length){
+        const fmtV = v => v >= 1000000 ? `$${(v/1000000).toFixed(1)}M` : v >= 1000 ? `$${(v/1000).toFixed(0)}K` : v > 0 ? `$${v}` : 'N/A';
+        realJobsContext = realJobs.map(j => `${j.name} (${fmtV(j.contract_value||0)}, ${j.status||'active'}${j.deadline?', deadline: '+j.deadline:''})`).join('; ');
+      }
+    } catch(e){ console.warn('[Agent] Could not fetch jobs for context', e); }
+  }
+  const jobContext = currentUser ? `Contractor: ${currentUser.name} at ${currentUser.company}\nActive Projects: ${realJobsContext}\nCurrent Date: ${new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}` : '';
+
 
   const systemPrompt = AGENT_PROMPTS[agentId] || `You are the ${a.name} AI agent for IronForge construction management platform. Perform your analysis and return actionable results.`;
 
