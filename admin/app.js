@@ -42,20 +42,6 @@ const WORKFLOWS = [
   {id:'full-suite',       icon:'⚡🚀', title:'Full Platform Suite',    tier:'enterprise', desc:'All 20 agents in intelligent sequence — complete construction project automation.',   agents:['All 20 Agents','Intelligent Sequencing','Cross-Agent Data Flow']},
 ];
 
-const LOG_LINES = [
-  ['Lien Protection','info','Started preliminary notice for Project #447'],
-  ['Bid Estimator','success','Bid submitted: $284,500 for Riverside Commercial'],
-  ['Photo Inspector','warn','Flagged PPE violation — Lot 3 NW corner'],
-  ['Invoice Processing','info','Invoice #1087 generated — $41,200'],
-  ['Cash Flow Monitor','success','90-day projection updated: +$340K net inflow'],
-  ['Daily Site Monitor','info','DSR generated for 7 active sites'],
-  ['Material Tracker','warn','Concrete delivery delayed 2 days — Site B'],
-  ['Payroll Verification','success','Certified payroll for 34 workers verified'],
-  ['Contract Analyzer','info','Red flag detected: broad indemnity clause §14'],
-  ['Schedule Optimizer','success','Optimized sequence saves 4.2 days'],
-  ['Permit Tracker','warn','Permit #P-2204 expires in 8 days'],
-  ['Revenue Forecaster','info','Q3 forecast: $1.8M — confidence 87%'],
-];
 
 // ────────────────────────────────────────────────
 // STATE
@@ -543,8 +529,15 @@ async function saveLienDetail(id){
   buildLienContent();
 }
 
-function openAddLienModal(){
-  const projects = ['Riverside Commons','Oak Park Office','Harbor View QSR','Summit Industrial','Marina Renovation'];
+async function openAddLienModal(){
+  // Load real projects from Supabase
+  let projectOpts = '<option value="">— select project —</option>';
+  if(USE_SB && window._sbUserId){
+    try{
+      const {data} = await sbQuery(sbClient.from('jobs').select('id,name').eq('user_id',window._sbUserId).order('name'));
+      if(data && data.length) projectOpts = data.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+    }catch(e){}
+  }
   document.getElementById('execModal').style.display = 'flex';
   document.getElementById('execModalInner').innerHTML = `
     <div class="modal-header">
@@ -553,7 +546,7 @@ function openAddLienModal(){
     </div>
     <div class="form-modal" style="padding:0;background:none;border:none">
       <div class="form-group"><label>Project</label>
-        <select id="nl_proj">${projects.map(p=>`<option>${p}</option>`).join('')}</select></div>
+        <select id="nl_proj">${projectOpts}</select></div>
       <div class="form-group"><label>Amount ($)</label>
         <input type="number" id="nl_amt" placeholder="50000"></div>
       <div class="form-group"><label>Status</label>
@@ -1146,7 +1139,15 @@ async function saveTechStatus(id, name){
   buildTechContent();
 }
 
-function openAddTechModal(){
+async function openAddTechModal(){
+  // Load real projects for the site dropdown
+  let siteOpts = '<option value="">Off-site / No assignment</option>';
+  if(USE_SB && window._sbUserId){
+    try{
+      const {data} = await sbQuery(sbClient.from('jobs').select('id,name').eq('user_id',window._sbUserId).order('name'));
+      if(data && data.length) siteOpts += data.map(p=>`<option value="${p.name}">${p.name}</option>`).join('');
+    }catch(e){}
+  }
   document.getElementById('execModal').style.display = 'flex';
   document.getElementById('execModalInner').innerHTML = `
     <div class="modal-header">
@@ -1159,10 +1160,10 @@ function openAddTechModal(){
         <div class="form-group"><label>Role / Title</label><input id="nt_role" placeholder="Lead Electrician"></div>
         <div class="form-group"><label>Trade</label>
           <select id="nt_trade"><option>Electrical</option><option>Plumbing</option><option>HVAC</option><option>Carpentry</option><option>Concrete</option><option>Safety</option><option>General</option><option>Roofing</option></select></div>
-        <div class="form-group"><label>Phone</label><input id="nt_phone" placeholder="(503) 555-0100" type="tel"></div>
-        <div class="form-group"><label>License #</label><input id="nt_lic" placeholder="EL-4422"></div>
+        <div class="form-group"><label>Phone</label><input id="nt_phone" placeholder="" type="tel"></div>
+        <div class="form-group"><label>License #</label><input id="nt_lic" placeholder="e.g. EL-1234"></div>
         <div class="form-group"><label>Current Site</label>
-          <select id="nt_site"><option>Riverside Commons</option><option>Oak Park Office</option><option>Harbor View QSR</option><option>Summit Industrial</option><option>Marina Renovation</option><option>Off-site</option></select></div>
+          <select id="nt_site">${siteOpts}</select></div>
         <div class="form-group"><label>Status</label>
           <select id="nt_status"><option value="on_site">On-site</option><option value="transit">In Transit</option><option value="reporting">Reporting</option><option value="off_site">Off-site</option></select></div>
       </div>
@@ -1341,8 +1342,15 @@ async function buildPhotoAIContent(){
     </div>`;
 }
 
-function openPhotoUploadModal(){
-  const projects = ['Riverside Commons','Harbor View QSR','Oak Park Office','Summit Industrial','Marina Renovation','Downtown Tower'];
+async function openPhotoUploadModal(){
+  // Load real projects from Supabase
+  let projectOpts = '<option value="">— select project —</option>';
+  if(USE_SB && window._sbUserId){
+    try{
+      const {data} = await sbQuery(sbClient.from('jobs').select('id,name').eq('user_id',window._sbUserId).order('name'));
+      if(data && data.length) projectOpts = data.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+    }catch(e){}
+  }
   document.getElementById('execModal').style.display = 'flex';
   document.getElementById('execModalInner').innerHTML = `
     <div class="modal-header">
@@ -1352,7 +1360,7 @@ function openPhotoUploadModal(){
     <div style="padding:20px;display:flex;flex-direction:column;gap:14px">
       <div class="form-group">
         <label>Project</label>
-        <select id="pai_project">${projects.map(p=>`<option>${p}</option>`).join('')}</select>
+        <select id="pai_project">${projectOpts}</select>
       </div>
       <div class="form-group">
         <label>Site Photo</label>
@@ -2696,7 +2704,7 @@ function timeAgo(d){
 // ────────────────────────────────────────────────
 // EXECUTION MODAL
 // ────────────────────────────────────────────────
-function openExecModal(agentId){
+async function openExecModal(agentId){
   const a = AGENTS.find(x=>x.id===agentId);
   if(!a) return;
   // ── TIER GATE: Cloud agents require Pro or Enterprise ──
@@ -2711,6 +2719,14 @@ function openExecModal(agentId){
   const btnLabel = isFree ? '⚡ Run Free Agent' : `🤖 Execute ${a.name}`;
   const btnColor = isFree ? 'var(--green)' : a.color;
   const runFn    = isFree ? `runFreeAgent('${agentId}')` : `runAgent('${agentId}')`;
+  // Fetch real projects from Supabase
+  let projOpts = '<option value="">— select project —</option>';
+  if(USE_SB && window._sbUserId){
+    try{
+      const {data} = await sbQuery(sbClient.from('jobs').select('id,name').eq('user_id',window._sbUserId).order('name'));
+      if(data && data.length) projOpts = data.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+    }catch(e){}
+  }
   document.getElementById('execModal').style.display = 'flex';
   document.getElementById('execModalInner').innerHTML = `
     <div class="modal-header">
@@ -2722,7 +2738,7 @@ function openExecModal(agentId){
     <div class="exec-form">
       <div class="form-row">
         <div><label>Project</label>
-          <select id="execProj"><option>Riverside Commons</option><option>Oak Park Office</option><option>Harbor View QSR</option><option>Summit Industrial</option></select></div>
+          <select id="execProj">${projOpts}</select></div>
         <div><label>Priority</label>
           <select id="execPri"><option>Normal</option><option>High</option><option>Urgent</option></select></div>
       </div>
@@ -3119,9 +3135,17 @@ function saveApiKey(agentId){
   }
 })();
 
-function openWorkflowExec(wfId){
+async function openWorkflowExec(wfId){
   const w = WORKFLOWS.find(x=>x.id===wfId);
   if(!w) return;
+  // Fetch real projects from Supabase
+  let projOpts = '<option value="">— select project —</option>';
+  if(USE_SB && window._sbUserId){
+    try{
+      const {data} = await sbQuery(sbClient.from('jobs').select('id,name').eq('user_id',window._sbUserId).order('name'));
+      if(data && data.length) projOpts = data.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+    }catch(e){}
+  }
   document.getElementById('execModal').style.display = 'flex';
   document.getElementById('execModalInner').innerHTML = `
     <div class="modal-header">
@@ -3137,8 +3161,8 @@ function openWorkflowExec(wfId){
     </div>
     <div class="exec-form">
       <div class="form-row">
-        <div><label>Project</label><select><option>Riverside Commons</option><option>Harbor View QSR</option><option>Oak Park Office</option></select></div>
-        <div><label>Priority</label><select><option>Normal</option><option>High</option><option>Urgent</option></select></div>
+        <div><label>Project</label><select id="wfProj">${projOpts}</select></div>
+        <div><label>Priority</label><select id="wfPri"><option>Normal</option><option>High</option><option>Urgent</option></select></div>
       </div>
       <button class="exec-btn" onclick="runWorkflow(WORKFLOWS.find(x=>x.id==='${w.id}'))">▶ Launch Workflow</button>
     </div>`;
@@ -3343,7 +3367,6 @@ function closeUpgradeModal(){ document.getElementById('upgradeModal').style.disp
 // LIVE LOG
 // ────────────────────────────────────────────────
 let _liveLogLastId = null; // track last seen agent_log id to avoid duplicates
-let _liveLogDemoIdx = 0;   // fallback rotating index for demo mode
 
 function _injectLogLine(id, agent, type, msg, ts){
   const el = document.getElementById(id);
@@ -3407,16 +3430,15 @@ async function _seedLiveLogFromSB(){
 }
 
 async function startLiveLog(){
-  // Seed with real data or fallback to demo
+  // Seed with real Supabase data; show empty state if no data yet
   const seeded = await _seedLiveLogFromSB();
   if(!seeded){
-    // Seed with demo data
-    for(let i=0;i<8;i++){
-      const [agent,type,msg] = LOG_LINES[(_liveLogDemoIdx + i) % LOG_LINES.length];
-      _injectLogLine('dashLog',     agent, type, msg, null);
-      _injectLogLine('activityLog', agent, type, msg, null);
-    }
-    _liveLogDemoIdx = (_liveLogDemoIdx + 8) % LOG_LINES.length;
+    // No real data yet — show empty state message
+    const emptyMsg = '<div style="color:var(--muted);font-size:.8rem;padding:12px 0;text-align:center">No activity yet. Run an agent to see logs here.</div>';
+    const dashLog = document.getElementById('dashLog');
+    const actLog  = document.getElementById('activityLog');
+    if(dashLog && !dashLog.children.length) dashLog.innerHTML = emptyMsg;
+    if(actLog  && !actLog.children.length)  actLog.innerHTML  = emptyMsg;
   }
 
   // Poll every 10 seconds for new real logs
@@ -3425,6 +3447,11 @@ async function startLiveLog(){
     if(newLogs && newLogs.length > 0){
       // Update last seen ID
       _liveLogLastId = newLogs[0].id;
+      // Clear empty state if present
+      const dashLog = document.getElementById('dashLog');
+      const actLog  = document.getElementById('activityLog');
+      if(dashLog && dashLog.querySelector('div[style*="No activity"]')) dashLog.innerHTML = '';
+      if(actLog  && actLog.querySelector('div[style*="No activity"]'))  actLog.innerHTML  = '';
       // Inject newest-first (already ordered desc)
       newLogs.forEach(row => {
         const type = row.status === 'completed' ? 'success' : row.status === 'error' ? 'warn' : 'info';
@@ -3432,12 +3459,6 @@ async function startLiveLog(){
         _injectLogLine('dashLog',     row.agent_name || 'Agent', type, msg, row.created_at);
         _injectLogLine('activityLog', row.agent_name || 'Agent', type, msg, row.created_at);
       });
-    } else if(!USE_SB || !window._sbUserId){
-      // Demo mode: keep rotating fake entries
-      const [agent,type,msg] = LOG_LINES[_liveLogDemoIdx % LOG_LINES.length];
-      _injectLogLine('dashLog',     agent, type, msg, null);
-      _injectLogLine('activityLog', agent, type, msg, null);
-      _liveLogDemoIdx++;
     }
   }, 10000);
 }
