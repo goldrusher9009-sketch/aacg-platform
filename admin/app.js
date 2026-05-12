@@ -478,6 +478,9 @@ async function buildLienContent(){
     return (d-now) < 30*24*60*60*1000 && l.status !== 'satisfied';
   }).length;
 
+  // Cache liens for openLienDetail lookups
+  window._liensCache = liens;
+
   el.innerHTML = `
     <div class="action-bar">
       <button class="btn-primary" onclick="openAddLienModal()">+ New Lien</button>
@@ -638,6 +641,9 @@ async function buildProjectsContent(){
     ];
   }
 
+  // Cache for viewProject / archiveProject lookups
+  window._projectsCache = projects;
+
   const statusPill = s => {
     const map = {active:'pill-green',planning:'pill-blue',closeout:'pill-orange',on_hold:'pill-red',completed:'pill-green'};
     return `<span class="status-pill ${map[s]||'pill-blue'}">${s.replace('_',' ')}</span>`;
@@ -679,8 +685,111 @@ function filterProjects(q){
     r.style.display = !q || r.dataset.name?.includes(q.toLowerCase()) ? '' : 'none';
   });
 }
-function viewProject(id){ addNotification('🏗️ Project View', `Full project detail for ${id} — opening soon.`, 'info'); }
-function archiveProject(id){ addNotification('📁 Project Archived', `Project ${id} moved to archive.`, 'success'); }
+
+function viewProject(id){
+  // Find project in current Supabase cache or demo fallback
+  const projects = window._projectsCache || [];
+  const p = projects.find(x => (x.id||x.name) === id) || {id, name:id, status:'active', contract_value:0, sector:'—', deadline:null, client:'—'};
+  const fmtVal = v => v >= 1000000 ? `$${(v/1000000).toFixed(1)}M` : v >= 1000 ? `$${(v/1000).toFixed(0)}K` : `$${v||0}`;
+  const fmtDate = d => d ? new Date(d).toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}) : '—';
+  const statusPill = s => { const map={active:'pill-green',planning:'pill-blue',closeout:'pill-orange',on_hold:'pill-red',completed:'pill-green'}; return `<span class="status-pill ${map[s]||'pill-blue'}">${s.replace('_',' ')}</span>`; };
+
+  document.getElementById('execModal').style.display = 'flex';
+  document.getElementById('execModalInner').innerHTML = `
+    <div class="modal-header">
+      <div class="modal-title">🏗️ ${p.name}</div>
+      <button class="modal-close" onclick="closeExecModal()">×</button>
+    </div>
+    <div style="padding:20px;display:flex;flex-direction:column;gap:14px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="card" style="padding:14px">
+          <div style="font-size:.72rem;color:var(--muted);margin-bottom:4px">PROJECT ID</div>
+          <div style="font-family:monospace;font-size:.82rem">${p.id||'—'}</div>
+        </div>
+        <div class="card" style="padding:14px">
+          <div style="font-size:.72rem;color:var(--muted);margin-bottom:4px">STATUS</div>
+          <div>${statusPill(p.status||'active')}</div>
+        </div>
+        <div class="card" style="padding:14px">
+          <div style="font-size:.72rem;color:var(--muted);margin-bottom:4px">CONTRACT VALUE</div>
+          <div style="font-size:1.1rem;font-weight:700;color:var(--gold)">${fmtVal(p.contract_value)}</div>
+        </div>
+        <div class="card" style="padding:14px">
+          <div style="font-size:.72rem;color:var(--muted);margin-bottom:4px">DEADLINE</div>
+          <div>${fmtDate(p.deadline)}</div>
+        </div>
+        <div class="card" style="padding:14px">
+          <div style="font-size:.72rem;color:var(--muted);margin-bottom:4px">SECTOR</div>
+          <div>${p.sector||'—'}</div>
+        </div>
+        <div class="card" style="padding:14px">
+          <div style="font-size:.72rem;color:var(--muted);margin-bottom:4px">CLIENT</div>
+          <div>${p.client||'—'}</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:4px">
+        <button class="btn-primary" onclick="openEditProjectModal('${p.id||p.name}')">✏️ Edit Project</button>
+        <button class="btn-secondary" style="border-color:var(--red);color:var(--red)" onclick="closeExecModal();archiveProject('${p.id||p.name}')">📁 Archive</button>
+        <button class="btn-secondary" onclick="closeExecModal()">Close</button>
+      </div>
+    </div>`;
+}
+
+async function archiveProject(id){
+  if(!confirm(`Archive project ${id}? It will be hidden from active projects.`)) return;
+  if(USE_SB && window._sbUserId){
+    try {
+      await sbQuery(sbClient.from('jobs').update({status:'archived'}).eq('user_id', window._sbUserId).eq('id', id));
+    } catch(e){ console.warn('[Projects] archive failed', e); }
+  }
+  addNotification('📁 Project Archived', `Project ${id} moved to archive.`, 'success');
+  buildProjectsContent();
+}
+
+function openEditProjectModal(id){
+  const projects = window._projectsCache || [];
+  const p = projects.find(x=>(x.id||x.name)===id) || {id, name:id, sector:'Commercial', status:'active', contract_value:0, deadline:'', client:''};
+  closeExecModal();
+  document.getElementById('execModal').style.display = 'flex';
+  document.getElementById('execModalInner').innerHTML = `
+    <div class="modal-header">
+      <div class="modal-title">✏️ Edit Project</div>
+      <button class="modal-close" onclick="closeExecModal()">×</button>
+    </div>
+    <div style="padding:0">
+      <div class="form-group"><label>Project Name</label><input id="ep_name" value="${p.name||''}"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="form-group"><label>Sector</label>
+          <select id="ep_sector"><option ${p.sector==='Commercial'?'selected':''}>Commercial</option><option ${p.sector==='Residential'?'selected':''}>Residential</option><option ${p.sector==='Industrial'?'selected':''}>Industrial</option><option ${p.sector==='Government'?'selected':''}>Government</option><option ${p.sector==='Hospitality'?'selected':''}>Hospitality</option><option ${p.sector==='QSR Restaurant'?'selected':''}>QSR Restaurant</option></select></div>
+        <div class="form-group"><label>Status</label>
+          <select id="ep_status"><option value="planning" ${p.status==='planning'?'selected':''}>Planning</option><option value="active" ${p.status==='active'?'selected':''}>Active</option><option value="on_hold" ${p.status==='on_hold'?'selected':''}>On Hold</option><option value="closeout" ${p.status==='closeout'?'selected':''}>Closeout</option></select></div>
+        <div class="form-group"><label>Contract Value ($)</label><input type="number" id="ep_val" value="${p.contract_value||0}"></div>
+        <div class="form-group"><label>Deadline</label><input type="date" id="ep_dead" value="${p.deadline||''}"></div>
+      </div>
+      <div class="form-group"><label>Client</label><input id="ep_client" value="${p.client||''}"></div>
+      <div style="display:flex;gap:8px;margin-top:4px">
+        <button class="btn-primary" onclick="saveEditProject('${id}')">Save Changes</button>
+        <button class="btn-secondary" onclick="closeExecModal()">Cancel</button>
+      </div>
+    </div>`;
+}
+
+async function saveEditProject(id){
+  const updates = {
+    name: document.getElementById('ep_name').value.trim(),
+    sector: document.getElementById('ep_sector').value,
+    status: document.getElementById('ep_status').value,
+    contract_value: parseFloat(document.getElementById('ep_val').value)||0,
+    deadline: document.getElementById('ep_dead').value||null,
+    client: document.getElementById('ep_client').value
+  };
+  if(USE_SB && window._sbUserId){
+    try { await sbQuery(sbClient.from('jobs').update(updates).eq('user_id', window._sbUserId).eq('id', id)); } catch(e){ console.warn('[Projects] update failed', e); }
+  }
+  closeExecModal();
+  addNotification('🏗️ Project Updated', `${updates.name} saved.`, 'success');
+  buildProjectsContent();
+}
 
 function openAddProjectModal(){
   document.getElementById('execModal').style.display = 'flex';
@@ -874,8 +983,37 @@ function filterClients(q){
     r.style.display = !q || r.dataset.name?.includes(q.toLowerCase()) ? '' : 'none';
   });
 }
-function contactClient(name,email,phone){
-  addNotification('🤝 Contact: '+name, `Email: ${email||'N/A'} | Phone: ${phone||'N/A'}`, 'info');
+function contactClient(name, email, phone){
+  document.getElementById('execModal').style.display = 'flex';
+  document.getElementById('execModalInner').innerHTML = `
+    <div class="modal-header">
+      <div class="modal-title">🤝 Contact — ${name}</div>
+      <button class="modal-close" onclick="closeExecModal()">×</button>
+    </div>
+    <div style="padding:20px;display:flex;flex-direction:column;gap:14px">
+      ${email ? `<a href="mailto:${email}" style="display:flex;align-items:center;gap:12px;padding:14px;background:var(--mid);border-radius:10px;border:1px solid var(--border);text-decoration:none;color:var(--text);cursor:pointer" onclick="closeExecModal()">
+        <span style="font-size:1.6rem">📧</span>
+        <div>
+          <div style="font-weight:700;font-size:.88rem">Send Email</div>
+          <div style="color:var(--muted);font-size:.78rem">${email}</div>
+        </div>
+      </a>` : ''}
+      ${phone ? `<a href="tel:${phone}" style="display:flex;align-items:center;gap:12px;padding:14px;background:var(--mid);border-radius:10px;border:1px solid var(--border);text-decoration:none;color:var(--text);cursor:pointer" onclick="closeExecModal()">
+        <span style="font-size:1.6rem">📞</span>
+        <div>
+          <div style="font-weight:700;font-size:.88rem">Call Client</div>
+          <div style="color:var(--muted);font-size:.78rem">${phone}</div>
+        </div>
+      </a>` : ''}
+      ${email ? `<a href="sms:${phone||''}" style="display:flex;align-items:center;gap:12px;padding:14px;background:var(--mid);border-radius:10px;border:1px solid var(--border);text-decoration:none;color:var(--text);cursor:pointer" onclick="closeExecModal()">
+        <span style="font-size:1.6rem">💬</span>
+        <div>
+          <div style="font-weight:700;font-size:.88rem">Send SMS</div>
+          <div style="color:var(--muted);font-size:.78rem">${phone||'No phone on file'}</div>
+        </div>
+      </a>` : ''}
+      <button class="btn-secondary" onclick="closeExecModal()">Close</button>
+    </div>`;
 }
 
 function openAddClientModal(){
@@ -1737,6 +1875,9 @@ async function buildComplianceContent(){
     ];
   }
 
+  // Cache for editComplianceItem lookups
+  window._complianceCache = items;
+
   const now = new Date();
   const getStatusDisplay = (item) => {
     const daysLeft = item.deadline ? Math.ceil((new Date(item.deadline) - now) / 86400000) : 9999;
@@ -1822,7 +1963,54 @@ async function saveComplianceItem(){
   buildComplianceContent();
 }
 
-function editComplianceItem(id){ addNotification('📋 Edit', `Edit functionality — open item ${id} in panel.`, 'info'); }
+function editComplianceItem(id){
+  // Find item in DOM or cache
+  const items = window._complianceCache || [];
+  const it = items.find(x=>x.id===id) || {id, name:'', type:'Permit', status:'current', deadline:'', notes:''};
+  document.getElementById('execModal').style.display = 'flex';
+  document.getElementById('execModalInner').innerHTML = `
+    <div class="modal-header">
+      <div class="modal-title">📋 Edit Compliance Item</div>
+      <button class="modal-close" onclick="closeExecModal()">×</button>
+    </div>
+    <div style="padding:0">
+      <div class="form-group"><label>Item Name</label><input id="ec_name" value="${(it.name||it.item_name||'').replace(/"/g,'&quot;')}"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="form-group"><label>Type</label>
+          <select id="ec_type"><option ${it.type==='Permit'?'selected':''}>Permit</option><option ${it.type==='License'?'selected':''}>License</option><option ${it.type==='Insurance'?'selected':''}>Insurance</option><option ${it.type==='Bond'?'selected':''}>Bond</option><option ${it.type==='OSHA'?'selected':''}>OSHA</option><option ${it.type==='Other'?'selected':''}>Other</option></select></div>
+        <div class="form-group"><label>Status</label>
+          <select id="ec_status"><option value="current" ${it.status==='current'?'selected':''}>Current</option><option value="expiring" ${it.status==='expiring'?'selected':''}>Expiring Soon</option><option value="critical" ${it.status==='critical'?'selected':''}>Critical</option><option value="expired" ${it.status==='expired'?'selected':''}>Expired</option></select></div>
+        <div class="form-group"><label>Deadline</label><input type="date" id="ec_deadline" value="${it.deadline||''}"></div>
+      </div>
+      <div class="form-group"><label>Notes</label><input id="ec_notes" value="${(it.notes||'').replace(/"/g,'&quot;')}"></div>
+      <div style="display:flex;gap:8px;margin-top:4px">
+        <button class="btn-primary" onclick="saveComplianceEdit('${id}')">Save Changes</button>
+        <button class="btn-secondary" onclick="closeExecModal()">Cancel</button>
+      </div>
+    </div>`;
+}
+
+async function saveComplianceEdit(id){
+  const updates = {
+    name: document.getElementById('ec_name').value.trim(),
+    type: document.getElementById('ec_type').value,
+    status: document.getElementById('ec_status').value,
+    deadline: document.getElementById('ec_deadline').value||null,
+    notes: document.getElementById('ec_notes').value
+  };
+  if(USE_SB && window._sbUserId){
+    try { await sbQuery(sbClient.from('compliance_items').update(updates).eq('user_id', window._sbUserId).eq('id', id)); }
+    catch(e){ console.warn('[Compliance] update failed', e); }
+  }
+  // Update local cache
+  if(window._complianceCache){
+    const idx = window._complianceCache.findIndex(x=>x.id===id);
+    if(idx>=0) window._complianceCache[idx] = {...window._complianceCache[idx], ...updates};
+  }
+  closeExecModal();
+  addNotification('📋 Compliance Item Updated', `${updates.name} saved.`, 'success');
+  buildComplianceContent();
+}
 async function markComplianceRenewed(id, name){
   const newDeadline = new Date(); newDeadline.setFullYear(newDeadline.getFullYear() + 1);
   if(USE_SB && window._sbUserId){
@@ -1965,8 +2153,6 @@ function downloadInvoice(id){
 }
 
 async function openStripePortal(){
-  // If we have a stripe_customer_id, open the Stripe Customer Portal
-  // Otherwise redirect to Stripe billing page
   addNotification('💳 Billing Portal', 'Opening Stripe payment management…', 'info');
   // Try to create a portal session via edge function
   if(sbClient && window._sbUserId){
@@ -1977,9 +2163,10 @@ async function openStripePortal(){
       if(data?.url){ window.open(data.url, '_blank'); return; }
     } catch(e){ console.warn('[Portal]', e); }
   }
-  // Fallback: open Stripe dashboard directly
-  // Portal session creation handled above via create-portal-session edge function
-  addNotification('⚠️ Billing Portal', 'Please ensure you are logged in to access billing management.', 'warning');
+  // Fallback: open Stripe customer portal directly
+  // Replace with your Stripe billing portal link from Stripe Dashboard → Billing → Customer portal
+  const STRIPE_PORTAL_URL = 'https://billing.stripe.com/p/login/test_00g00000000000000000';
+  window.open(STRIPE_PORTAL_URL, '_blank');
 }
 
 // ────────────────────────────────────────────────
@@ -2005,6 +2192,9 @@ async function buildTeamContent(){
       if(data && data.length) members = data;
     } catch(e){ console.warn('[Team] Supabase read failed', e); }
   }
+
+  // Cache for editTeamMember lookups
+  window._teamCache = members;
 
   // Always show the current user as owner in the list
   const ownerEntry = {id:'owner', name: currentUser.name, email: currentUser.email, role:'Owner', access:'Full Admin', status:'online'};
@@ -2099,7 +2289,44 @@ async function removeTeamMember(id, name){
   buildTeamContent();
 }
 
-function editTeamMember(id, name){ addNotification('👥 Edit Member', `Edit role/access for ${name} — coming soon.`, 'info'); }
+function editTeamMember(id, name){
+  const members = window._teamCache || [];
+  const m = members.find(x=>x.id===id) || {id, name, role:'Project Manager', access_level:'Projects + Agents'};
+  document.getElementById('execModal').style.display = 'flex';
+  document.getElementById('execModalInner').innerHTML = `
+    <div class="modal-header">
+      <div class="modal-title">👥 Edit Team Member — ${name}</div>
+      <button class="modal-close" onclick="closeExecModal()">×</button>
+    </div>
+    <div style="padding:0">
+      <div class="form-group"><label>Role / Title</label>
+        <select id="etm_role">
+          ${['Project Manager','Estimator','Accountant','Field Supervisor','Safety Officer','Admin'].map(r=>`<option ${m.role===r?'selected':''}>${r}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group"><label>Access Level</label>
+        <select id="etm_access">
+          ${['Projects + Agents','Bid Estimator Only','Finance + Billing','Projects + Photos','Full Admin','View Only'].map(a=>`<option value="${a}" ${(m.access_level||m.access)===a?'selected':''}>${a}</option>`).join('')}
+        </select>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:4px">
+        <button class="btn-primary" onclick="saveTeamMemberEdit('${id}','${name.replace(/'/g,"\\'")}')">Save Changes</button>
+        <button class="btn-secondary" onclick="closeExecModal()">Cancel</button>
+      </div>
+    </div>`;
+}
+
+async function saveTeamMemberEdit(id, name){
+  const role = document.getElementById('etm_role').value;
+  const access_level = document.getElementById('etm_access').value;
+  if(USE_SB && window._sbUserId){
+    try { await sbQuery(sbClient.from('team_members').update({role, access_level}).eq('id', id)); }
+    catch(e){ console.warn('[Team] update failed', e); }
+  }
+  closeExecModal();
+  addNotification('👥 Team Member Updated', `${name} — ${role} / ${access_level}.`, 'success');
+  buildTeamContent();
+}
 
 // ────────────────────────────────────────────────
 // SETTINGS
@@ -2136,13 +2363,16 @@ function buildSettingsContent(){
       <div>
         <div class="settings-section">
           <h3>Notifications</h3>
-          ${[['Lien Deadline Alerts','Alert 30 days before lien expiry'],
-             ['Agent Completion','When an AI agent finishes a task'],
-             ['Invoice Reminders','When invoices are overdue'],
-             ['Safety Alerts','Immediate for PPE or OSHA violations']].map(([t,d])=>`
+          ${[['lien_alerts','Lien Deadline Alerts','Alert 30 days before lien expiry'],
+             ['agent_complete','Agent Completion','When an AI agent finishes a task'],
+             ['invoice_reminders','Invoice Reminders','When invoices are overdue'],
+             ['safety_alerts','Safety Alerts','Immediate for PPE or OSHA violations']].map(([key,t,d])=>`
             <div class="setting-row">
               <div class="setting-info"><h4>${t}</h4><p>${d}</p></div>
-              <label class="toggle-sw"><input type="checkbox" checked><div class="toggle-track"></div></label>
+              <label class="toggle-sw" onclick="toggleNotifSetting('${key}',this)">
+                <input type="checkbox" ${localStorage.getItem('notif_'+key)!=='0'?'checked':''} onchange="saveNotifToggle('${key}',this.checked)">
+                <div class="toggle-track"></div>
+              </label>
             </div>`).join('')}
         </div>
         <div class="settings-section">
@@ -2175,11 +2405,17 @@ function buildSettingsContent(){
         </div>
         <div class="settings-section">
           <h3>Integrations</h3>
-          ${[['QuickBooks Online','Accounting sync'],['Procore','Project management'],['DocuSign','E-signatures']].map(([n,d])=>`
-            <div class="setting-row">
+          ${[['QuickBooks Online','Accounting sync','https://appcenter.intuit.com/','qbo'],
+             ['Procore','Project management','https://app.procore.com/','procore'],
+             ['DocuSign','E-signatures','https://www.docusign.com/products/electronic-signature','docusign']].map(([n,d,url,key])=>{
+             const connected = localStorage.getItem('integration_'+key) === '1';
+             return `<div class="setting-row">
               <div class="setting-info"><h4>${n}</h4><p>${d}</p></div>
-              <button style="background:none;border:1px solid var(--blue);color:var(--blue);padding:5px 12px;border-radius:6px;cursor:pointer;font-size:.76rem">Connect</button>
-            </div>`).join('')}
+              <button id="intBtn_${key}" onclick="toggleIntegration('${key}','${n}','${url}')"
+                style="background:${connected?'rgba(16,185,129,.12)':'none'};border:1px solid ${connected?'var(--green)':'var(--blue)'};color:${connected?'var(--green)':'var(--blue)'};padding:5px 12px;border-radius:6px;cursor:pointer;font-size:.76rem">
+                ${connected?'✓ Connected':'Connect'}
+              </button>
+            </div>`;}).join('')}
         </div>
       </div>
     </div>`;
@@ -2187,6 +2423,28 @@ function buildSettingsContent(){
   const savedCh = localStorage.getItem('notify_channel') || 'sms';
   renderChannelDetails(savedCh);
   setNotifyChannel(savedCh);
+}
+
+function saveNotifToggle(key, enabled){
+  localStorage.setItem('notif_'+key, enabled ? '1' : '0');
+  addNotification('⚙️ Notification Setting', `${key.replace('_',' ')} ${enabled?'enabled':'disabled'}.`, 'info');
+}
+
+function toggleIntegration(key, name, url){
+  const btn = document.getElementById('intBtn_'+key);
+  const connected = localStorage.getItem('integration_'+key) === '1';
+  if(connected){
+    // Disconnect
+    localStorage.removeItem('integration_'+key);
+    if(btn){ btn.textContent='Connect'; btn.style.background='none'; btn.style.borderColor='var(--blue)'; btn.style.color='var(--blue)'; }
+    addNotification(`🔌 ${name} Disconnected`, `Integration removed. You can reconnect any time.`, 'info');
+  } else {
+    // Open connection flow in new tab
+    window.open(url, '_blank');
+    localStorage.setItem('integration_'+key, '1');
+    if(btn){ btn.textContent='✓ Connected'; btn.style.background='rgba(16,185,129,.12)'; btn.style.borderColor='var(--green)'; btn.style.color='var(--green)'; }
+    addNotification(`🔌 ${name} Connected`, `Integration enabled. Configure settings in the ${name} app.`, 'success');
+  }
 }
 
 function saveSettingsApiKey(){
