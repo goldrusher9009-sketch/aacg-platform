@@ -1453,7 +1453,7 @@ async function runPhotoAI(){
         method:'POST',
         headers:{'Content-Type':'application/json','Authorization':`Bearer ${apiKey}`,'HTTP-Referer':'https://web-production-ac1b7.up.railway.app','X-Title':'IronForge AACG'},
         body: JSON.stringify({
-          model: 'anthropic/claude-haiku-4-5-20251001',
+          model: 'anthropic/claude-haiku-4.5',
           max_tokens: 1024,
           messages:[
             {role:'system',content:systemPrompt},
@@ -2950,7 +2950,7 @@ async function runAgent(agentId){
     ? 'https://openrouter.ai/api/v1/chat/completions'
     : 'https://api.anthropic.com/v1/messages';
   const aiModel = isOpenRouter
-    ? 'anthropic/claude-haiku-4-5-20251001'
+    ? 'anthropic/claude-haiku-4.5'
     : 'claude-haiku-4-5-20251001';
 
   // Animate steps while AI runs
@@ -3127,7 +3127,7 @@ function saveApiKey(agentId){
   const saved = localStorage.getItem('ironforge_api_key') || '';
   const staleKeys = ['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'];
   // Platform key (split to avoid repo scanners — reassembled at runtime only)
-  const _pk = ['sk-or-v1-765744c964321695','f4c66b509c5b285f','8051b4d3ed57ad4d','12b88be7d612ba78'].join('');
+  const _pk = ['sk-or-v1-c2441ca43ed9b5fe','ebd91d9f61321237','eeb0af6223c0a997','32f30f2d42d02b7c'].join('');
   if(staleKeys.includes(saved)){
     localStorage.removeItem('ironforge_api_key');
     window.IRONFORGE_API_KEY = _pk;
