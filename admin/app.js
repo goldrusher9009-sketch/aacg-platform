@@ -417,7 +417,7 @@ async function buildLienContent(){
     try {
       const { data } = await sbQuery(sbClient.from('liens').select('*').eq('user_id', window._sbUserId).order('created_at', {ascending:false}));
       if(data && data.length) liens = data;
-    } catch(e){ console.warn('[Liens] Supabase read failed, using demo data', e); }
+    } catch(e){ console.warn('[Liens] Supabase read failed', e); }
   }
 
   if(!liens.length){
@@ -3170,6 +3170,48 @@ async function openWorkflowExec(wfId){
 }
 
 // ────────────────────────────────────────────────
+// LLM API HELPER — shared by workflows and agent runner
+// ────────────────────────────────────────────────
+async function callLLMApi(apiKey, systemPrompt, userPrompt){
+  const isOpenRouter = apiKey.startsWith('sk-or-');
+  const apiUrl = isOpenRouter
+    ? 'https://openrouter.ai/api/v1/chat/completions'
+    : 'https://api.anthropic.com/v1/messages';
+  const aiModel = isOpenRouter
+    ? 'anthropic/claude-haiku-4.5'
+    : 'claude-haiku-4-5-20251001';
+
+  let fetchOpts;
+  if(isOpenRouter){
+    fetchOpts = {
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'Authorization':`Bearer ${apiKey}`,
+        'HTTP-Referer':'https://web-production-ac1b7.up.railway.app',
+        'X-Title':'IronForge AACG Platform'
+      },
+      body:JSON.stringify({model:aiModel,max_tokens:1024,messages:[{role:'system',content:systemPrompt},{role:'user',content:userPrompt}]})
+    };
+  } else {
+    fetchOpts = {
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'x-api-key':apiKey,
+        'anthropic-version':'2023-06-01',
+        'anthropic-dangerous-allow-cors':'true'
+      },
+      body:JSON.stringify({model:aiModel,max_tokens:1024,system:systemPrompt,messages:[{role:'user',content:userPrompt}]})
+    };
+  }
+  const res = await fetch(apiUrl, fetchOpts);
+  if(!res.ok){ const e = await res.json().catch(()=>({})); throw new Error(e.error?.message||`API error ${res.status}`); }
+  const d = await res.json();
+  return isOpenRouter ? d.choices[0].message.content : d.content[0].text;
+}
+
+// ────────────────────────────────────────────────
 // WORKFLOW RUNNER — sequential agent execution
 // ────────────────────────────────────────────────
 async function runWorkflow(w) {
@@ -3177,22 +3219,22 @@ async function runWorkflow(w) {
   const modalContent = document.getElementById('execModalInner');
   if (!w || !w.agents || !w.agents.length) return;
 
-  // Check API key
-  const apiKey = localStorage.getItem('ironforge_api_key');
+  // Check API key — prefer window var (may be platform key not in localStorage)
+  const apiKey = window.IRONFORGE_API_KEY || localStorage.getItem('ironforge_api_key');
   if (!apiKey) {
     openExecModal(w.agents[0]); // prompt for key via normal agent flow
     return;
   }
 
   // Build workflow progress UI
-  const projectEl = document.querySelector('.exec-form select');
-  const project = projectEl ? projectEl.value : 'Current Project';
+  const projectEl = document.querySelector('#wfProj');
+  const project = projectEl ? (projectEl.value || projectEl.options[projectEl.selectedIndex]?.text || 'Current Project') : 'Current Project';
 
   modalContent.innerHTML = `
     <div style="padding:24px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
         <div>
-          <div style="font-size:1.1rem;font-weight:700;color:var(--gold)">${w.name}</div>
+          <div style="font-size:1.1rem;font-weight:700;color:var(--gold)">${w.title || w.name}</div>
           <div style="font-size:.8rem;color:var(--muted);margin-top:3px">Project: ${project} · ${w.agents.length} agents queued</div>
         </div>
         <button class="modal-close" onclick="closeExecModal()">×</button>
