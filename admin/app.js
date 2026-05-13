@@ -2747,7 +2747,10 @@ async function openExecModal(agentId){
           <select id="execPri"><option>Normal</option><option>High</option><option>Urgent</option></select></div>
       </div>
       <label>Additional Notes (optional)</label>
-      <textarea id="execNotes" placeholder="Any specific instructions…" style="margin-top:4px"></textarea>
+      <textarea id="execNotes" placeholder="Any specific instructions or context for this agent…" style="margin-top:4px"></textarea>
+      <label style="margin-top:10px;display:block">Attach File (optional — PDF, image, CSV)</label>
+      <input type="file" id="execAttachment" accept=".pdf,.jpg,.jpeg,.png,.csv,.txt,.xlsx" style="margin-top:4px;background:var(--mid);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--light);font-size:.8rem;width:100%">
+      <div style="font-size:.72rem;color:var(--muted);margin-top:3px">Attach a contract, drawing, photo, timesheet, or any relevant document for the agent to analyze.</div>
       <button class="exec-btn" id="execRunBtn" style="background:${btnColor}" onclick="${runFn}">${btnLabel}</button>
     </div>
     <div class="progress-section" id="progSec">
@@ -2787,6 +2790,19 @@ const AGENT_PROMPTS = {
   closeout: `You are the IronForge Project Closeout AI Agent. When run, you: (1) generate a comprehensive punch list from all open deficiency items, (2) track O&M manual and as-built drawing submission status, (3) verify all lien waivers collected from subs and suppliers, (4) confirm Certificate of Substantial Completion is signed and dated, (5) calculate final retainage amounts and release schedule. Output a closeout checklist with % complete and responsible party for each item.`,
   revenue: `You are the IronForge Revenue Forecaster AI Agent — a construction finance expert. When run, you: (1) calculate projected billings for current month based on schedule of values and % complete, (2) forecast next 3 months revenue by project using contract milestone schedules, (3) identify projects at risk of revenue shortfall (behind schedule = behind billing), (4) calculate backlog burn rate and months of backlog remaining, (5) generate a revenue waterfall chart data showing billed vs. earned vs. collected.`
 };
+
+// ── sbLogAgent — safe helper to log agent runs to Supabase ──
+function sbLogAgent(agentName, action, result){
+  const uid = window._sbUserId || null;
+  if(!uid || !sbClient) return;
+  sbClient.from('agent_logs').insert({
+    user_id: uid,
+    agent_name: agentName,
+    action: action || 'run',
+    result: (result || '').toString().substring(0, 500),
+    created_at: new Date().toISOString()
+  }).then(() => {}).catch(() => {});
+}
 
 // -- FREE AGENT RUNNER -- fetches real Supabase data, no API key needed --
 async function runFreeAgent(agentId){
@@ -2975,6 +2991,30 @@ async function runAgent(agentId){
     }
   }, 900);
 
+  // Read optional attachment
+  let attachmentContext = '';
+  const attachFile = document.getElementById('execAttachment')?.files?.[0];
+  if(attachFile){
+    log.innerHTML += `<div class="log-line info">[${ts()}] 📎 Reading attachment: ${attachFile.name}…</div>`;
+    try {
+      attachmentContext = await new Promise((resolve,reject)=>{
+        const reader = new FileReader();
+        if(attachFile.type.startsWith('image/')){
+          reader.onload = e => resolve(`\n\n[ATTACHED IMAGE: ${attachFile.name}]\nNote: Image attached for analysis.`);
+        } else {
+          reader.onload = e => resolve(`\n\n[ATTACHED FILE: ${attachFile.name}]\n${e.target.result.substring(0,3000)}`);
+          reader.onerror = reject;
+          reader.readAsText(attachFile);
+          return;
+        }
+        reader.readAsDataURL(attachFile);
+      });
+    } catch(e){ log.innerHTML += `<div class="log-line warn">[${ts()}] ⚠️ Could not read attachment</div>`; }
+  }
+
+  // Get user notes
+  const userNotes = document.getElementById('execNotes')?.value?.trim() || '';
+
   // Get real job context from Supabase
   let realJobsContext = 'No projects on file yet.';
   if(USE_SB && window._sbUserId){
@@ -2993,7 +3033,9 @@ async function runAgent(agentId){
 
   try {
     // Build request for OpenRouter or Anthropic
-    const userMsg = `Run a full analysis now.${jobContext ? ' Context:\n' + jobContext : ''} Provide a complete, actionable report with specific findings, dollar amounts, deadlines, and recommended actions. Format with clear sections using markdown-style headers.`;
+    const userMsg = `Run a full analysis now.${jobContext ? '\n\nContext:\n' + jobContext : ''}${userNotes ? '\n\nSpecific instructions: ' + userNotes : ''}${attachmentContext}
+
+Provide a complete, actionable report with specific findings, dollar amounts, deadlines, and recommended actions. Format with clear sections using markdown-style headers. Reference any attached documents in your analysis.`;
 
     let fetchOpts;
     if(isOpenRouter){
@@ -3088,7 +3130,7 @@ async function runAgent(agentId){
       });
     }
 
-    // Log to Supabase if connected
+    // Log to Supabase agent_logs (always)
     const _logUserId = window._sbUserId || currentUser?.sbUser?.id || null;
     if(sbClient && _logUserId){
       sbClient.from('agent_logs').insert({
@@ -3096,8 +3138,44 @@ async function runAgent(agentId){
         agent_name: a.name,
         action: 'Full analysis run',
         result: result.substring(0,500),
-        status: 'completed'
+        created_at: new Date().toISOString()
       }).then(() => {});
+
+      // ── Route results to the correct portal table based on agent type ──
+      const selectedJobId = document.getElementById('execProj')?.value || null;
+      const now = new Date().toISOString();
+
+      // Lien agent → liens table
+      if(agentId === 'lien'){
+        sbClient.from('liens').insert({
+          user_id: _logUserId, project: 'AI Analysis — ' + (document.getElementById('execProj')?.options[document.getElementById('execProj')?.selectedIndex]?.text||'All Projects'),
+          status: 'ai_review', amount: 0, deadline: new Date(Date.now()+30*86400000).toISOString().split('T')[0],
+          notes: result.substring(0,1000), created_at: now
+        }).then(()=>{});
+      }
+      // Invoice agent → invoices table
+      if(agentId === 'invoice'){
+        sbClient.from('invoices').insert({
+          user_id: _logUserId, job_id: selectedJobId||null,
+          description: 'AI Invoice Analysis', amount: 0, status: 'draft',
+          notes: result.substring(0,1000), created_at: now
+        }).then(()=>{});
+      }
+      // Safety/permit/compliance agents → compliance_items table
+      if(['safety','permit'].includes(agentId)){
+        sbClient.from('compliance_items').insert({
+          user_id: _logUserId, title: a.name + ' — AI Report',
+          type: agentId, status: 'review',
+          notes: result.substring(0,1000), deadline: new Date(Date.now()+14*86400000).toISOString().split('T')[0],
+          created_at: now
+        }).then(()=>{});
+      }
+      // Change order agent → update project notes
+      if(agentId === 'change' && selectedJobId){
+        sbClient.from('jobs').update({
+          notes: (result.substring(0,500))
+        }).eq('id', selectedJobId).eq('user_id', _logUserId).then(()=>{});
+      }
     }
 
   } catch(err) {
@@ -3302,7 +3380,7 @@ async function runWorkflow(w) {
           agent_name: agentName,
           action: `workflow:${w.id}`,
           result: response.substring(0, 500),
-          status: 'completed'
+          created_at: new Date().toISOString()
         });
       }
 

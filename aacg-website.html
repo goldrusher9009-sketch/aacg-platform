@@ -18,7 +18,10 @@ async function sbSignUp(name, email, phone, company, plan, password, account_typ
     const { data, error } = await sb.auth.signUp({
       email: email,
       password: password,
-      options: { data: { name, phone, company, plan, account_type, role: 'subscriber' } }
+      options: {
+        emailRedirectTo: window.location.origin + '/admin/',
+        data: { name, phone, company, plan, account_type, role: 'subscriber' }
+      }
     });
     if (error) throw error;
     if (data.user) {
@@ -686,22 +689,69 @@ footer{background:var(--navy2);border-top:1px solid var(--border);padding:56px 2
   </div>
 </section>
 
-<!-- GALLERY -->
+<!-- GALLERY — live from Supabase -->
 <section class="section alt-section" id="gallery">
   <div class="container">
     <div class="sec-label">Live Projects</div>
     <h2 class="sec-title">Projects <span class="hl-e">In Progress</span> Right Now</h2>
     <p class="sec-sub">Gallery auto-updates as AI agents process new site photos, verify progress, and file documentation in real time.</p>
-    <div class="gallery-grid reveal">
-      <div class="gallery-card live-project"><div class="gc-thumb" style="background:linear-gradient(135deg,#04081a,#0d1835);">🏗️<div class="gc-badge-status gc-live">● LIVE</div></div><div class="gc-info"><div class="gc-name">Manhattan Office TI — 42nd St</div><div class="gc-row"><span class="gc-trade">Electrical Rough-In</span><span class="live-txt">Active Now</span></div></div></div>
-      <div class="gallery-card live-project"><div class="gc-thumb" style="background:linear-gradient(135deg,#0a0420,#1a0830);">🍔<div class="gc-badge-status gc-live">● LIVE</div></div><div class="gc-info"><div class="gc-name">Burger King — Queens Blvd</div><div class="gc-row"><span class="gc-trade">HVAC &amp; Hood Install</span><span class="live-txt">Active Now</span></div></div></div>
-      <div class="gallery-card"><div class="gc-thumb" style="background:linear-gradient(135deg,#001a0a,#002a14);">🏥<div class="gc-badge-status gc-done">✓ DONE</div></div><div class="gc-info"><div class="gc-name">NYU Medical Annex — Brooklyn</div><div class="gc-row"><span class="gc-trade">Plumbing Final</span><span style="color:var(--electric);font-size:10.5px;">Completed</span></div></div></div>
-      <div class="gallery-card live-project"><div class="gc-thumb" style="background:linear-gradient(135deg,#1a0804,#2a1008);">🏨<div class="gc-badge-status gc-live">● LIVE</div></div><div class="gc-info"><div class="gc-name">Hilton Garden — Long Island City</div><div class="gc-row"><span class="gc-trade">Millwork &amp; Finishes</span><span class="live-txt">Active Now</span></div></div></div>
-      <div class="gallery-card"><div class="gc-thumb" style="background:linear-gradient(135deg,#0a1a00,#142800);">🏭<div class="gc-badge-status gc-pending">⏳ UPCOMING</div></div><div class="gc-info"><div class="gc-name">Amazon Warehouse — NJ</div><div class="gc-row"><span class="gc-trade">Concrete &amp; Foundation</span><span style="color:var(--gold);font-size:10.5px;">Starting May 6</span></div></div></div>
-      <div class="gallery-card live-project"><div class="gc-thumb" style="background:linear-gradient(135deg,#1a0420,#280630);">🏫<div class="gc-badge-status gc-live">● LIVE</div></div><div class="gc-info"><div class="gc-name">PS 147 — Bronx Renovation</div><div class="gc-row"><span class="gc-trade">Sheetrock &amp; Painting</span><span class="live-txt">Active Now</span></div></div></div>
+    <div class="gallery-grid reveal" id="projectGallery">
+      <div style="grid-column:1/-1;text-align:center;padding:30px;color:var(--text2)">Loading live projects…</div>
     </div>
   </div>
 </section>
+<script>
+(async function loadProjectGallery(){
+  if(!USE_SB||!sb) return renderStaticGallery();
+  try{
+    const {data,error}=await sb.from('jobs')
+      .select('id,name,status,trade,location,contract_amount,start_date,updated_at')
+      .in('status',['active','in_progress','pending','complete','completed'])
+      .order('updated_at',{ascending:false}).limit(6);
+    if(error||!data||data.length===0) return renderStaticGallery();
+    const icons=['🏗️','🏢','🏥','🏨','🏭','🏫','🏬','🔧','⚡','🪛'];
+    const grads=[
+      'linear-gradient(135deg,#04081a,#0d1835)',
+      'linear-gradient(135deg,#0a0420,#1a0830)',
+      'linear-gradient(135deg,#001a0a,#002a14)',
+      'linear-gradient(135deg,#1a0804,#2a1008)',
+      'linear-gradient(135deg,#0a1a00,#142800)',
+      'linear-gradient(135deg,#1a0420,#280630)'
+    ];
+    const grid=document.getElementById('projectGallery');
+    grid.innerHTML=data.map((j,i)=>{
+      const isLive=j.status==='active'||j.status==='in_progress';
+      const isDone=j.status==='complete'||j.status==='completed';
+      const badge=isLive?'<div class="gc-badge-status gc-live">● LIVE</div>':isDone?'<div class="gc-badge-status gc-done">✓ DONE</div>':'<div class="gc-badge-status gc-pending">⏳ UPCOMING</div>';
+      const statusTxt=isLive?'<span class="live-txt">Active Now</span>':isDone?'<span style="color:var(--electric);font-size:10.5px;">Completed</span>':'<span style="color:var(--gold);font-size:10.5px;">Starting Soon</span>';
+      const icon=icons[i%icons.length];
+      const grad=grads[i%grads.length];
+      const amt=j.contract_amount?('$'+(j.contract_amount>=1000000?(j.contract_amount/1000000).toFixed(1)+'M':j.contract_amount>=1000?(j.contract_amount/1000).toFixed(0)+'K':j.contract_amount)):'';
+      return `<div class="gallery-card${isLive?' live-project':''}">
+        <div class="gc-thumb" style="background:${grad}">${icon}${badge}</div>
+        <div class="gc-info">
+          <div class="gc-name">${j.name||'Project #'+j.id.slice(-6)}</div>
+          <div class="gc-row">
+            <span class="gc-trade">${j.trade||j.location||'In Progress'}</span>
+            ${statusTxt}
+          </div>
+          ${amt?'<div style="font-size:10px;color:var(--text2);margin-top:2px">'+amt+'</div>':''}
+        </div>
+      </div>`;
+    }).join('');
+    // Also update live project count in stats
+    const countEl=document.getElementById('liveProjectCount');
+    if(countEl) countEl.textContent=data.filter(j=>j.status==='active'||j.status==='in_progress').length;
+  }catch(e){renderStaticGallery();}
+})();
+function renderStaticGallery(){
+  document.getElementById('projectGallery').innerHTML=`
+    <div class="gallery-card live-project"><div class="gc-thumb" style="background:linear-gradient(135deg,#04081a,#0d1835);">🏗️<div class="gc-badge-status gc-live">● LIVE</div></div><div class="gc-info"><div class="gc-name">Sign up to see live projects</div><div class="gc-row"><span class="gc-trade">Your projects appear here</span><span class="live-txt">Get Started</span></div></div></div>
+    <div class="gallery-card"><div class="gc-thumb" style="background:linear-gradient(135deg,#0a0420,#1a0830);">📊<div class="gc-badge-status gc-pending">⏳</div></div><div class="gc-info"><div class="gc-name">Real-time project tracking</div><div class="gc-row"><span class="gc-trade">AI agents monitor 24/7</span></div></div></div>
+    <div class="gallery-card"><div class="gc-thumb" style="background:linear-gradient(135deg,#001a0a,#002a14);">⚡<div class="gc-badge-status gc-done">✓ READY</div></div><div class="gc-info"><div class="gc-name">20 AI agents standing by</div><div class="gc-row"><span class="gc-trade">Start your free trial today</span></div></div></div>
+  `;
+}
+</script>
 
 <!-- BLOG -->
 <section class="section" id="blog">
