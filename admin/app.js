@@ -1025,11 +1025,12 @@ async function saveClient(){
   const name = document.getElementById('nc_name').value.trim();
   if(!name){ alert('Enter a company name'); return; }
   const client = {
-    name, sector: document.getElementById('nc_sector').value,
+    name,
+    client_type: document.getElementById('nc_sector')?.value || 'owner',
     status: document.getElementById('nc_status').value,
     phone: document.getElementById('nc_phone').value,
     email: document.getElementById('nc_email').value,
-    project_count:0, total_revenue:0,
+    total_jobs: 0, total_billed: 0,
     user_id: window._sbUserId||null, created_at: new Date().toISOString()
   };
   if(USE_SB && window._sbUserId){
@@ -1180,12 +1181,11 @@ async function saveTech(){
   const name = document.getElementById('nt_name').value.trim();
   if(!name){ alert('Enter a name'); return; }
   const tech = {
-    name, role: document.getElementById('nt_role').value,
-    trade: document.getElementById('nt_trade').value,
-    phone: document.getElementById('nt_phone').value,
-    license: document.getElementById('nt_lic').value,
-    current_site: document.getElementById('nt_site').value,
-    status: document.getElementById('nt_status').value,
+    name,
+    trade: document.getElementById('nt_trade')?.value || document.getElementById('nt_role')?.value || '',
+    phone: document.getElementById('nt_phone')?.value || '',
+    license_number: document.getElementById('nt_lic')?.value || '',
+    status: document.getElementById('nt_status')?.value || 'active',
     user_id: window._sbUserId||null, created_at: new Date().toISOString()
   };
   if(USE_SB && window._sbUserId){
