@@ -86,6 +86,8 @@ async function doLogout(){
 function bootApp(acc){
   currentUser = acc;
   currentTier = acc.tier;
+  // Ensure _sbUserId is always set regardless of login path (direct or session restore)
+  if(acc.sbUser && acc.sbUser.id) window._sbUserId = acc.sbUser.id;
   document.getElementById('loginGate').style.display = 'none';
   const app = document.getElementById('app');
   app.classList.add('show');
