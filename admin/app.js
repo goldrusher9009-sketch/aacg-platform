@@ -222,12 +222,12 @@ async function buildDashboard(){
   if(USE_SB && window._sbUserId){
     try {
       const [pRes, lRes, aRes, cRes] = await Promise.all([
-        sbQuery(sbClient.from('jobs').select('id,name,status,contract_value,deadline').eq('user_id', window._sbUserId).order('created_at',{ascending:false}).limit(6)),
+        sbQuery(sbClient.from('jobs').select('id,name,status,contract_amount,start_date').eq('user_id', window._sbUserId).order('created_at',{ascending:false}).limit(6)),
         sbQuery(sbClient.from('liens').select('id,project,status,amount,deadline').eq('user_id', window._sbUserId)),
         sbQuery(sbClient.from('agent_logs').select('id',{count:'exact'}).eq('user_id', window._sbUserId)),
         sbQuery(sbClient.from('clients').select('id',{count:'exact'}).eq('user_id', window._sbUserId)),
       ]);
-      if(pRes.data && pRes.data.length){ sbProjects = pRes.data; sbRevenue = pRes.data.reduce((s,p)=>s+(parseFloat(p.contract_value)||0),0); }
+      if(pRes.data && pRes.data.length){ sbProjects = pRes.data; sbRevenue = pRes.data.reduce((s,p)=>s+(parseFloat(p.contract_amount)||0),0); }
       if(lRes.data && lRes.data.length) sbLiens = lRes.data;
       if(aRes.count) sbAgentRuns = aRes.count;
       if(cRes.count) sbClients = cRes.count;
@@ -304,7 +304,7 @@ async function buildDashboard(){
       const pillClass = s==='active'?'pill-green':s==='planning'?'pill-blue':s==='closeout'?'pill-orange':'pill-red';
       return `<tr><td>${p.name}</td>
         <td><span class="status-pill ${pillClass}">${s.replace('_',' ')}</span></td>
-        <td style="color:var(--gold);font-weight:700">${fmtVal(p.contract_value||0)}</td></tr>`;
+        <td style="color:var(--gold);font-weight:700">${fmtVal(p.contract_amount||0)}</td></tr>`;
     }).join('');
   } else {
     document.getElementById('projectsTable').innerHTML = `<tr><td colspan="3" style="text-align:center;color:var(--muted);padding:20px;font-size:.82rem">Add your first project to get started</td></tr>`;
@@ -648,15 +648,15 @@ async function buildProjectsContent(){
     </div>
     <div class="card">
       <table class="data-table" id="projectsTable2">
-        <thead><tr><th>ID</th><th>Project</th><th>Sector</th><th>Status</th><th>Value</th><th>Deadline</th><th></th></tr></thead>
+        <thead><tr><th>ID</th><th>Project</th><th>GC / Client</th><th>Status</th><th>Value</th><th>Start Date</th><th></th></tr></thead>
         <tbody id="projectsTbody">
           ${projects.map(p=>`<tr data-name="${p.name.toLowerCase()}">
             <td style="font-family:monospace;color:var(--muted);font-size:.73rem">${p.id||'—'}</td>
             <td style="font-weight:600">${p.name}</td>
-            <td>${p.sector||'—'}</td>
+            <td>${p.gc_name||'—'}</td>
             <td>${statusPill(p.status||'active')}</td>
-            <td style="color:var(--gold);font-weight:700">${fmtVal(p.contract_value||0)}</td>
-            <td style="color:var(--muted)">${fmtDate(p.deadline)}</td>
+            <td style="color:var(--gold);font-weight:700">${fmtVal(p.contract_amount||0)}</td>
+            <td style="color:var(--muted)">${fmtDate(p.start_date)}</td>
             <td style="display:flex;gap:5px">
               <button class="btn-secondary" style="padding:3px 8px;font-size:.72rem" onclick="viewProject('${p.id||p.name}')">View</button>
               <button class="btn-secondary" style="padding:3px 8px;font-size:.72rem;border-color:var(--red);color:var(--red)" onclick="archiveProject('${p.id||p.name}')">Archive</button>
@@ -676,7 +676,7 @@ function filterProjects(q){
 function viewProject(id){
   // Find project in current Supabase cache or demo fallback
   const projects = window._projectsCache || [];
-  const p = projects.find(x => (x.id||x.name) === id) || {id, name:id, status:'active', contract_value:0, sector:'—', deadline:null, client:'—'};
+  const p = projects.find(x => (x.id||x.name) === id) || {id, name:id, status:'active', contract_amount:0, address:'—', start_date:null, gc_name:'—'};
   const fmtVal = v => v >= 1000000 ? `$${(v/1000000).toFixed(1)}M` : v >= 1000 ? `$${(v/1000).toFixed(0)}K` : `$${v||0}`;
   const fmtDate = d => d ? new Date(d).toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}) : '—';
   const statusPill = s => { const map={active:'pill-green',planning:'pill-blue',closeout:'pill-orange',on_hold:'pill-red',completed:'pill-green'}; return `<span class="status-pill ${map[s]||'pill-blue'}">${s.replace('_',' ')}</span>`; };
@@ -698,20 +698,20 @@ function viewProject(id){
           <div>${statusPill(p.status||'active')}</div>
         </div>
         <div class="card" style="padding:14px">
-          <div style="font-size:.72rem;color:var(--muted);margin-bottom:4px">CONTRACT VALUE</div>
-          <div style="font-size:1.1rem;font-weight:700;color:var(--gold)">${fmtVal(p.contract_value)}</div>
+          <div style="font-size:.72rem;color:var(--muted);margin-bottom:4px">CONTRACT AMOUNT</div>
+          <div style="font-size:1.1rem;font-weight:700;color:var(--gold)">${fmtVal(p.contract_amount)}</div>
         </div>
         <div class="card" style="padding:14px">
-          <div style="font-size:.72rem;color:var(--muted);margin-bottom:4px">DEADLINE</div>
-          <div>${fmtDate(p.deadline)}</div>
+          <div style="font-size:.72rem;color:var(--muted);margin-bottom:4px">START DATE</div>
+          <div>${fmtDate(p.start_date)}</div>
         </div>
         <div class="card" style="padding:14px">
-          <div style="font-size:.72rem;color:var(--muted);margin-bottom:4px">SECTOR</div>
-          <div>${p.sector||'—'}</div>
+          <div style="font-size:.72rem;color:var(--muted);margin-bottom:4px">ADDRESS</div>
+          <div>${p.address||'—'}</div>
         </div>
         <div class="card" style="padding:14px">
-          <div style="font-size:.72rem;color:var(--muted);margin-bottom:4px">CLIENT</div>
-          <div>${p.client||'—'}</div>
+          <div style="font-size:.72rem;color:var(--muted);margin-bottom:4px">GC / CLIENT</div>
+          <div>${p.gc_name||'—'}</div>
         </div>
       </div>
       <div style="display:flex;gap:8px;margin-top:4px">
@@ -735,7 +735,7 @@ async function archiveProject(id){
 
 function openEditProjectModal(id){
   const projects = window._projectsCache || [];
-  const p = projects.find(x=>(x.id||x.name)===id) || {id, name:id, sector:'Commercial', status:'active', contract_value:0, deadline:'', client:''};
+  const p = projects.find(x=>(x.id||x.name)===id) || {id, name:id, address:'', status:'active', contract_amount:0, start_date:'', gc_name:''};
   closeExecModal();
   document.getElementById('execModal').style.display = 'flex';
   document.getElementById('execModalInner').innerHTML = `
@@ -746,14 +746,13 @@ function openEditProjectModal(id){
     <div style="padding:0">
       <div class="form-group"><label>Project Name</label><input id="ep_name" value="${p.name||''}"></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div class="form-group"><label>Sector</label>
-          <select id="ep_sector"><option ${p.sector==='Commercial'?'selected':''}>Commercial</option><option ${p.sector==='Residential'?'selected':''}>Residential</option><option ${p.sector==='Industrial'?'selected':''}>Industrial</option><option ${p.sector==='Government'?'selected':''}>Government</option><option ${p.sector==='Hospitality'?'selected':''}>Hospitality</option><option ${p.sector==='QSR Restaurant'?'selected':''}>QSR Restaurant</option></select></div>
         <div class="form-group"><label>Status</label>
           <select id="ep_status"><option value="planning" ${p.status==='planning'?'selected':''}>Planning</option><option value="active" ${p.status==='active'?'selected':''}>Active</option><option value="on_hold" ${p.status==='on_hold'?'selected':''}>On Hold</option><option value="closeout" ${p.status==='closeout'?'selected':''}>Closeout</option></select></div>
-        <div class="form-group"><label>Contract Value ($)</label><input type="number" id="ep_val" value="${p.contract_value||0}"></div>
-        <div class="form-group"><label>Deadline</label><input type="date" id="ep_dead" value="${p.deadline||''}"></div>
+        <div class="form-group"><label>Contract Amount ($)</label><input type="number" id="ep_val" value="${p.contract_amount||0}"></div>
+        <div class="form-group"><label>Start Date</label><input type="date" id="ep_dead" value="${p.start_date||''}"></div>
+        <div class="form-group"><label>GC / Client</label><input id="ep_client" value="${p.gc_name||''}"></div>
       </div>
-      <div class="form-group"><label>Client</label><input id="ep_client" value="${p.client||''}"></div>
+      <div class="form-group"><label>Address</label><input id="ep_address" value="${p.address||''}"></div>
       <div style="display:flex;gap:8px;margin-top:4px">
         <button class="btn-primary" onclick="saveEditProject('${id}')">Save Changes</button>
         <button class="btn-secondary" onclick="closeExecModal()">Cancel</button>
@@ -764,11 +763,11 @@ function openEditProjectModal(id){
 async function saveEditProject(id){
   const updates = {
     name: document.getElementById('ep_name').value.trim(),
-    sector: document.getElementById('ep_sector').value,
     status: document.getElementById('ep_status').value,
-    contract_value: parseFloat(document.getElementById('ep_val').value)||0,
-    deadline: document.getElementById('ep_dead').value||null,
-    client: document.getElementById('ep_client').value
+    contract_amount: parseFloat(document.getElementById('ep_val').value)||0,
+    start_date: document.getElementById('ep_dead').value||null,
+    gc_name: document.getElementById('ep_client').value,
+    address: document.getElementById('ep_address')?.value||null
   };
   if(USE_SB && window._sbUserId){
     try { await sbQuery(sbClient.from('jobs').update(updates).eq('user_id', window._sbUserId).eq('id', id)); } catch(e){ console.warn('[Projects] update failed', e); }
@@ -788,14 +787,13 @@ function openAddProjectModal(){
     <div style="padding:0">
       <div class="form-group"><label>Project Name</label><input id="np_name" placeholder="Riverside Commons Phase 2"></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div class="form-group"><label>Sector</label>
-          <select id="np_sector"><option>Commercial</option><option>Residential</option><option>Industrial</option><option>Government</option><option>Hospitality</option><option>QSR Restaurant</option></select></div>
         <div class="form-group"><label>Status</label>
           <select id="np_status"><option value="planning">Planning</option><option value="active">Active</option><option value="on_hold">On Hold</option><option value="closeout">Closeout</option></select></div>
-        <div class="form-group"><label>Contract Value ($)</label><input type="number" id="np_val" placeholder="500000"></div>
-        <div class="form-group"><label>Deadline</label><input type="date" id="np_dead"></div>
+        <div class="form-group"><label>Contract Amount ($)</label><input type="number" id="np_val" placeholder="500000"></div>
+        <div class="form-group"><label>Start Date</label><input type="date" id="np_dead"></div>
+        <div class="form-group"><label>GC / Client</label><input id="np_client" placeholder="General Contractor name"></div>
       </div>
-      <div class="form-group"><label>Client</label><input id="np_client" placeholder="Client name"></div>
+      <div class="form-group"><label>Address</label><input id="np_address" placeholder="Project site address"></div>
       <div style="display:flex;gap:8px;margin-top:4px">
         <button class="btn-primary" onclick="saveProject()">Save Project</button>
         <button class="btn-secondary" onclick="closeExecModal()">Cancel</button>
@@ -807,15 +805,19 @@ async function saveProject(){
   const name = document.getElementById('np_name').value.trim();
   if(!name){ alert('Enter a project name'); return; }
   const proj = {
-    name, sector: document.getElementById('np_sector').value,
+    name,
     status: document.getElementById('np_status').value,
-    contract_value: parseFloat(document.getElementById('np_val').value)||0,
-    deadline: document.getElementById('np_dead').value,
-    client: document.getElementById('np_client').value,
-    user_id: window._sbUserId||null, created_at: new Date().toISOString()
+    contract_amount: parseFloat(document.getElementById('np_val').value)||0,
+    start_date: document.getElementById('np_dead').value||null,
+    gc_name: document.getElementById('np_client').value,
+    address: document.getElementById('np_address').value||null,
+    user_id: window._sbUserId||null
   };
   if(USE_SB && window._sbUserId){
-    try { await sbClient.from('jobs').insert(proj); } catch(e){ console.warn('[Projects] insert failed',e); }
+    try {
+      const { error } = await sbClient.from('jobs').insert(proj);
+      if(error) console.warn('[Projects] insert failed', error);
+    } catch(e){ console.warn('[Projects] insert exception',e); }
   }
   closeExecModal();
   addNotification('🏗️ Project Created', `${proj.name} added to your projects.`, 'success');
@@ -2858,8 +2860,8 @@ async function runFreeAgent(agentId){
     if(projects.length){
       lines_out.push(`<div style="margin-bottom:8px"><strong>Projects (${projects.length}):</strong></div>`);
       projects.slice(0,10).forEach(p => {
-        const val = p.contract_value ? fmtVal(p.contract_value) : '--';
-        const daysLeft = p.deadline ? Math.ceil((new Date(p.deadline)-now)/86400000) : null;
+        const val = p.contract_amount ? fmtVal(p.contract_amount) : '--';
+        const daysLeft = p.start_date ? Math.ceil((new Date(p.start_date)-now)/86400000) : null;
         const deadlineStr = daysLeft !== null ? ` | Due in ${daysLeft} days` : '';
         lines_out.push(`<div style="padding:3px 0 3px 12px;border-left:2px solid var(--blue);margin:3px 0;color:var(--muted);font-size:.8rem">${p.name} -- ${p.status||'active'} -- ${val}${deadlineStr}</div>`);
       });
@@ -2975,10 +2977,10 @@ async function runAgent(agentId){
   let realJobsContext = 'No projects on file yet.';
   if(USE_SB && window._sbUserId){
     try {
-      const {data:realJobs} = await sbQuery(sbClient.from('jobs').select('name,status,contract_value,deadline').eq('user_id', window._sbUserId).order('created_at',{ascending:false}).limit(10));
+      const {data:realJobs} = await sbQuery(sbClient.from('jobs').select('name,status,contract_amount,start_date').eq('user_id', window._sbUserId).order('created_at',{ascending:false}).limit(10));
       if(realJobs && realJobs.length){
         const fmtV = v => v >= 1000000 ? `$${(v/1000000).toFixed(1)}M` : v >= 1000 ? `$${(v/1000).toFixed(0)}K` : v > 0 ? `$${v}` : 'N/A';
-        realJobsContext = realJobs.map(j => `${j.name} (${fmtV(j.contract_value||0)}, ${j.status||'active'}${j.deadline?', deadline: '+j.deadline:''})`).join('; ');
+        realJobsContext = realJobs.map(j => `${j.name} (${fmtV(j.contract_amount||0)}, ${j.status||'active'}${j.start_date?', start: '+j.start_date:''})`).join('; ');
       }
     } catch(e){ console.warn('[Agent] Could not fetch jobs for context', e); }
   }
