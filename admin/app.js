@@ -3426,14 +3426,14 @@ async function _fetchNewLogs(){
   if(!USE_SB || !window._sbUserId) return null;
   try {
     let q = sbClient.from('agent_logs')
-      .select('id,agent_name,status,summary,created_at')
+      .select('id,agent_name,action,result,created_at')
       .eq('user_id', window._sbUserId)
       .order('created_at', {ascending: false})
       .limit(20);
     if(_liveLogLastId){
       // Only fetch entries newer than the last seen (by created_at)
       q = sbClient.from('agent_logs')
-        .select('id,agent_name,status,summary,created_at')
+        .select('id,agent_name,action,result,created_at')
         .eq('user_id', window._sbUserId)
         .gt('id', _liveLogLastId)
         .order('created_at', {ascending: false})
@@ -3453,7 +3453,7 @@ async function _seedLiveLogFromSB(){
   try {
     const res = await sbQuery(
       sbClient.from('agent_logs')
-        .select('id,agent_name,status,summary,created_at')
+        .select('id,agent_name,action,result,created_at')
         .eq('user_id', window._sbUserId)
         .order('created_at', {ascending: false})
         .limit(8)
@@ -3462,8 +3462,8 @@ async function _seedLiveLogFromSB(){
       // Inject oldest-first so newest ends up at top
       const rows = [...res.data].reverse();
       rows.forEach(row => {
-        const type = row.status === 'completed' ? 'success' : row.status === 'error' ? 'warn' : 'info';
-        const msg  = row.summary || `Agent run completed`;
+        const type = row.action === 'error' ? 'warn' : 'success';
+        const msg  = row.result || row.action || 'Agent run completed';
         _injectLogLine('dashLog',     row.agent_name || 'Agent', type, msg, row.created_at);
         _injectLogLine('activityLog', row.agent_name || 'Agent', type, msg, row.created_at);
       });
@@ -3499,8 +3499,8 @@ async function startLiveLog(){
       if(actLog  && actLog.querySelector('div[style*="No activity"]'))  actLog.innerHTML  = '';
       // Inject newest-first (already ordered desc)
       newLogs.forEach(row => {
-        const type = row.status === 'completed' ? 'success' : row.status === 'error' ? 'warn' : 'info';
-        const msg  = row.summary || `Agent run completed`;
+        const type = row.action === 'error' ? 'warn' : 'success';
+        const msg  = row.result || row.action || 'Agent run completed';
         _injectLogLine('dashLog',     row.agent_name || 'Agent', type, msg, row.created_at);
         _injectLogLine('activityLog', row.agent_name || 'Agent', type, msg, row.created_at);
       });
