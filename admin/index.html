@@ -624,7 +624,7 @@ async function sbLogin(email, password) {
   if (!sbClient) return null;
   try {
     const { data, error } = await sbClient.auth.signInWithPassword({ email, password });
-    if (error) { console.error('[SB Login error]', error.message); return null; }
+    if (error) { console.error('[SB Login error]', error.message); return { _error: error.message }; }
     const { data: profile } = await sbClient.from('profiles').select('*').eq('id', data.user.id).single();
     // If profile doesn't exist yet (race condition on new signup), create a minimal one
     const userMeta = data.user.user_metadata || {};
@@ -689,16 +689,13 @@ async function sbLogAgent(agentName, action, result) {
         var passField  = document.getElementById('loginPass');
         var savedPwd   = sessionStorage.getItem('aacg_signup_password') || '';
         if (emailField) emailField.value = email;
-        if (passField && savedPwd) {
-          passField.value = savedPwd;
-          // Auto-attempt login after a brief delay
-          setTimeout(function(){ doLogin(); }, 600);
-        }
+        if (passField && savedPwd) passField.value = savedPwd;
+        // Don't auto-login — user must confirm email first
         var banner = document.createElement('div');
-        banner.style.cssText = 'position:fixed;top:0;left:0;right:0;background:linear-gradient(135deg,#ff3a2d,#cc2018);color:#fff;padding:12px;text-align:center;font-weight:700;z-index:99999;font-size:.9rem;';
-        banner.innerHTML = '🎉 Welcome, ' + (name||email) + '! Your ' + plan.toUpperCase() + ' trial is active. Logging you in…';
+        banner.style.cssText = 'position:fixed;top:0;left:0;right:0;background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;padding:14px;text-align:center;font-weight:700;z-index:99999;font-size:.9rem;';
+        banner.innerHTML = '✅ Account created! Check your email (' + (email||'inbox') + ') for a confirmation link, then log in here.';
         document.body.prepend(banner);
-        setTimeout(function(){banner.remove();}, 6000);
+        setTimeout(function(){banner.remove();}, 12000);
       }, 500);
     }
   }

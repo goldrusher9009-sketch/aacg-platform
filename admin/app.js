@@ -72,7 +72,21 @@ async function doLogin(){
   }
 
   if(btn){btn.textContent='Sign In to Dashboard';btn.disabled=false;}
-  if(!acc){ document.getElementById('loginErr').style.display='block'; return; }
+  if(!acc || acc._error){
+    const errEl = document.getElementById('loginErr');
+    const msg = acc && acc._error ? acc._error : '';
+    if(msg.toLowerCase().includes('email not confirmed') || msg.toLowerCase().includes('not confirmed')){
+      errEl.textContent = '📧 Please check your email and click the confirmation link before signing in.';
+    } else if(msg.toLowerCase().includes('invalid') || msg.toLowerCase().includes('wrong')){
+      errEl.textContent = 'Incorrect email or password. Please try again.';
+    } else if(msg){
+      errEl.textContent = msg;
+    } else {
+      errEl.textContent = 'Incorrect email or password. Please try again.';
+    }
+    errEl.style.display='block';
+    return;
+  }
   sessionStorage.setItem('aacg_subscriber', JSON.stringify(acc));
   bootApp(acc);
 }
