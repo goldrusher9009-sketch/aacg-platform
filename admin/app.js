@@ -2870,7 +2870,7 @@ async function runFreeAgent(agentId){
       openLiens.slice(0,5).forEach(l => {
         const daysLeft = l.deadline ? Math.ceil((new Date(l.deadline)-now)/86400000) : null;
         const urgency = daysLeft !== null && daysLeft <= 30 ? ' -- URGENT' : '';
-        lines_out.push(`<div style="padding:3px 0 3px 12px;border-left:2px solid var(--orange);margin:3px 0;color:var(--muted);font-size:.8rem">${l.project||'--'} -- $${(l.amount||0).toLocaleString()} -- ${l.status}${daysLeft !== null ? `` | ${daysLeft} days`` : ''}${urgency}</div>`);
+        lines_out.push('<div style="padding:3px 0 3px 12px;border-left:2px solid var(--orange);margin:3px 0;color:var(--muted);font-size:.8rem">'+(l.project||'--')+' -- $'+(l.amount||0).toLocaleString()+' -- '+(l.status||'')+(daysLeft !== null ? ' | '+daysLeft+' days' : '')+urgency+'</div>');
       });
     }
     if(complianceItems.length){
