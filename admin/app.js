@@ -1726,7 +1726,7 @@ async function submitToGC(submissionId){
         gc_id: gcId,
         ai_amount: sub?.ai_amount||0,
         sub_requested: reqAmount,
-        sub_note: note,
+        notes: note,
         status: 'pending_gc',
         submitted_at: new Date().toISOString()
       });
