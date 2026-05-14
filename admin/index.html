@@ -36,6 +36,8 @@
   .login-err{color:var(--red);font-size:.8rem;margin-top:10px;display:none;}
   .login-footer{margin-top:20px;font-size:.75rem;color:var(--muted);}
   .login-footer a{color:var(--blue);text-decoration:none;}
+  .signup-success{background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.3);border-radius:8px;padding:14px;font-size:.83rem;color:var(--green);display:none;margin-top:12px;line-height:1.5;}
+  .login-toggle-link{color:var(--blue);text-decoration:none;cursor:pointer;font-weight:700;background:none;border:none;font-size:inherit;padding:0;}
 
   /* APP */
   #app{display:none;min-height:100vh;flex-direction:column;}
@@ -299,24 +301,66 @@
 <div id="loginGate">
   <div class="login-box">
     <div class="login-logo">IronForge</div>
-    <div class="login-sub">Client Dashboard — Secure Access</div>
-    <div class="form-group">
-      <label>Email Address</label>
-      <input type="email" id="loginEmail" placeholder="your@company.com">
+
+    <!-- ── LOGIN VIEW ── -->
+    <div id="loginView">
+      <div class="login-sub">Client Dashboard — Secure Access</div>
+      <div class="form-group">
+        <label>Email Address</label>
+        <input type="email" id="loginEmail" placeholder="your@company.com">
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="loginPass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
+      </div>
+      <button class="login-btn" onclick="doLogin()">Sign In to Dashboard</button>
+      <div class="login-err" id="loginErr">Incorrect email or password. Please try again.</div>
+      <div class="login-footer">
+        <a href="../index.html">← Back to Website</a> &nbsp;|&nbsp;
+        <a href="../superadmin/">Super Admin ↗</a>
+      </div>
+      <div style="margin-top:14px;font-size:.8rem;color:var(--muted)">
+        Don't have an account? <button class="login-toggle-link" onclick="showSignupForm()">Sign Up</button>
+      </div>
     </div>
-    <div class="form-group">
-      <label>Password</label>
-      <input type="password" id="loginPass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
+
+    <!-- ── SIGNUP VIEW ── -->
+    <div id="signupView" style="display:none">
+      <div class="login-sub">Create Your Free Account</div>
+      <div class="form-group">
+        <label>Full Name</label>
+        <input type="text" id="signupName" placeholder="Jane Smith">
+      </div>
+      <div class="form-group">
+        <label>Company Name</label>
+        <input type="text" id="signupCompany" placeholder="Smith Construction LLC">
+      </div>
+      <div class="form-group">
+        <label>Email Address</label>
+        <input type="email" id="signupEmail" placeholder="your@company.com">
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="signupPass" placeholder="Min. 8 characters" onkeydown="if(event.key==='Enter')doSignup()">
+      </div>
+      <div class="form-group">
+        <label>Account Type</label>
+        <select id="signupType" style="width:100%;padding:10px 14px;background:var(--mid);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:.9rem;outline:none;">
+          <option value="subcontractor">Subcontractor</option>
+          <option value="gc">General Contractor</option>
+          <option value="owner">Project Owner / Developer</option>
+        </select>
+      </div>
+      <button class="login-btn" id="signupBtn" onclick="doSignup()">Create Account</button>
+      <div class="login-err" id="signupErr"></div>
+      <div class="signup-success" id="signupSuccess">
+        ✅ Account created! Check your email for a confirmation link, then come back here to sign in.
+      </div>
+      <div style="margin-top:14px;font-size:.8rem;color:var(--muted)">
+        Already have an account? <button class="login-toggle-link" onclick="showLoginForm()">Sign In</button>
+      </div>
     </div>
-    <button class="login-btn" onclick="doLogin()">Sign In to Dashboard</button>
-    <div class="login-err" id="loginErr">Incorrect email or password. Please try again.</div>
-    <div class="login-footer">
-      <a href="../index.html">← Back to Website</a> &nbsp;|&nbsp;
-      <a href="../superadmin/">Super Admin ↗</a>
-    </div>
-    <div style="margin-top:14px;font-size:.8rem;color:var(--muted)">
-      Don't have an account? <a href="../aacg-website.html#signup" style="color:var(--blue);font-weight:700">Sign Up</a>
-    </div>
+
   </div>
 </div>
 
@@ -672,6 +716,93 @@ async function sbLogAgent(agentName, action, result) {
       created_at: new Date().toISOString()
     });
   } catch(e) {}
+}
+
+// ─── SIGNUP FORM TOGGLE ────────────────────────────────────────────────────
+function showSignupForm() {
+  document.getElementById('loginView').style.display = 'none';
+  document.getElementById('signupView').style.display = 'block';
+  document.getElementById('signupErr').style.display = 'none';
+  document.getElementById('signupSuccess').style.display = 'none';
+}
+function showLoginForm() {
+  document.getElementById('signupView').style.display = 'none';
+  document.getElementById('loginView').style.display = 'block';
+  document.getElementById('loginErr').style.display = 'none';
+}
+
+async function doSignup() {
+  const name    = (document.getElementById('signupName').value || '').trim();
+  const company = (document.getElementById('signupCompany').value || '').trim();
+  const email   = (document.getElementById('signupEmail').value || '').trim().toLowerCase();
+  const pass    = document.getElementById('signupPass').value;
+  const type    = document.getElementById('signupType').value;
+  const errEl   = document.getElementById('signupErr');
+  const okEl    = document.getElementById('signupSuccess');
+  const btn     = document.getElementById('signupBtn');
+
+  errEl.style.display = 'none';
+  okEl.style.display = 'none';
+
+  if (!name)    { errEl.textContent = 'Please enter your full name.';        errEl.style.display='block'; return; }
+  if (!email)   { errEl.textContent = 'Please enter your email address.';    errEl.style.display='block'; return; }
+  if (!pass || pass.length < 8) { errEl.textContent = 'Password must be at least 8 characters.'; errEl.style.display='block'; return; }
+  if (!sbClient){ errEl.textContent = 'Auth service unavailable. Contact support@aacgplatform.com'; errEl.style.display='block'; return; }
+
+  btn.textContent = 'Creating account…';
+  btn.disabled = true;
+
+  try {
+    const { data, error } = await sbClient.auth.signUp({
+      email, password: pass,
+      options: {
+        data: { name, company, plan: 'starter', account_type: type },
+        emailRedirectTo: window.location.origin + '/admin/index.html?new=1&plan=starter'
+      }
+    });
+
+    if (error) {
+      errEl.textContent = error.message || 'Sign up failed. Try again.';
+      errEl.style.display = 'block';
+      btn.textContent = 'Create Account';
+      btn.disabled = false;
+      return;
+    }
+
+    // If user returned (email confirmation required), show success
+    if (data?.user) {
+      // Try to insert profile row immediately (may already exist via trigger)
+      if (sbClient && data.user.id) {
+        try {
+          await sbClient.from('profiles').upsert({
+            id: data.user.id, email, name, company,
+            plan: 'starter', role: 'subscriber',
+            account_type: type, status: 'trial',
+            trial_start: new Date().toISOString(),
+            trial_end: new Date(Date.now() + 14*86400000).toISOString()
+          }, { onConflict: 'id', ignoreDuplicates: true });
+        } catch(e) {}
+      }
+      // Show success + pre-fill login
+      okEl.innerHTML = '✅ Account created! Check your inbox at <strong>' + email + '</strong> for a confirmation link, then sign in here.';
+      okEl.style.display = 'block';
+      btn.textContent = 'Create Account';
+      btn.disabled = false;
+      // Pre-fill login fields for convenience
+      sessionStorage.setItem('aacg_signup_email', email);
+      sessionStorage.setItem('aacg_signup_name', name);
+    } else {
+      errEl.textContent = 'Unexpected error. Please try again.';
+      errEl.style.display = 'block';
+      btn.textContent = 'Create Account';
+      btn.disabled = false;
+    }
+  } catch(e) {
+    errEl.textContent = 'Network error: ' + e.message;
+    errEl.style.display = 'block';
+    btn.textContent = 'Create Account';
+    btn.disabled = false;
+  }
 }
 
 // Check URL params for new signup (from main site)
