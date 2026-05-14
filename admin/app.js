@@ -3190,6 +3190,56 @@ Provide a complete, actionable report with specific findings, dollar amounts, de
           notes: (result.substring(0,500))
         }).eq('id', selectedJobId).eq('user_id', _logUserId).then(()=>{});
       }
+      // Subcontractor Manager → payment_negotiations (flag sub payment action items)
+      if(agentId === 'sub' || agentId === 'subcontract'){
+        sbClient.from('payment_negotiations').insert({
+          user_id: _logUserId, job_id: selectedJobId||null,
+          status: 'ai_review', amount: 0,
+          notes: 'AI Subcontractor Analysis: ' + result.substring(0,800),
+          created_at: now
+        }).then(()=>{});
+      }
+      // Vendor Qualification → team_members note (flag expiring insurance)
+      if(agentId === 'vendor'){
+        sbClient.from('agent_logs').insert({
+          user_id: _logUserId, agent_name: 'Vendor Qualification — Insurance Alert',
+          action: 'insurance_check', result: result.substring(0,500),
+          created_at: now
+        }).then(()=>{});
+      }
+      // Daily Monitor / Photo Inspector → compliance_items (site issues)
+      if(['dailymonitor','photo','drawing'].includes(agentId)){
+        sbClient.from('compliance_items').insert({
+          user_id: _logUserId, title: a.name + ' — Daily Report',
+          type: agentId === 'photo' ? 'photo_inspection' : agentId === 'drawing' ? 'drawing_review' : 'daily_monitor',
+          status: 'review',
+          notes: result.substring(0,1000),
+          deadline: new Date(Date.now()+7*86400000).toISOString().split('T')[0],
+          created_at: now
+        }).then(()=>{});
+      }
+      // Contract / Schedule / Closeout / Revenue / Payroll → update job record
+      if(['contract','schedule','closeout','revenue','payroll','warranty','material','rfi'].includes(agentId) && selectedJobId){
+        sbClient.from('jobs').update({
+          notes: `[${a.name} — ${new Date().toLocaleDateString()}] ` + result.substring(0,600)
+        }).eq('id', selectedJobId).eq('user_id', _logUserId).then(()=>{});
+      }
+      // Bid Estimator → create invoice draft for the estimate
+      if(agentId === 'bid'){
+        sbClient.from('invoices').insert({
+          user_id: _logUserId, job_id: selectedJobId||null,
+          description: 'AI Bid Estimate', amount: 0, status: 'draft',
+          notes: result.substring(0,1000), created_at: now
+        }).then(()=>{});
+      }
+      // Cash Flow Monitor → update job financial notes
+      if(agentId === 'cashflow'){
+        sbClient.from('agent_logs').insert({
+          user_id: _logUserId, agent_name: 'Cash Flow Monitor — Analysis',
+          action: 'cashflow_analysis', result: result.substring(0,500),
+          created_at: now
+        }).then(()=>{});
+      }
     }
 
   } catch(err) {
