@@ -464,8 +464,9 @@ async function submitPhotos(){
         photoUrl=urlData?.publicUrl;
       }
       await sb.from('photo_submissions').insert({
-        work_order_id:jobId,submitted_by:currentSub.id,caption,
-        photo_url:photoUrl||null,file_name:file.name,created_at:new Date().toISOString()
+        job_id:jobId||null,user_id:currentSub.id,description:caption,
+        photo_url:photoUrl||null,source:'sub_portal',status:'pending',
+        submitted_to_gc:false,created_at:new Date().toISOString()
       });
       uploaded++;
     }catch(e){}
@@ -483,28 +484,28 @@ async function loadNegotiations(){
     const {data}=await sb.from('payment_negotiations').select('*').eq('sub_id',currentSub.id).order('created_at',{ascending:false});
     if(!data||data.length===0){el.innerHTML='<div class="empty"><div class="empty-icon">💰</div><p>No negotiations yet</p></div>';return;}
     el.innerHTML=data.map(n=>{
-      const sc=n.status==='agreed'?'badge-complete':n.status==='pending'||n.status==='countered'?'badge-pending':'badge-active';
+      const sc=n.status==='approved'||n.status==='paid'?'badge-complete':n.status==='pending_gc'||n.status==='pending_owner'?'badge-pending':'badge-active';
       return `<div class="neg-card">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
-          <div><strong style="font-size:.95rem">${n.description||'Scope Item'}</strong>
-          <div style="font-size:.78rem;color:var(--muted);margin-top:2px">${n.project_name||''}</div></div>
-          <span class="badge ${sc}">${n.status||'pending'}</span>
+          <div><strong style="font-size:.95rem">${n.notes||'Payment Negotiation'}</strong>
+          <div style="font-size:.78rem;color:var(--muted);margin-top:2px">AI Suggested: $${Number(n.ai_amount||0).toLocaleString()}</div></div>
+          <span class="badge ${sc}">${n.status||'pending_gc'}</span>
         </div>
         <div class="neg-amounts">
-          <div class="neg-amount"><div class="neg-amount-val" style="color:var(--accent)">$${Number(n.sub_ask||0).toLocaleString()}</div><div class="neg-amount-label">Your Ask</div></div>
-          <div class="neg-amount"><div class="neg-amount-val" style="color:var(--blue)">$${Number(n.gc_counter||0).toLocaleString()}</div><div class="neg-amount-label">GC Counter</div></div>
-          <div class="neg-amount"><div class="neg-amount-val" style="color:var(--green)">$${Number(n.agreed_amount||0).toLocaleString()}</div><div class="neg-amount-label">Agreed</div></div>
+          <div class="neg-amount"><div class="neg-amount-val" style="color:var(--accent)">$${Number(n.sub_requested||0).toLocaleString()}</div><div class="neg-amount-label">Your Ask</div></div>
+          <div class="neg-amount"><div class="neg-amount-val" style="color:var(--blue)">$${Number(n.gc_amount||0).toLocaleString()}</div><div class="neg-amount-label">GC Counter</div></div>
+          <div class="neg-amount"><div class="neg-amount-val" style="color:var(--green)">$${Number(n.final_amount||0).toLocaleString()}</div><div class="neg-amount-label">Agreed</div></div>
         </div>
-        ${n.status!=='agreed'?`<div style="display:flex;gap:8px">
-          ${n.gc_counter?`<button class="btn-green" style="font-size:.8rem;padding:7px 14px" onclick="acceptCounter('${n.id}',${n.gc_counter})">✓ Accept Counter</button>`:''}
-          <button class="btn-secondary" style="font-size:.8rem" onclick="openCounter('${n.id}',${n.sub_ask||0},${n.gc_counter||0})">↕ Counter Offer</button>
+        ${n.status!=='approved'&&n.status!=='paid'?`<div style="display:flex;gap:8px">
+          ${n.gc_amount?`<button class="btn-green" style="font-size:.8rem;padding:7px 14px" onclick="acceptCounter('${n.id}',${n.gc_amount})">✓ Accept Counter</button>`:''}
+          <button class="btn-secondary" style="font-size:.8rem" onclick="openCounter('${n.id}',${n.sub_requested||0},${n.gc_amount||0})">↕ Counter Offer</button>
         </div>`:''}
       </div>`;
     }).join('');
   }catch(e){el.innerHTML='<div class="empty"><div class="empty-icon">⚠️</div><p>Could not load negotiations</p></div>';}
 }
 async function acceptCounter(negId,amount){
-  const {error}=await sb.from('payment_negotiations').update({status:'agreed',agreed_amount:amount}).eq('id',negId);
+  const {error}=await sb.from('payment_negotiations').update({status:'approved',final_amount:amount}).eq('id',negId);
   if(error)return toast('Error accepting counter','error');
   toast('Agreed! Amount: $'+Number(amount).toLocaleString());
   loadNegotiations();loadKPIs();
@@ -519,7 +520,7 @@ async function submitCounter(){
   const amount=parseFloat(document.getElementById('counterAmount').value);
   const note=document.getElementById('counterNote').value.trim();
   if(!amount||amount<=0)return toast('Enter a valid amount','error');
-  const {error}=await sb.from('payment_negotiations').update({sub_ask:amount,gc_notes:note,status:'countered'}).eq('id',activeNegId);
+  const {error}=await sb.from('payment_negotiations').update({sub_requested:amount,notes:note,status:'pending_gc'}).eq('id',activeNegId);
   if(error)return toast('Error submitting counter','error');
   closeModal('counterModal');toast('Counter offer submitted!');loadNegotiations();
 }
@@ -529,12 +530,12 @@ async function loadInvoices(){
   const tbody=document.getElementById('invoicesTbody');
   const empty=document.getElementById('invoicesEmpty');
   try{
-    const {data}=await sb.from('invoices').select('*').eq('sub_id',currentSub.id).order('created_at',{ascending:false});
+    const {data}=await sb.from('invoices').select('*').eq('user_id',currentSub.id).order('created_at',{ascending:false});
     if(!data||data.length===0){document.getElementById('invoicesTable').style.display='none';empty.style.display='block';return;}
     document.getElementById('invoicesTable').style.display='';empty.style.display='none';
     tbody.innerHTML=data.map(inv=>`<tr>
       <td>${inv.invoice_number||inv.id.slice(-8)}</td>
-      <td>${inv.project_name||inv.description||'—'}</td>
+      <td>${inv.client_name||'—'}</td>
       <td>$${Number(inv.amount||0).toLocaleString()}</td>
       <td><span class="badge ${inv.status==='paid'?'badge-complete':inv.status==='approved'?'badge-active':'badge-pending'}">${inv.status||'pending'}</span></td>
       <td>${inv.created_at?new Date(inv.created_at).toLocaleDateString():'—'}</td>
@@ -549,9 +550,9 @@ async function submitInvoice(){
   const date=document.getElementById('invDate').value;
   if(!project||!amount||amount<=0)return toast('Project and amount required','error');
   const {error}=await sb.from('invoices').insert({
-    sub_id:currentSub.id,project_name:project,
+    user_id:currentSub.id,client_name:project,
     invoice_number:number||'INV-'+Date.now().toString().slice(-6),
-    amount,description:desc,work_date:date||null,status:'pending',
+    amount,due_date:date||null,status:'pending',
     created_at:new Date().toISOString()
   });
   if(error)return toast('Error: '+error.message,'error');

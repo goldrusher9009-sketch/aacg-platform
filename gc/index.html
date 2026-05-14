@@ -581,9 +581,8 @@ async function saveGCApproval(negId, newStatus){
   try {
     const updateFields = {
       gc_id:          gcUser.id,       // claim this negotiation for this GC
-      gc_approved:    amount,
-      gc_note:        note,
-      payment_method: method,
+      gc_amount:      amount,
+      notes:          note,
       status:         newStatus,
       gc_reviewed_at: new Date().toISOString()
     };
@@ -609,10 +608,10 @@ async function gcApproveAndPay(negId){
   try {
     await sbClient.from('payment_negotiations').update({
       gc_id:          gcUser.id,
-      gc_approved:    amount,
+      gc_amount:      amount,
+      final_amount:   amount,
       status:         'paid',
       payment_status: 'paid',
-      payment_method: 'manual',
       gc_reviewed_at: new Date().toISOString(),
       paid_at:        new Date().toISOString()
     }).eq('id',negId);
@@ -629,7 +628,7 @@ async function gcForwardToOwner(negId){
   try {
     await sbClient.from('payment_negotiations').update({
       gc_id:          gcUser.id,
-      gc_approved:    n.sub_requested||n.ai_amount,
+      gc_amount:      n.sub_requested||n.ai_amount||0,
       status:         'pending_owner',
       gc_reviewed_at: new Date().toISOString()
     }).eq('id',negId);

@@ -591,8 +591,8 @@ async function ownerRelease(negId, newStatus){
   try {
     const updateFields = {
       owner_id:           ownerUser.id,    // claim this negotiation for this owner
-      owner_released:     amount,
-      owner_note:         note,
+      owner_amount:       amount,
+      notes:              note,
       status:             newStatus,
       owner_reviewed_at:  now
     };
@@ -613,7 +613,8 @@ async function ownerReleaseQuick(negId, amount){
   try {
     await sbClient.from('payment_negotiations').update({
       owner_id:           ownerUser.id,
-      owner_released:     amount,
+      owner_amount:       amount,
+      final_amount:       amount,
       status:             'approved',
       payment_status:     'owner_released',
       owner_reviewed_at:  now,
