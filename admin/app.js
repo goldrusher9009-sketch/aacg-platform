@@ -3176,11 +3176,15 @@ Provide a complete, actionable report with specific findings, dollar amounts, de
         }).then(()=>{});
       }
       // Safety/permit/compliance agents → compliance_items table
+      // compliance_items real cols: name, category, status, notes, deadline
       if(['safety','permit'].includes(agentId)){
         sbClient.from('compliance_items').insert({
-          user_id: _logUserId, title: a.name + ' — AI Report',
-          type: agentId, status: 'review',
-          notes: result.substring(0,1000), deadline: new Date(Date.now()+14*86400000).toISOString().split('T')[0],
+          user_id: _logUserId,
+          name: a.name + ' — AI Report — ' + new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'}),
+          category: agentId === 'safety' ? 'safety' : 'permit',
+          status: 'review',
+          notes: result.substring(0,1000),
+          deadline: new Date(Date.now()+14*86400000).toISOString().split('T')[0],
           created_at: now
         }).then(()=>{});
       }
@@ -3191,15 +3195,16 @@ Provide a complete, actionable report with specific findings, dollar amounts, de
         }).eq('id', selectedJobId).eq('user_id', _logUserId).then(()=>{});
       }
       // Subcontractor Manager → payment_negotiations (flag sub payment action items)
+      // payment_negotiations cols: id,sub_user_id,sub_id,gc_id,owner_id,status,amount,contract_value,notes,photo_url,payment_status,paid_at,created_at
       if(agentId === 'sub' || agentId === 'subcontract'){
         sbClient.from('payment_negotiations').insert({
-          user_id: _logUserId, job_id: selectedJobId||null,
-          status: 'ai_review', amount: 0,
+          sub_user_id: _logUserId,
+          status: 'ai_review', amount: 0, contract_value: 0,
           notes: 'AI Subcontractor Analysis: ' + result.substring(0,800),
-          created_at: now
+          payment_status: 'pending', created_at: now
         }).then(()=>{});
       }
-      // Vendor Qualification → team_members note (flag expiring insurance)
+      // Vendor Qualification → log to agent_logs (no dedicated table)
       if(agentId === 'vendor'){
         sbClient.from('agent_logs').insert({
           user_id: _logUserId, agent_name: 'Vendor Qualification — Insurance Alert',
@@ -3207,32 +3212,41 @@ Provide a complete, actionable report with specific findings, dollar amounts, de
           created_at: now
         }).then(()=>{});
       }
-      // Daily Monitor / Photo Inspector → compliance_items (site issues)
+      // Daily Monitor / Photo Inspector / Drawing → compliance_items
+      // compliance_items cols: id,user_id,name,category,status,deadline,notes,issuer,license_number,reminder_days,created_at,updated_at
       if(['dailymonitor','photo','drawing'].includes(agentId)){
+        const catMap = {photo:'photo_inspection', drawing:'drawing_review', dailymonitor:'daily_monitor'};
         sbClient.from('compliance_items').insert({
-          user_id: _logUserId, title: a.name + ' — Daily Report',
-          type: agentId === 'photo' ? 'photo_inspection' : agentId === 'drawing' ? 'drawing_review' : 'daily_monitor',
+          user_id: _logUserId,
+          name: a.name + ' — ' + new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'}),
+          category: catMap[agentId] || 'inspection',
           status: 'review',
           notes: result.substring(0,1000),
           deadline: new Date(Date.now()+7*86400000).toISOString().split('T')[0],
           created_at: now
         }).then(()=>{});
       }
-      // Contract / Schedule / Closeout / Revenue / Payroll → update job record
+      // Safety / Permit → compliance_items with proper category
+      // (already handled above at agentId === 'safety'/'permit', this adds compliance_items correctly)
+      // Contract / Schedule / Closeout / Revenue / Payroll / Warranty / Material / RFI → update job record
       if(['contract','schedule','closeout','revenue','payroll','warranty','material','rfi'].includes(agentId) && selectedJobId){
         sbClient.from('jobs').update({
-          notes: `[${a.name} — ${new Date().toLocaleDateString()}] ` + result.substring(0,600)
+          notes: '[' + a.name + ' — ' + new Date().toLocaleDateString() + '] ' + result.substring(0,600)
         }).eq('id', selectedJobId).eq('user_id', _logUserId).then(()=>{});
       }
-      // Bid Estimator → create invoice draft for the estimate
+      // Bid Estimator → create invoice draft
+      // invoices cols: id,user_id,job_id,invoice_number,amount,status,client_name,due_date,paid_date,created_at
       if(agentId === 'bid'){
         sbClient.from('invoices').insert({
           user_id: _logUserId, job_id: selectedJobId||null,
-          description: 'AI Bid Estimate', amount: 0, status: 'draft',
-          notes: result.substring(0,1000), created_at: now
+          invoice_number: 'EST-' + Date.now().toString().slice(-6),
+          client_name: 'AI Bid Estimate',
+          amount: 0, status: 'draft',
+          due_date: new Date(Date.now()+30*86400000).toISOString().split('T')[0],
+          created_at: now
         }).then(()=>{});
       }
-      // Cash Flow Monitor → update job financial notes
+      // Cash Flow Monitor → agent_logs (analysis record)
       if(agentId === 'cashflow'){
         sbClient.from('agent_logs').insert({
           user_id: _logUserId, agent_name: 'Cash Flow Monitor — Analysis',
