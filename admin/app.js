@@ -2723,8 +2723,33 @@ function timeAgo(d){
 
 
 // ────────────────────────────────────────────────
-// EXECUTION MODAL
+// EXECUTION MODAL — full-screen two-column rebuild
 // ────────────────────────────────────────────────
+
+// Agent-specific prerequisite fields and Supabase data fetchers
+const AGENT_CONFIG = {
+  lien:        { req: ['execProj','execState'], reqLabels: ['Project','State'], hint: 'Select a project and state to generate lien protection analysis.' },
+  bid:         { req: ['execProj','execScope'], reqLabels: ['Project','Scope of Work'], hint: 'Select project and describe scope (e.g. "2,500 sqft commercial tenant improvement, drywall + MEP").' },
+  invoice:     { req: ['execProj'], reqLabels: ['Project'], hint: 'Select the project to generate invoice from completed work.' },
+  cash:        { req: [], reqLabels: [], hint: 'Analyzes all your AR/AP data automatically.' },
+  photo:       { req: ['execFile'], reqLabels: ['Site Photo'], hint: 'Upload a site photo (JPG/PNG) for AI safety and progress analysis.' },
+  safety:      { req: ['execProj'], reqLabels: ['Project'], hint: 'Select a project to run OSHA safety compliance check.' },
+  change:      { req: ['execProj','execScope'], reqLabels: ['Project','Change Description'], hint: 'Describe the scope change (e.g. "Add 200LF of irrigation — owner directed verbal").' },
+  vendor:      { req: [], reqLabels: [], hint: 'Scans all subcontractors in your account for expired credentials.' },
+  contract:    { req: ['execFile'], reqLabels: ['Contract PDF/Document'], hint: 'Upload the contract document to analyze for risk and unfavorable clauses.' },
+  subcontract: { req: ['execProj'], reqLabels: ['Project'], hint: 'Select project to review subcontractor payment and lien waiver status.' },
+  closeout:    { req: ['execProj'], reqLabels: ['Project'], hint: 'Select the project approaching completion for closeout checklist.' },
+  forecast:    { req: [], reqLabels: [], hint: 'Forecasts revenue across all your active projects.' },
+  permit:      { req: ['execProj'], reqLabels: ['Project'], hint: 'Select a project to check permit status and upcoming inspections.' },
+  daily:       { req: ['execProj'], reqLabels: ['Project'], hint: 'Select a project for today\'s site monitoring digest.' },
+  material:    { req: ['execProj'], reqLabels: ['Project'], hint: 'Select a project to review material delivery and procurement status.' },
+  drawing:     { req: ['execProj'], reqLabels: ['Project'], hint: 'Select a project to check drawing revision distribution.' },
+  warranty:    { req: ['execProj'], reqLabels: ['Project'], hint: 'Select project to track equipment warranties and expiration alerts.' },
+  payroll:     { req: ['execProj'], reqLabels: ['Project'], hint: 'Select project to verify timesheet and payroll data.' },
+  rfi:         { req: ['execProj'], reqLabels: ['Project'], hint: 'Select project to manage open RFIs and overdue responses.' },
+  schedule:    { req: ['execProj'], reqLabels: ['Project'], hint: 'Select project to optimize schedule and identify critical path risks.' },
+};
+
 async function openExecModal(agentId){
   const a = AGENTS.find(x=>x.id===agentId);
   if(!a) return;
@@ -2741,48 +2766,129 @@ async function openExecModal(agentId){
   const btnColor = isFree ? 'var(--green)' : a.color;
   const runFn    = isFree ? `runFreeAgent('${agentId}')` : `runAgent('${agentId}')`;
   // Fetch real projects from Supabase
-  let projOpts = '<option value="">— select project —</option>';
+  let projOpts = '<option value="">— Select Project —</option>';
   if(USE_SB && window._sbUserId){
     try{
       const {data} = await sbQuery(sbClient.from('jobs').select('id,name').eq('user_id',window._sbUserId).order('name'));
-      if(data && data.length) projOpts = data.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+      if(data && data.length) projOpts = '<option value="">— Select Project —</option>' + data.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+      else projOpts = '<option value="">— No projects yet —</option>';
     }catch(e){}
   }
+
+  const cfg = AGENT_CONFIG[agentId] || { req: [], reqLabels: [], hint: '' };
+  const needsProject = cfg.req.includes('execProj');
+  const needsScope   = cfg.req.includes('execScope');
+  const needsState   = cfg.req.includes('execState');
+  const needsFile    = cfg.req.includes('execFile');
+  const US_STATES    = ['AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA','HI','ID','IL','IN','IA','KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY'];
+
   document.getElementById('execModal').style.display = 'flex';
   document.getElementById('execModalInner').innerHTML = `
-    <div class="modal-header">
-      <div class="modal-title">${a.icon} ${a.name} ${tierLabel}</div>
-      <button class="modal-close" onclick="closeExecModal()">×</button>
-    </div>
-    <p style="color:var(--muted);font-size:.83rem;margin-bottom:12px">${a.desc}</p>
-    ${isFree ? `<div style="background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.25);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:.78rem;color:var(--green)">⚡ This is a <strong>free agent</strong> — runs instantly with no API key using built-in IronForge logic.</div>` : `<div style="background:rgba(139,92,246,.08);border:1px solid rgba(139,92,246,.25);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:.78rem;color:var(--purple)">☁ <strong>Cloud AI agent</strong> — powered by Claude AI. <span style="color:var(--green);font-weight:700">✅ API key pre-configured — runs immediately.</span></div>`}
-    <div class="exec-form">
-      <div class="form-row">
-        <div><label>Project</label>
-          <select id="execProj">${projOpts}</select></div>
-        <div><label>Priority</label>
-          <select id="execPri"><option>Normal</option><option>High</option><option>Urgent</option></select></div>
+    <div class="exec-modal-header">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:1.5rem">${a.icon}</span>
+        <div>
+          <div style="font-size:1rem;font-weight:700">${a.name} ${tierLabel}</div>
+          <div style="font-size:.73rem;color:var(--muted)">${a.tags.join(' · ')}</div>
+        </div>
       </div>
-      <label>Additional Notes (optional)</label>
-      <textarea id="execNotes" placeholder="Any specific instructions or context for this agent…" style="margin-top:4px"></textarea>
-      <label style="margin-top:10px;display:block">Attach File (optional — PDF, image, CSV)</label>
-      <input type="file" id="execAttachment" accept=".pdf,.jpg,.jpeg,.png,.csv,.txt,.xlsx" style="margin-top:4px;background:var(--mid);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--light);font-size:.8rem;width:100%">
-      <div style="font-size:.72rem;color:var(--muted);margin-top:3px">Attach a contract, drawing, photo, timesheet, or any relevant document for the agent to analyze.</div>
-      <button class="exec-btn" id="execRunBtn" style="background:${btnColor}" onclick="${runFn}">${btnLabel}</button>
+      <button class="modal-close" onclick="closeExecModal()" style="font-size:1.6rem">×</button>
     </div>
-    <div class="progress-section" id="progSec">
-      <div style="font-weight:700;font-size:.84rem;margin-bottom:10px">Running…</div>
-      <div class="progress-bar-wrap"><div class="progress-bar-fill" id="progBar" style="width:0%"></div></div>
-      <div class="step-list" id="stepList">${a.steps.map((s,i)=>`
-        <div class="step-item" id="si-${i}">
-          <div class="step-status pending-s" id="ss-${i}">○</div>
-          <div>${s}</div>
-        </div>`).join('')}</div>
-      <div class="exec-log" id="execLog"></div>
+    <div class="exec-modal-body">
+      <!-- LEFT: form -->
+      <div class="exec-left">
+        <div class="exec-agent-desc">${a.desc}</div>
+        ${cfg.hint ? `<div style="background:rgba(42,125,225,.08);border:1px solid rgba(42,125,225,.25);border-radius:8px;padding:9px 12px;font-size:.75rem;color:#60a5fa">💡 ${cfg.hint}</div>` : ''}
+        ${isFree
+          ? `<div style="background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.25);border-radius:8px;padding:9px 12px;font-size:.75rem;color:var(--green)">⚡ <strong>Free agent</strong> — runs instantly, no API key needed.</div>`
+          : `<div style="background:rgba(139,92,246,.08);border:1px solid rgba(139,92,246,.25);border-radius:8px;padding:9px 12px;font-size:.75rem;color:var(--purple)">☁ <strong>Cloud AI agent</strong> — powered by Claude AI. ✅ Pre-configured.</div>`}
+        <div class="exec-form" style="display:flex;flex-direction:column;gap:10px">
+          ${needsProject ? `<div><label>Project <span class="req">*</span></label><select id="execProj" onchange="execCheckReady('${agentId}')">${projOpts}</select></div>` : ''}
+          ${needsState   ? `<div><label>State <span class="req">*</span></label><select id="execState" onchange="execCheckReady('${agentId}')"><option value="">— Select State —</option>${US_STATES.map(s=>`<option value="${s}">${s}</option>`).join('')}</select></div>` : ''}
+          ${needsScope   ? `<div><label>Scope / Description <span class="req">*</span></label><textarea id="execScope" placeholder="Describe the scope, change, or work details…" onkeyup="execCheckReady('${agentId}')"></textarea></div>` : ''}
+          ${needsFile    ? `<div><label>Upload File <span class="req">*</span></label><input type="file" id="execFile" accept=".pdf,.jpg,.jpeg,.png,.csv,.txt,.xlsx" onchange="execCheckReady('${agentId}')" style="background:var(--mid);border:1px solid var(--border);border-radius:7px;padding:8px;color:var(--text);font-size:.8rem;width:100%"><div style="font-size:.7rem;color:var(--muted);margin-top:3px">Upload contract, photo, drawing, or timesheet for AI analysis.</div></div>` : ''}
+          <div><label>Additional Notes (optional)</label><textarea id="execNotes" placeholder="Any extra context or instructions for this agent…"></textarea></div>
+          ${!needsFile ? `<div><label>Attach Supporting File (optional)</label><input type="file" id="execAttachment" accept=".pdf,.jpg,.jpeg,.png,.csv,.txt,.xlsx" style="background:var(--mid);border:1px solid var(--border);border-radius:7px;padding:8px;color:var(--text);font-size:.8rem;width:100%"></div>` : ''}
+          <div id="execPrereqBanner" class="exec-prereq-banner${cfg.req.length ? ' show' : ''}">
+            ⚠️ Please fill in all required fields (marked <span style="color:var(--red)">*</span>) before running.
+          </div>
+          <button class="exec-btn" id="execRunBtn" style="background:${btnColor}" onclick="${runFn}" ${cfg.req.length ? 'disabled' : ''}>${btnLabel}</button>
+        </div>
+        <!-- Progress steps shown here while running -->
+        <div id="execStepsArea" style="display:none;margin-top:8px">
+          <div style="font-size:.74rem;font-weight:700;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.04em">Progress</div>
+          <div class="exec-progress-bar-wrap"><div class="exec-progress-bar-fill" id="progBar" style="width:0%"></div></div>
+          <div class="exec-step-list" id="stepList">${a.steps.map((s,i)=>`
+            <div class="exec-step-item" id="si-${i}">
+              <div class="exec-step-dot" id="ss-${i}"></div>
+              <div>${s}</div>
+            </div>`).join('')}
+          </div>
+        </div>
+      </div>
+      <!-- RIGHT: result -->
+      <div class="exec-right">
+        <div class="exec-right-top">
+          <span id="execResultLabel">Results will appear here after running the agent</span>
+          <button class="exec-save-btn" id="execSaveBtn" onclick="execSaveResult('${agentId}')">💾 Save to Dashboard</button>
+        </div>
+        <div class="exec-result-area empty" id="execResultArea">
+          <div>
+            <div style="font-size:2rem;margin-bottom:12px;opacity:.3">${a.icon}</div>
+            <div style="font-weight:600;margin-bottom:6px;color:var(--muted)">Ready to run</div>
+            <div style="font-size:.8rem;color:var(--muted);max-width:260px;line-height:1.5">Fill in the required fields on the left, then click <strong style="color:var(--light)">${btnLabel}</strong> to get your AI analysis.</div>
+          </div>
+        </div>
+      </div>
     </div>`;
 }
 
-function closeExecModal(){ document.getElementById('execModal').style.display='none'; }
+function closeExecModal(){ document.getElementById('execModal').style.display='none'; window._lastAgentResult = null; }
+
+function execCheckReady(agentId){
+  const cfg = AGENT_CONFIG[agentId] || { req: [] };
+  const btn = document.getElementById('execRunBtn');
+  const banner = document.getElementById('execPrereqBanner');
+  if(!btn) return;
+  let allFilled = true;
+  for(const fieldId of cfg.req){
+    const el = document.getElementById(fieldId);
+    if(!el) continue;
+    if(el.tagName === 'SELECT' && !el.value){ allFilled = false; break; }
+    if(el.tagName === 'TEXTAREA' && !el.value.trim()){ allFilled = false; break; }
+    if(el.type === 'file' && !el.files?.length){ allFilled = false; break; }
+    if(el.tagName === 'INPUT' && el.type !== 'file' && !el.value.trim()){ allFilled = false; break; }
+  }
+  btn.disabled = !allFilled;
+  if(banner){ banner.classList.toggle('show', !allFilled && cfg.req.length > 0); }
+}
+
+async function execSaveResult(agentId){
+  const result = window._lastAgentResult;
+  if(!result || !window._sbUserId || !sbClient) return;
+  const btn = document.getElementById('execSaveBtn');
+  if(btn){ btn.textContent = '⏳ Saving…'; btn.disabled = true; }
+  const now = new Date().toISOString();
+  const selectedJobId = document.getElementById('execProj')?.value || null;
+  const a = AGENTS.find(x=>x.id===agentId);
+  try{
+    // Save logic mirrors runAgent save block
+    if(agentId==='lien'){
+      await sbClient.from('liens').insert({ user_id:window._sbUserId, job_name:'AI Analysis — '+(document.getElementById('execProj')?.options[document.getElementById('execProj')?.selectedIndex]?.text||'All Projects'), status:'draft', amount:0, deadline:new Date(Date.now()+30*86400000).toISOString().split('T')[0], notes:result.substring(0,1000), created_at:now });
+    } else if(agentId==='invoice'||agentId==='bid'){
+      await sbClient.from('invoices').insert({ user_id:window._sbUserId, job_id:selectedJobId||null, invoice_number:(agentId==='bid'?'EST-':'AI-')+Date.now().toString().slice(-6), client_name:agentId==='bid'?'AI Bid Estimate':'AI Invoice', amount:0, status:'draft', due_date:new Date(Date.now()+30*86400000).toISOString().split('T')[0], created_at:now });
+    } else if(['safety','permit','photo','drawing','daily'].includes(agentId)){
+      const catMap={safety:'safety',permit:'permit',photo:'photo_inspection',drawing:'drawing_review',daily:'daily_monitor'};
+      await sbClient.from('compliance_items').insert({ user_id:window._sbUserId, name:(a?.name||agentId)+' — AI Report — '+new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'}), category:catMap[agentId]||'inspection', status:'review', notes:result.substring(0,1000), deadline:new Date(Date.now()+14*86400000).toISOString().split('T')[0], created_at:now });
+    } else if(selectedJobId){
+      await sbClient.from('jobs').update({ notes:'['+( a?.name||agentId)+' — '+new Date().toLocaleDateString()+'] '+result.substring(0,600) }).eq('id',selectedJobId).eq('user_id',window._sbUserId);
+    }
+    if(btn){ btn.textContent='✅ Saved!'; btn.style.background='var(--green)'; }
+    addNotification('Result Saved', (a?.name||agentId)+' analysis saved to your dashboard.', 'success');
+  } catch(e){
+    if(btn){ btn.textContent='❌ Error'; btn.disabled=false; }
+  }
+}
 
 // ── AGENT PROMPTS: each agent has a real system prompt defining its expertise ──
 const AGENT_PROMPTS = {
@@ -2825,19 +2931,19 @@ function sbLogAgent(agentName, action, result){
 async function runFreeAgent(agentId){
   const a = AGENTS.find(x=>x.id===agentId);
   const btn = document.getElementById('execRunBtn');
-  const log = document.getElementById('execLog');
+  const resultArea = document.getElementById('execResultArea');
+  const stepsArea  = document.getElementById('execStepsArea');
   btn.disabled = true; btn.textContent = 'Running...';
-  document.getElementById('progSec').classList.add('show');
-  log.innerHTML = '';
+  if(stepsArea) stepsArea.style.display = 'block';
+  resultArea.classList.remove('empty');
+  resultArea.innerHTML = `<div style="color:var(--muted);font-size:.84rem;padding:20px">⏳ Fetching your live data from Supabase…</div>`;
 
   a.steps.forEach((_,i) => {
     const el = document.getElementById(`ss-${i}`);
-    if(el){ el.className = 'step-status'; el.textContent = 'o'; }
+    if(el){ el.className = 'exec-step-dot'; el.textContent = ''; }
+    const si = document.getElementById(`si-${i}`);
+    if(si){ si.className = 'exec-step-item'; }
   });
-
-  const ts = () => new Date().toLocaleTimeString('en-US',{hour12:false});
-  log.innerHTML += `<div class="log-line info">[${ts()}] Fetching your real data from Supabase...</div>`;
-  log.scrollTop = log.scrollHeight;
 
   // Fetch real data for this user
   let projects = [], liens = [], complianceItems = [], agentLogs = [];
@@ -2863,24 +2969,26 @@ async function runFreeAgent(agentId){
     await new Promise(r => setTimeout(r, delay));
     if(i > 0){
       const prev = document.getElementById(`ss-${i-1}`);
-      if(prev){ prev.className='step-status done-s'; prev.textContent='v'; }
+      if(prev){ prev.className='exec-step-dot done'; prev.textContent='✓'; }
+      const sip = document.getElementById(`si-${i-1}`);
+      if(sip) sip.className='exec-step-item done';
     }
     const el = document.getElementById(`ss-${i}`);
-    if(el){ el.className='step-status running-s'; el.textContent='...'; }
+    if(el){ el.className='exec-step-dot running'; el.textContent=''; }
     const si = document.getElementById(`si-${i}`);
-    if(si) si.style.background='rgba(16,185,129,.06)';
-    document.getElementById('progBar').style.background = 'var(--green)';
-    document.getElementById('progBar').style.width = Math.round((i+1)/totalSteps*90)+'%';
-    log.innerHTML += `<div class="log-line info">[${ts()}] ${a.steps[i]}</div>`;
-    log.scrollTop = log.scrollHeight;
+    if(si) si.className='exec-step-item active';
+    const pb = document.getElementById('progBar');
+    if(pb){ pb.style.width = Math.round((i+1)/totalSteps*90)+'%'; pb.style.background='var(--green)'; }
   }
   await new Promise(r => setTimeout(r, 300));
   a.steps.forEach((_,i) => {
     const el = document.getElementById(`ss-${i}`);
-    if(el){ el.className='step-status done-s'; el.textContent='v'; }
+    if(el){ el.className='exec-step-dot done'; el.textContent='✓'; }
+    const si = document.getElementById(`si-${i}`);
+    if(si) si.className='exec-step-item done';
   });
-  document.getElementById('progBar').style.width = '100%';
-  document.getElementById('progBar').style.background = 'var(--green)';
+  const pb = document.getElementById('progBar');
+  if(pb){ pb.style.width='100%'; pb.style.background='var(--green)'; }
 
   // Build real summary from actual data
   let summary = '';
@@ -2928,16 +3036,28 @@ async function runFreeAgent(agentId){
     summary = lines_out.join('');
   }
 
-  log.innerHTML += `<div style="margin-top:12px;padding:14px;background:var(--mid);border-radius:8px;border-left:3px solid var(--green);font-size:.82rem;line-height:1.6">${summary}</div>`;
-  log.innerHTML += `<div class="log-line success">[${ts()}] ${a.name} completed -- data fetched live from your account</div>`;
-  log.scrollTop = log.scrollHeight;
-  btn.textContent = 'Done';
+  // Render into large right panel
+  resultArea.innerHTML = `
+    <div class="exec-result-section">
+      <h3>${a.icon} ${a.name} — Live Data Summary</h3>
+      ${noData
+        ? `<div style="color:var(--muted);font-size:.85rem;padding:10px 0">No data yet — add your projects first in the Projects panel.</div>`
+        : summary
+      }
+    </div>
+    <div style="font-size:.73rem;color:var(--green);margin-top:6px">✅ Data fetched live from your Supabase account — ${new Date().toLocaleTimeString()}</div>`;
+  const lbl = document.getElementById('execResultLabel');
+  if(lbl) lbl.textContent = a.name + ' — Live Analysis Complete';
+  const saveBtn = document.getElementById('execSaveBtn');
+  if(saveBtn) saveBtn.classList.add('show');
+  window._lastAgentResult = summary;
+  btn.textContent = '✅ Done';
   btn.style.background = 'var(--green)';
-  addNotification(`${a.name} Complete`, noData ? 'No data yet -- add projects first.' : 'Real data summary generated from your account.', 'success');
+  addNotification(`${a.name} Complete`, noData ? 'No data yet — add projects first.' : 'Live data summary generated.', 'success');
   sbLogAgent(a.name, 'free_run', noData ? 'no_data' : 'data_summarized');
 }
 
-// ── REAL AI AGENT RUNNER — calls Claude API via Anthropic ──
+// ── REAL AI AGENT RUNNER — calls Claude AI via OpenRouter/Anthropic ──
 async function runAgent(agentId){
   const a = AGENTS.find(x=>x.id===agentId);
 
@@ -2948,34 +3068,35 @@ async function runAgent(agentId){
   }
 
   const btn = document.getElementById('execRunBtn');
-  const log = document.getElementById('execLog');
+  const resultArea = document.getElementById('execResultArea');
+  const stepsArea  = document.getElementById('execStepsArea');
   btn.disabled = true; btn.textContent = '⏳ Running…';
-  document.getElementById('progSec').classList.add('show');
-  log.innerHTML = '';
+  if(stepsArea) stepsArea.style.display = 'block';
+  resultArea.classList.remove('empty');
+  resultArea.innerHTML = `<div style="color:var(--muted);font-size:.84rem;padding:20px;display:flex;align-items:center;gap:10px"><span style="animation:pulse-s .8s infinite;display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--red)"></span> Connecting to IronForge AI Engine…</div>`;
 
-  // Mark all steps as running
+  // Mark all steps pending
   a.steps.forEach((_,i) => {
     const el = document.getElementById(`ss-${i}`);
-    if(el){ el.className = 'step-status'; el.textContent = '○'; }
+    if(el){ el.className = 'exec-step-dot'; el.textContent = ''; }
+    const si = document.getElementById(`si-${i}`);
+    if(si) si.className = 'exec-step-item';
   });
-
-  const ts = () => new Date().toLocaleTimeString('en-US',{hour12:false});
-  log.innerHTML += `<div class="log-line info">[${ts()}] 🤖 Connecting to IronForge AI Engine…</div>`;
-  log.scrollTop = log.scrollHeight;
 
   // Get API key from config or prompt
   const apiKey = window.IRONFORGE_API_KEY || '';
 
   if(!apiKey){
-    // Show API key input UI
-    log.innerHTML += `<div class="log-line warn">[${ts()}] ⚠️ No AI API key configured. Enter your OpenRouter or Anthropic API key below.</div>`;
-    log.innerHTML += `<div style="margin:12px 0;display:flex;gap:8px;align-items:center">
-      <input id="apiKeyInput" type="password" placeholder="sk-or-v1-... or sk-ant-api03-..." style="flex:1;background:var(--mid);border:1px solid var(--border);color:var(--light);padding:8px 12px;border-radius:6px;font-family:monospace;font-size:.8rem" />
-      <button onclick="saveApiKey('${agentId}')" style="background:var(--red);color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-weight:700">Connect & Run</button>
-    </div>
-    <div style="font-size:.72rem;color:var(--muted);margin-top:4px">Use your <a href="https://openrouter.ai/keys" target="_blank" style="color:var(--red)">OpenRouter key</a> (sk-or-...) or <a href="https://console.anthropic.com" target="_blank" style="color:var(--red)">Anthropic key</a> — stays in your browser only.</div>`;
-    log.scrollTop = log.scrollHeight;
-    document.getElementById('progBar').style.width = '0%';
+    resultArea.innerHTML = `
+      <div style="padding:24px;max-width:480px">
+        <div style="color:var(--orange);font-weight:700;margin-bottom:12px">⚠️ No AI API key configured</div>
+        <div style="color:var(--muted);font-size:.83rem;margin-bottom:16px">Enter your OpenRouter or Anthropic API key to run cloud AI agents.</div>
+        <div style="display:flex;gap:8px;margin-bottom:8px">
+          <input id="apiKeyInput" type="password" placeholder="sk-or-v1-... or sk-ant-..." style="flex:1;background:var(--mid);border:1px solid var(--border);color:var(--light);padding:9px 12px;border-radius:7px;font-family:monospace;font-size:.8rem" />
+          <button onclick="saveApiKey('${agentId}')" style="background:var(--red);color:#fff;border:none;padding:9px 18px;border-radius:7px;cursor:pointer;font-weight:700;white-space:nowrap">Connect & Run</button>
+        </div>
+        <div style="font-size:.72rem;color:var(--muted)">Get a free key at <a href="https://openrouter.ai/keys" target="_blank" style="color:var(--red)">openrouter.ai</a> or <a href="https://console.anthropic.com" target="_blank" style="color:var(--red)">console.anthropic.com</a></div>
+      </div>`;
     btn.textContent = '▶ Execute ' + a.name;
     btn.disabled = false;
     return;
@@ -2995,38 +3116,40 @@ async function runAgent(agentId){
   const stepInterval = setInterval(() => {
     if(stepIdx > 0){
       const prev = document.getElementById(`ss-${stepIdx-1}`);
-      if(prev){ prev.className='step-status done-s'; prev.textContent='✓'; }
+      if(prev){ prev.className='exec-step-dot done'; prev.textContent='✓'; }
+      const sip = document.getElementById(`si-${stepIdx-1}`);
+      if(sip) sip.className='exec-step-item done';
     }
     if(stepIdx < a.steps.length){
       const el = document.getElementById(`ss-${stepIdx}`);
-      if(el){ el.className='step-status running-s'; el.textContent='…'; }
-      document.getElementById(`si-${stepIdx}`).style.background='rgba(255,58,45,.06)';
-      document.getElementById('progBar').style.width = Math.round((stepIdx+1)/a.steps.length*90)+'%';
-      log.innerHTML += `<div class="log-line info">[${ts()}] ${a.steps[stepIdx]}</div>`;
-      log.scrollTop = log.scrollHeight;
+      if(el){ el.className='exec-step-dot running'; el.textContent=''; }
+      const si = document.getElementById(`si-${stepIdx}`);
+      if(si) si.className='exec-step-item active';
+      const pb = document.getElementById('progBar');
+      if(pb) pb.style.width = Math.round((stepIdx+1)/a.steps.length*90)+'%';
       stepIdx++;
     }
   }, 900);
 
-  // Read optional attachment
+  // Read required file (contract analyzer, photo inspector) or optional attachment
   let attachmentContext = '';
-  const attachFile = document.getElementById('execAttachment')?.files?.[0];
+  const reqFile  = document.getElementById('execFile')?.files?.[0];
+  const attachFile = reqFile || document.getElementById('execAttachment')?.files?.[0];
   if(attachFile){
-    log.innerHTML += `<div class="log-line info">[${ts()}] 📎 Reading attachment: ${attachFile.name}…</div>`;
     try {
       attachmentContext = await new Promise((resolve,reject)=>{
         const reader = new FileReader();
         if(attachFile.type.startsWith('image/')){
-          reader.onload = e => resolve(`\n\n[ATTACHED IMAGE: ${attachFile.name}]\nNote: Image attached for analysis.`);
+          reader.onload = e => resolve(`\n\n[ATTACHED IMAGE: ${attachFile.name}]\nNote: Image attached for visual analysis.`);
         } else {
-          reader.onload = e => resolve(`\n\n[ATTACHED FILE: ${attachFile.name}]\n${e.target.result.substring(0,3000)}`);
+          reader.onload = e => resolve(`\n\n[ATTACHED FILE: ${attachFile.name}]\n${e.target.result.substring(0,4000)}`);
           reader.onerror = reject;
           reader.readAsText(attachFile);
           return;
         }
         reader.readAsDataURL(attachFile);
       });
-    } catch(e){ log.innerHTML += `<div class="log-line warn">[${ts()}] ⚠️ Could not read attachment</div>`; }
+    } catch(e){ console.warn('Could not read attachment'); }
   }
 
   // Get user notes
@@ -3043,16 +3166,25 @@ async function runAgent(agentId){
       }
     } catch(e){ console.warn('[Agent] Could not fetch jobs for context', e); }
   }
-  const jobContext = currentUser ? `Contractor: ${currentUser.name} at ${currentUser.company}\nActive Projects: ${realJobsContext}\nCurrent Date: ${new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}` : '';
+  // Build agent-specific context from form fields
+  const selectedProjText = document.getElementById('execProj')?.options[document.getElementById('execProj')?.selectedIndex]?.text || '';
+  const selectedState    = document.getElementById('execState')?.value || '';
+  const scopeText        = document.getElementById('execScope')?.value?.trim() || '';
 
+  let agentSpecificContext = '';
+  if(selectedProjText && selectedProjText !== '— Select Project —') agentSpecificContext += `\nSelected Project: ${selectedProjText}`;
+  if(selectedState)  agentSpecificContext += `\nState: ${selectedState}`;
+  if(scopeText)      agentSpecificContext += `\nScope/Description: ${scopeText}`;
+
+  const jobContext = `Contractor: ${currentUser?.name||'User'} at ${currentUser?.company||'Company'}\nActive Projects: ${realJobsContext}\nCurrent Date: ${new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}${agentSpecificContext}`;
 
   const systemPrompt = AGENT_PROMPTS[agentId] || `You are the ${a.name} AI agent for IronForge construction management platform. Perform your analysis and return actionable results.`;
 
   try {
     // Build request for OpenRouter or Anthropic
-    const userMsg = `Run a full analysis now.${jobContext ? '\n\nContext:\n' + jobContext : ''}${userNotes ? '\n\nSpecific instructions: ' + userNotes : ''}${attachmentContext}
+    const userMsg = `Run a complete analysis now.\n\nContext:\n${jobContext}${userNotes ? '\n\nAdditional Instructions: ' + userNotes : ''}${attachmentContext}
 
-Provide a complete, actionable report with specific findings, dollar amounts, deadlines, and recommended actions. Format with clear sections using markdown-style headers. Reference any attached documents in your analysis.`;
+Provide a thorough, actionable report with specific findings, real dollar amounts, exact deadlines, and clear recommended next actions. Use clear section headers (##) and bullet points (-) for readability. Be specific and construction-industry-accurate.`;
 
     let fetchOpts;
     if(isOpenRouter){
@@ -3107,26 +3239,42 @@ Provide a complete, actionable report with specific findings, dollar amounts, de
 
     // Mark all steps done
     a.steps.forEach((_,i) => {
-      const el = document.getElementById(`ss-${i}`);
-      if(el){ el.className='step-status done-s'; el.textContent='✓'; }
+      const dotEl = document.getElementById(`ss-${i}`);
+      if(dotEl){ dotEl.className='exec-step-dot done'; dotEl.textContent='✓'; }
+      const stepEl = document.getElementById(`si-${i}`);
+      if(stepEl){ stepEl.className='exec-step-item done'; }
     });
-    document.getElementById('progBar').style.width = '100%';
-    document.getElementById('progBar').style.background = 'var(--green)';
+    const pb = document.getElementById('progBar');
+    if(pb){ pb.style.width='100%'; pb.style.background='var(--green)'; }
 
-    // Render AI output
+    // Render AI output into right panel
+    const resultArea = document.getElementById('execResultArea');
     const formatted = result
-      .replace(/^### (.+)$/gm, '<div style="color:var(--red);font-weight:700;margin-top:12px;font-size:.85rem">$1</div>')
-      .replace(/^## (.+)$/gm, '<div style="color:var(--light);font-weight:700;margin-top:14px;font-size:.9rem;border-bottom:1px solid var(--border);padding-bottom:4px">$1</div>')
-      .replace(/^\*\*(.+)\*\*$/gm, '<div style="color:var(--light);font-weight:700;margin-top:8px">$1</div>')
+      .replace(/^### (.+)$/gm, '<div style="color:var(--red);font-weight:700;margin-top:14px;font-size:.88rem;text-transform:uppercase;letter-spacing:.5px">$1</div>')
+      .replace(/^## (.+)$/gm, '<div style="color:var(--light);font-weight:700;margin-top:18px;font-size:.95rem;border-bottom:1px solid var(--border);padding-bottom:6px;margin-bottom:8px">$1</div>')
+      .replace(/^\*\*(.+)\*\*$/gm, '<div style="color:var(--light);font-weight:700;margin-top:10px">$1</div>')
       .replace(/\*\*(.+?)\*\*/g, '<strong style="color:var(--light)">$1</strong>')
-      .replace(/^- (.+)$/gm, '<div style="padding:2px 0 2px 12px;border-left:2px solid var(--red);margin:3px 0;color:var(--muted)">$1</div>')
-      .replace(/^(\d+)\. (.+)$/gm, '<div style="padding:2px 0 2px 8px;color:var(--muted);margin:3px 0"><span style="color:var(--red);font-weight:700">$1.</span> $2</div>')
+      .replace(/^- (.+)$/gm, '<div style="padding:4px 0 4px 14px;border-left:2px solid var(--red);margin:4px 0;color:var(--muted)">$1</div>')
+      .replace(/^(\d+)\. (.+)$/gm, '<div style="padding:4px 0 4px 10px;color:var(--muted);margin:4px 0"><span style="color:var(--red);font-weight:700">$1.</span> $2</div>')
       .replace(/\n\n/g, '<br><br>')
       .replace(/\n/g, '<br>');
 
-    log.innerHTML += `<div style="margin-top:12px;padding:14px;background:var(--mid);border-radius:8px;border-left:3px solid var(--red);font-size:.82rem;line-height:1.6">${formatted}</div>`;
-    log.innerHTML += `<div class="log-line success">[${ts()}] ✅ ${a.name} completed — real AI analysis by Claude</div>`;
-    log.scrollTop = log.scrollHeight;
+    if(resultArea){
+      resultArea.classList.remove('empty');
+      resultArea.innerHTML = `<div class="exec-result-section">${formatted}</div>
+        <div style="margin-top:12px;padding:10px 14px;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.25);border-radius:8px;font-size:.8rem;color:var(--green)">
+          ✅ ${a.name} analysis complete — powered by Claude AI
+        </div>`;
+      resultArea.scrollTop = 0;
+    }
+
+    // Store result & show save button
+    window._lastAgentResult = result;
+    const saveBtn = document.getElementById('execSaveBtn');
+    if(saveBtn) saveBtn.classList.add('show');
+    const resultLabel = document.getElementById('execResultLabel');
+    if(resultLabel) resultLabel.textContent = a.name + ' — Analysis Complete';
+
     btn.textContent = '✅ Completed';
     btn.style.background = 'var(--green)';
     // Fire in-app notification
@@ -3268,13 +3416,20 @@ Provide a complete, actionable report with specific findings, dollar amounts, de
 
   } catch(err) {
     clearInterval(stepInterval);
-    document.getElementById('progBar').style.background = 'var(--red)';
-    log.innerHTML += `<div class="log-line error">[${ts()}] ❌ Error: ${err.message}</div>`;
-    if(err.message.includes('401') || err.message.includes('invalid')) {
-      log.innerHTML += `<div class="log-line warn">[${ts()}] ⚠️ Invalid API key. <a href="https://console.anthropic.com" target="_blank" style="color:var(--red)">Get a key at console.anthropic.com</a></div>`;
+    const resultArea = document.getElementById('execResultArea');
+    if(resultArea){
+      resultArea.classList.remove('empty');
+      resultArea.innerHTML = `<div style="padding:16px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.3);border-radius:8px;">
+        <div style="color:var(--red);font-weight:700;margin-bottom:8px">❌ Agent Error</div>
+        <div style="color:var(--muted);font-size:.85rem">${err.message}</div>
+        ${(err.message.includes('401') || err.message.includes('invalid') || err.message.includes('Unauthorized'))
+          ? `<div style="margin-top:10px;color:var(--muted);font-size:.82rem">⚠️ Invalid or expired API key. <a href="https://console.anthropic.com" target="_blank" style="color:var(--red)">Get a new key →</a></div>`
+          : ''}
+      </div>`;
+    }
+    if(err.message.includes('401') || err.message.includes('invalid') || err.message.includes('Unauthorized')){
       window.IRONFORGE_API_KEY = '';
       localStorage.removeItem('ironforge_api_key');
-      log.innerHTML += `<div class="log-line warn">[${ts()}] ⚠️ Invalid API key cleared. Enter a new key and retry.</div>`;
     }
     btn.textContent = '▶ Retry'; btn.disabled = false;
     btn.onclick = () => runAgent(agentId);
