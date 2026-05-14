@@ -239,7 +239,7 @@ async function buildDashboard(){
     try {
       const [pRes, lRes, aRes, cRes] = await Promise.all([
         sbQuery(sbClient.from('jobs').select('id,name,status,contract_amount,start_date').eq('user_id', window._sbUserId).order('created_at',{ascending:false}).limit(6)),
-        sbQuery(sbClient.from('liens').select('id,project,status,amount,deadline').eq('user_id', window._sbUserId)),
+        sbQuery(sbClient.from('liens').select('id,job_name,status,amount,deadline').eq('user_id', window._sbUserId)),
         sbQuery(sbClient.from('agent_logs').select('id',{count:'exact'}).eq('user_id', window._sbUserId)),
         sbQuery(sbClient.from('clients').select('id',{count:'exact'}).eq('user_id', window._sbUserId)),
       ]);
@@ -482,8 +482,8 @@ async function buildLienContent(){
       ${cols.map(c=>`<div class="kanban-col">
         <div class="kanban-col-header" style="background:${c.color}22;color:${c.color}">${c.label} (${c.items.length})</div>
         ${c.items.length === 0 ? `<div style="color:var(--muted);font-size:.74rem;padding:8px;text-align:center">None</div>` :
-          c.items.map(it=>`<div class="kanban-card" style="border-left-color:${c.color}" onclick="openLienDetail('${it.id || it.project}')">
-            <div class="kc-project">${it.project}</div>
+          c.items.map(it=>`<div class="kanban-card" style="border-left-color:${c.color}" onclick="openLienDetail('${it.id}')">
+            <div class="kc-project">${it.job_name||it.project||'Unnamed Lien'}</div>
             <div class="kc-amount">$${(it.amount||0).toLocaleString()}</div>
             <div class="kc-due">${it.notes || ''}</div>
             <div class="kc-due" style="margin-top:3px">📅 ${it.deadline ? new Date(it.deadline).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—'}</div>
@@ -537,7 +537,7 @@ async function saveLienDetail(id){
     filed_date: document.getElementById('ld_filed').value || null
   };
   if(sbClient && window._sbUserId){
-    const { error } = await sbQuery(sbClient.from('lien_filings').update(updates).eq('id', id));
+    const { error } = await sbQuery(sbClient.from('liens').update(updates).eq('id', id));
     if(error){ addNotification('⚠️ Save Failed', 'Lien: ' + error.message, 'warning'); return; }
   }
   addNotification('⚖️ Lien Updated', 'Lien record saved successfully.', 'success');
@@ -579,11 +579,14 @@ async function openAddLienModal(){
 }
 
 async function saveLien(){
+  // Get project name from selected job
+  const projSel = document.getElementById('nl_proj');
+  const jobName = projSel?.options[projSel?.selectedIndex]?.text || 'Manual Entry';
   const lien = {
-    project: document.getElementById('nl_proj').value,
+    job_name: jobName,
     amount: parseFloat(document.getElementById('nl_amt').value)||0,
     status: document.getElementById('nl_status').value,
-    deadline: document.getElementById('nl_dead').value,
+    deadline: document.getElementById('nl_dead').value || null,
     notes: document.getElementById('nl_notes').value,
     user_id: window._sbUserId || null,
     created_at: new Date().toISOString()
@@ -3160,19 +3163,26 @@ Provide a complete, actionable report with specific findings, dollar amounts, de
       const now = new Date().toISOString();
 
       // Lien agent → liens table
+      // liens real cols: user_id, job_name, status, amount, deadline, notes, state, county
       if(agentId === 'lien'){
         sbClient.from('liens').insert({
-          user_id: _logUserId, project: 'AI Analysis — ' + (document.getElementById('execProj')?.options[document.getElementById('execProj')?.selectedIndex]?.text||'All Projects'),
-          status: 'ai_review', amount: 0, deadline: new Date(Date.now()+30*86400000).toISOString().split('T')[0],
+          user_id: _logUserId,
+          job_name: 'AI Analysis — ' + (document.getElementById('execProj')?.options[document.getElementById('execProj')?.selectedIndex]?.text||'All Projects'),
+          status: 'draft', amount: 0,
+          deadline: new Date(Date.now()+30*86400000).toISOString().split('T')[0],
           notes: result.substring(0,1000), created_at: now
         }).then(()=>{});
       }
       // Invoice agent → invoices table
+      // invoices real cols: user_id, job_id, invoice_number, amount, status, client_name, due_date
       if(agentId === 'invoice'){
         sbClient.from('invoices').insert({
           user_id: _logUserId, job_id: selectedJobId||null,
-          description: 'AI Invoice Analysis', amount: 0, status: 'draft',
-          notes: result.substring(0,1000), created_at: now
+          invoice_number: 'AI-' + Date.now().toString().slice(-6),
+          client_name: 'AI Invoice Analysis',
+          amount: 0, status: 'draft',
+          due_date: new Date(Date.now()+30*86400000).toISOString().split('T')[0],
+          created_at: now
         }).then(()=>{});
       }
       // Safety/permit/compliance agents → compliance_items table
@@ -3195,13 +3205,13 @@ Provide a complete, actionable report with specific findings, dollar amounts, de
         }).eq('id', selectedJobId).eq('user_id', _logUserId).then(()=>{});
       }
       // Subcontractor Manager → payment_negotiations (flag sub payment action items)
-      // payment_negotiations cols: id,sub_user_id,sub_id,gc_id,owner_id,status,amount,contract_value,notes,photo_url,payment_status,paid_at,created_at
+      // payment_negotiations real cols: sub_id, gc_id, owner_id, status, sub_requested, gc_amount, final_amount, notes, submitted_at
       if(agentId === 'sub' || agentId === 'subcontract'){
         sbClient.from('payment_negotiations').insert({
-          sub_user_id: _logUserId,
-          status: 'ai_review', amount: 0, contract_value: 0,
+          sub_id: _logUserId,
+          status: 'pending_gc', sub_requested: 0,
           notes: 'AI Subcontractor Analysis: ' + result.substring(0,800),
-          payment_status: 'pending', created_at: now
+          submitted_at: now, created_at: now
         }).then(()=>{});
       }
       // Vendor Qualification → log to agent_logs (no dedicated table)
