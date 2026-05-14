@@ -373,10 +373,10 @@ async function bootSubApp(user){
 async function loadKPIs(){
   try{
     const [jobs,photos,negs,invs]=await Promise.all([
-      sb.from('work_orders').select('id',{count:'exact'}).eq('assigned_sub_id',currentSub.id).in('status',['active','in_progress']),
-      sb.from('photo_submissions').select('id',{count:'exact'}).eq('submitted_by',currentSub.id),
-      sb.from('payment_negotiations').select('id',{count:'exact'}).eq('sub_id',currentSub.id).eq('status','pending'),
-      sb.from('invoices').select('amount').eq('sub_id',currentSub.id)
+      sb.from('payment_negotiations').select('id',{count:'exact'}).eq('sub_id',currentSub.id).in('status',['pending_gc','pending_owner']),
+      sb.from('photo_submissions').select('id',{count:'exact'}).eq('user_id',currentSub.id),
+      sb.from('payment_negotiations').select('id',{count:'exact'}).eq('sub_id',currentSub.id).eq('status','pending_gc'),
+      sb.from('invoices').select('amount').eq('user_id',currentSub.id)
     ]);
     document.getElementById('kpiJobs').textContent=jobs.count??0;
     document.getElementById('kpiPhotos').textContent=photos.count??0;
@@ -390,35 +390,40 @@ async function loadKPIs(){
 async function loadJobs(){
   const el=document.getElementById('jobsList');
   try{
-    const {data,error}=await sb.from('work_orders')
-      .select('*')
-      .or(`assigned_sub_id.eq.${currentSub.id},assigned_to.eq.${currentSub.id}`)
-      .order('created_at',{ascending:false});
+    // Load jobs via payment_negotiations (sub is linked to jobs through negotiations)
+    const {data:negData,error}=await sb.from('payment_negotiations')
+      .select('id,job_id,status,sub_requested,notes,submitted_at,jobs(title,description,location,status,due_date,trade)')
+      .eq('sub_id',currentSub.id)
+      .order('submitted_at',{ascending:false});
+    const data = negData;
     if(error||!data||data.length===0){
-      el.innerHTML='<div class="empty"><div class="empty-icon">🔨</div><p>No work orders assigned to you yet.<br>Your GC will assign jobs to your account.</p></div>';
+      el.innerHTML='<div class="empty"><div class="empty-icon">🔨</div><p>No jobs yet.<br>Submit photos and payment requests to get started.</p></div>';
       return;
     }
-    el.innerHTML=data.map(j=>`
+    el.innerHTML=data.map(n=>{
+      const j=n.jobs||{};
+      return `
       <div class="job-card">
         <div style="display:flex;justify-content:space-between;align-items:flex-start">
           <div>
-            <div class="job-title">${j.title||j.description||'Work Order #'+j.id.slice(-6)}</div>
+            <div class="job-title">${j.title||j.description||'Job #'+(n.job_id||n.id).slice(-6)}</div>
             <div class="job-meta">
               ${j.location?'📍 '+j.location+' · ':''}
               ${j.trade?j.trade+' · ':''}
               Due: ${j.due_date?new Date(j.due_date).toLocaleDateString():'TBD'}
             </div>
           </div>
-          <span class="badge ${j.status==='active'||j.status==='in_progress'?'badge-active':j.status==='complete'||j.status==='completed'?'badge-complete':'badge-pending'}">${j.status||'pending'}</span>
+          <span class="badge ${n.status==='approved'||n.status==='paid'?'badge-complete':n.status==='pending_gc'||n.status==='pending_owner'?'badge-pending':'badge-active'}">${n.status||'pending'}</span>
         </div>
-        ${j.notes?'<p style="font-size:.82rem;color:var(--muted);margin-bottom:10px">'+j.notes+'</p>':''}
+        ${n.notes?'<p style="font-size:.82rem;color:var(--muted);margin-bottom:10px">'+n.notes+'</p>':''}
         <div class="job-actions">
-          <button class="btn-primary" style="width:auto;padding:7px 14px;font-size:.8rem" onclick="openPhotoFor('${j.id}','${(j.title||'Work Order').replace(/'/g,"\\'")}')">📷 Submit Photos</button>
-          <button class="btn-secondary" style="font-size:.8rem" onclick="openInvoiceFor('${j.id}','${(j.title||'Work Order').replace(/'/g,"\\'")}')">🧾 Submit Invoice</button>
+          <button class="btn-primary" style="width:auto;padding:7px 14px;font-size:.8rem" onclick="openPhotoFor('${n.job_id||''}','${(j.title||'Job').replace(/'/g,"\\'")}')">📷 Submit Photos</button>
+          <button class="btn-secondary" style="font-size:.8rem" onclick="openInvoiceFor('${n.job_id||''}','${(j.title||'Job').replace(/'/g,"\\'")}')">🧾 Submit Invoice</button>
         </div>
       </div>
-    `).join('');
-    const opts=data.map(j=>`<option value="${j.id}">${j.title||'Work Order #'+j.id.slice(-6)}</option>`).join('');
+    `;
+    }).join('');
+    const opts=data.map(n=>{const j=n.jobs||{};return `<option value="${n.job_id||n.id}">${j.title||'Job #'+(n.job_id||n.id).slice(-6)}</option>`;}).join('');
     document.getElementById('photoJobSelect').innerHTML='<option value="">-- Select job --</option>'+opts;
   }catch(e){
     el.innerHTML='<div class="empty"><div class="empty-icon">⚠️</div><p>Could not load work orders</p></div>';
@@ -432,7 +437,7 @@ async function loadPhotos(){
   const grid=document.getElementById('photoGrid');
   const empty=document.getElementById('photoEmpty');
   try{
-    const {data}=await sb.from('photo_submissions').select('*').eq('submitted_by',currentSub.id).order('created_at',{ascending:false}).limit(40);
+    const {data}=await sb.from('photo_submissions').select('*').eq('user_id',currentSub.id).order('created_at',{ascending:false}).limit(40);
     if(!data||data.length===0){grid.style.display='none';empty.style.display='block';return;}
     grid.style.display='grid';empty.style.display='none';
     grid.innerHTML=data.map(p=>`
