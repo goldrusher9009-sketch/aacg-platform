@@ -243,8 +243,8 @@
 </div>
 
 <script>
-const SB_URL = 'https://wausefmzaqtlomyhqcjf.supabase.co';
-const SB_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndhdXNlZm16YXF0bG9teWhxY2pmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc1MDkxMjIsImV4cCI6MjA5MzA4NTEyMn0.AxLFvd0EciSSmo_x3Qvg-oUnPRWR2S9KhRmSWAGBN0U';
+const SB_URL = window.SUPABASE_URL || '';
+const SB_ANON_KEY = window.SUPABASE_ANON || '';
 
 let sbClient=null, ownerUser=null, ownerProfile=null;
 let allNegotiations=[], allSubmissions=[];
@@ -744,6 +744,44 @@ function showNotification(msg, type='info'){
   n.textContent = msg;
   clearTimeout(n._hide);
   n._hide = setTimeout(()=>{ n.style.opacity='0'; }, 3500);
+}
+
+async function ownerReleaseQuick(negId, gcAmount){
+  if(!sbClient) return;
+  if(!confirm(`Release payment at ${gcAmount}% (GC-approved amount)?`)) return;
+  const { error } = await sbClient
+    .from('payment_negotiations')
+    .update({
+      owner_released: gcAmount,
+      status: 'released',
+      payment_status: 'owner_released',
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', negId);
+  if(error){ showNotification('Error: '+(error.message||'Failed to release.'), 'error'); return; }
+  await loadAllData();
+  showNotification('✅ Payment released to sub-contractor.', 'success');
+}
+
+function viewOwnerPhoto(id){
+  const s = allSubmissions ? allSubmissions.find(x=>x.id===id) : null;
+  if(!s){ showNotification('Photo not found.', 'error'); return; }
+  const sev = s.severity||'ok';
+  const sevColor = sev==='critical'?'var(--red)':sev==='warning'?'var(--orange)':'var(--green)';
+  document.getElementById('releaseModalTitle').textContent = (s.job_name||'Photo') + ' — AI Analysis';
+  document.getElementById('releaseModal').style.display = 'flex';
+  document.getElementById('releaseModalBody').innerHTML = `
+    ${s.photo_url ? `<img src="${s.photo_url}" style="width:100%;max-height:240px;object-fit:cover;border-radius:8px;margin-bottom:10px">` : ''}
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+      <span style="background:${sevColor}22;color:${sevColor};padding:4px 10px;border-radius:20px;font-size:.78rem;font-weight:700">● ${sev.toUpperCase()}</span>
+      <span style="background:var(--mid);color:var(--muted);padding:4px 10px;border-radius:20px;font-size:.78rem">${s.trade||'General'}</span>
+    </div>
+    <div style="font-size:.85rem;color:var(--text);line-height:1.6;background:var(--mid);border-radius:8px;padding:12px">
+      ${s.ai_analysis||'No AI analysis available.'}
+    </div>
+    <div style="font-size:.78rem;color:var(--muted);margin-top:8px">${new Date(s.submitted_at||s.created_at).toLocaleString()}</div>
+    <button style="width:100%;margin-top:14px;padding:9px;background:none;border:1px solid var(--border);color:var(--muted);border-radius:8px;cursor:pointer" onclick="closeReleaseModal()">Close</button>
+  `;
 }
 </script>
 </body>

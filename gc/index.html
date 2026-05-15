@@ -250,8 +250,8 @@
 
 <script>
 // ── Supabase client ───────────────────────────────────────────────────────────
-const SB_URL = 'https://wausefmzaqtlomyhqcjf.supabase.co';
-const SB_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndhdXNlZm16YXF0bG9teWhxY2pmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc1MDkxMjIsImV4cCI6MjA5MzA4NTEyMn0.AxLFvd0EciSSmo_x3Qvg-oUnPRWR2S9KhRmSWAGBN0U';
+const SB_URL = window.SUPABASE_URL || '';
+const SB_ANON_KEY = window.SUPABASE_ANON || '';
 
 let sbClient = null;
 let gcUser = null;

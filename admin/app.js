@@ -457,7 +457,7 @@ function buildAgentGrid(){
     const isFree = a.tier === 'free';
     const tierBadge = `<span class="agent-tier-badge ${isFree?'atb-free':'atb-cloud'}">${isFree?'✓ Free':'☁ Cloud AI'}</span>`;
     const statusColor = locked ? 'var(--muted)' : isFree ? 'var(--green)' : 'var(--purple)';
-    const statusTxt   = locked ? 'Locked — upgrade to unlock' : isFree ? 'Free — runs instantly' : 'Cloud AI — powered by Claude';
+    const statusTxt   = locked ? 'Locked — upgrade to unlock' : isFree ? 'Free — runs instantly' : 'Cloud AI — powered by AACG AI';
     const btnClass    = isFree ? 'run-btn free-btn' : 'run-btn';
     const btnStyle    = isFree ? '' : `style="background:${a.color}"`;
     const btnLabel    = isFree ? '⚡ Run Free' : '🤖 Run Cloud AI';
@@ -487,7 +487,7 @@ function buildAgentGrid(){
     </div>
     ${freeHtml}
     <div style="grid-column:1/-1;margin-top:10px;margin-bottom:4px">
-      <span class="agents-section-label asl-cloud">☁ Cloud AI Agents — ${cloudAgents.length} Claude-powered, requires API key</span>
+      <span class="agents-section-label asl-cloud">☁ Cloud AI Agents — ${cloudAgents.length} AACG AI-powered, requires API key</span>
     </div>
     ${cloudHtml}
   `;
@@ -1387,7 +1387,7 @@ async function buildPhotoAIContent(){
         }).join('') : `<div class="card" style="grid-column:1/-1;padding:40px;text-align:center;color:var(--muted)">
           <div style="font-size:3rem;margin-bottom:12px">📷</div>
           <div style="font-size:.9rem;margin-bottom:6px">No site photos analyzed yet.</div>
-          <div style="font-size:.78rem;margin-bottom:16px">Upload a photo and Claude AI will analyze it for safety violations, progress, and quality issues.</div>
+          <div style="font-size:.78rem;margin-bottom:16px">Upload a photo and AACG AI will analyze it for safety violations, progress, and quality issues.</div>
           <button class="btn-primary" onclick="openPhotoUploadModal()">📷 Upload First Site Photo</button>
         </div>`}
       </div>
@@ -1510,7 +1510,7 @@ async function openPhotoUploadModal(){
         <label>Notes (optional)</label>
         <input type="text" id="pai_notes" placeholder="e.g. Roof phase, north side, day 14">
       </div>
-      <button class="btn-primary" id="pai_runBtn" onclick="runPhotoAI()" disabled style="opacity:.5;cursor:not-allowed">📷 Analyze Photo with Claude AI</button>
+      <button class="btn-primary" id="pai_runBtn" onclick="runPhotoAI()" disabled style="opacity:.5;cursor:not-allowed">📷 Analyze Photo with AACG AI</button>
       <div id="pai_result" style="display:none;background:var(--mid);border-radius:8px;padding:14px;font-size:.82rem;line-height:1.6;border-left:3px solid var(--green)"></div>
     </div>`;
 }
@@ -1549,11 +1549,11 @@ async function runPhotoAI(){
   const btn = document.getElementById('pai_runBtn');
   const resultEl = document.getElementById('pai_result');
 
-  btn.disabled = true; btn.textContent = '⏳ Analyzing with Claude Vision…';
+  btn.disabled = true; btn.textContent = '⏳ Analyzing with AACG AI…';
   resultEl.style.display = 'none';
 
   const apiKey = window.IRONFORGE_API_KEY || localStorage.getItem('ironforge_api_key') || '';
-  if(!apiKey){ btn.textContent = '📷 Analyze Photo with Claude AI'; btn.disabled = false; alert('Configure your API key in the Agents panel first.'); return; }
+  if(!apiKey){ btn.textContent = '📷 Analyze Photo with AACG AI'; btn.disabled = false; alert('Configure your API key in the Agents panel first.'); return; }
 
   const typePrompts = {
     safety: 'Analyze this construction site photo for OSHA safety violations, PPE compliance, fall hazards, scaffolding issues, and any immediate dangers. Rate each issue as Critical, Warning, or OK.',
@@ -2511,7 +2511,7 @@ function buildSettingsContent(){
         </div>
         <div class="settings-section">
           <h3>🤖 AI API Key</h3>
-          <p style="font-size:.78rem;color:var(--muted);margin-bottom:12px">Required to run AI agents. Use your <a href="https://openrouter.ai/keys" target="_blank" style="color:var(--red)">OpenRouter key</a> (sk-or-...) or <a href="https://console.anthropic.com" target="_blank" style="color:var(--red)">Anthropic key</a> (sk-ant-...). Stored in your browser only — never sent to our servers.</p>
+          <p style="font-size:.78rem;color:var(--muted);margin-bottom:12px">Required to run AACG AI agents. Use your <a href="https://openrouter.ai/keys" target="_blank" style="color:var(--red)">OpenRouter key</a> (sk-or-...). Stored in your browser only — never sent to our servers.</p>
           <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
             <input type="password" id="settingsApiKey" placeholder="sk-or-v1-... or sk-ant-api03-..."
               value="${localStorage.getItem('ironforge_api_key')||''}"
@@ -2906,7 +2906,7 @@ async function openExecModal(agentId){
         ${cfg.hint ? `<div style="background:rgba(42,125,225,.08);border:1px solid rgba(42,125,225,.25);border-radius:8px;padding:9px 12px;font-size:.75rem;color:#60a5fa">💡 ${cfg.hint}</div>` : ''}
         ${isFree
           ? `<div style="background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.25);border-radius:8px;padding:9px 12px;font-size:.75rem;color:var(--green)">⚡ <strong>Free agent</strong> — runs instantly, no API key needed.</div>`
-          : `<div style="background:rgba(139,92,246,.08);border:1px solid rgba(139,92,246,.25);border-radius:8px;padding:9px 12px;font-size:.75rem;color:var(--purple)">☁ <strong>Cloud AI agent</strong> — powered by Claude AI. ✅ Pre-configured.</div>`}
+          : `<div style="background:rgba(139,92,246,.08);border:1px solid rgba(139,92,246,.25);border-radius:8px;padding:9px 12px;font-size:.75rem;color:var(--purple)">☁ <strong>Cloud AI agent</strong> — powered by AACG AI. ✅ Pre-configured.</div>`}
         <div class="exec-form" style="display:flex;flex-direction:column;gap:10px">
           ${needsProject ? `<div><label>Project <span class="req">*</span></label><select id="execProj" onchange="execCheckReady('${agentId}')">${projOpts}</select></div>` : ''}
           ${needsState   ? `<div><label>State <span class="req">*</span></label><select id="execState" onchange="execCheckReady('${agentId}')"><option value="">— Select State —</option>${US_STATES.map(s=>`<option value="${s}">${s}</option>`).join('')}</select></div>` : ''}
@@ -3195,12 +3195,12 @@ async function runAgent(agentId){
     resultArea.innerHTML = `
       <div style="padding:24px;max-width:480px">
         <div style="color:var(--orange);font-weight:700;margin-bottom:12px">⚠️ No AI API key configured</div>
-        <div style="color:var(--muted);font-size:.83rem;margin-bottom:16px">Enter your OpenRouter or Anthropic API key to run cloud AI agents.</div>
+        <div style="color:var(--muted);font-size:.83rem;margin-bottom:16px">Enter your OpenRouter API key to run AACG AI agents.</div>
         <div style="display:flex;gap:8px;margin-bottom:8px">
-          <input id="apiKeyInput" type="password" placeholder="sk-or-v1-... or sk-ant-..." style="flex:1;background:var(--mid);border:1px solid var(--border);color:var(--light);padding:9px 12px;border-radius:7px;font-family:monospace;font-size:.8rem" />
+          <input id="apiKeyInput" type="password" placeholder="sk-or-v1-..." style="flex:1;background:var(--mid);border:1px solid var(--border);color:var(--light);padding:9px 12px;border-radius:7px;font-family:monospace;font-size:.8rem" />
           <button onclick="saveApiKey('${agentId}')" style="background:var(--red);color:#fff;border:none;padding:9px 18px;border-radius:7px;cursor:pointer;font-weight:700;white-space:nowrap">Connect & Run</button>
         </div>
-        <div style="font-size:.72rem;color:var(--muted)">Get a free key at <a href="https://openrouter.ai/keys" target="_blank" style="color:var(--red)">openrouter.ai</a> or <a href="https://console.anthropic.com" target="_blank" style="color:var(--red)">console.anthropic.com</a></div>
+        <div style="font-size:.72rem;color:var(--muted)">Get a free key at <a href="https://openrouter.ai/keys" target="_blank" style="color:var(--red)">openrouter.ai</a></div>
       </div>`;
     btn.textContent = '▶ Execute ' + a.name;
     btn.disabled = false;

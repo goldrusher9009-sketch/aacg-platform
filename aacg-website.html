@@ -37,9 +37,33 @@ async function sbSignUp(name, email, phone, company, plan, password, account_typ
 }
 </script>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><polygon points='50,2 93,26 93,74 50,98 7,74 7,26' fill='%23ff3a2d'/><text y='.9em' font-size='55' x='26' fill='white' font-weight='900'>⚡</text></svg>">
-<meta name="description" content="IronForge — The AI brain behind every construction business. 20+ AI agents handle lien filing, contracts, HR, payroll and compliance 24/7. Built for contractors.">
+<meta name="description" content="IronForge by AACG — AI-powered construction management platform. 20+ AI agents handle lien filing, contracts, HR, payroll and compliance 24/7. Built for GCs, subcontractors, and property owners.">
+<meta name="keywords" content="construction management software, AI construction platform, mechanics lien software, subcontractor management, general contractor software, construction payment software, lien filing automation, construction AI agents, AACG platform, IronForge construction, construction project management, contractor management platform, construction compliance software, construction payroll software">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>IronForge | AI-Powered Construction Platform | Built By GCs · For GCs</title>
+<meta name="robots" content="index, follow">
+<meta name="author" content="IronForge · AACG Platform">
+<link rel="canonical" href="https://allamericancg.com/platform">
+<title>IronForge | AI Construction Management Software | Lien Filing, Contracts & Payments | AACG Platform</title>
+<!-- Open Graph -->
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://allamericancg.com/platform">
+<meta property="og:title" content="IronForge | AI-Powered Construction Platform | AACG">
+<meta property="og:description" content="20+ AI agents handle lien filing, contracts, HR, payroll and compliance 24/7. Built for GCs, subcontractors, and property owners. Start free — no credit card required.">
+<meta property="og:image" content="https://allamericancg.com/platform/og-image.png">
+<meta property="og:site_name" content="IronForge · AACG Platform">
+<!-- Twitter Card -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="IronForge | AI Construction Platform by AACG">
+<meta name="twitter:description" content="20+ AI agents automate lien filing, contracts, HR, payroll and compliance. Built for American builders.">
+<meta name="twitter:image" content="https://allamericancg.com/platform/og-image.png">
+<!-- Structured Data: SoftwareApplication -->
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"SoftwareApplication","name":"IronForge — AACG Platform","applicationCategory":"BusinessApplication","operatingSystem":"Web","url":"https://allamericancg.com/platform","description":"AI-powered construction management platform with 20+ AI agents for lien filing, contracts, HR, payroll and compliance. Built for general contractors, subcontractors, and property owners.","offers":{"@type":"Offer","price":"49","priceCurrency":"USD","priceSpecification":{"@type":"UnitPriceSpecification","price":"49","priceCurrency":"USD","billingIncrement":1,"unitCode":"MON"}},"aggregateRating":{"@type":"AggregateRating","ratingValue":"4.9","reviewCount":"247"},"publisher":{"@type":"Organization","name":"All American CG · IronForge","url":"https://allamericancg.com","telephone":"+19298882848"}}
+</script>
+<!-- Structured Data: Organization -->
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"Organization","name":"All American CG — IronForge Platform","url":"https://allamericancg.com","logo":"https://allamericancg.com/platform/favicon.ico","contactPoint":{"@type":"ContactPoint","telephone":"+1-929-888-2848","contactType":"customer service","availableLanguage":"English"},"sameAs":["https://allamericancg.com/platform"]}
+</script>
 <style>
 :root{
   --navy:#04081a;--navy2:#080f24;--navy3:#0d1835;
@@ -397,13 +421,17 @@ footer{background:var(--navy2);border-top:1px solid var(--border);padding:56px 2
       <strong>✓ How payments work:</strong> Your free trial activates instantly. After 14 days you'll receive an invoice by email. Pay online via card or ACH — no auto-charge without your approval. Cancel any time.
     </div>
     <div class="su-row">
-      <input class="su-input" id="suFirst" type="text" placeholder="First Name">
-      <input class="su-input" id="suLast" type="text" placeholder="Last Name">
+      <input class="su-input" id="suFirst" type="text" placeholder="First Name *" required>
+      <input class="su-input" id="suLast" type="text" placeholder="Last Name *" required>
     </div>
     <input class="su-input" id="suCompany" type="text" placeholder="Company Name">
-    <input class="su-input" id="suEmail" type="email" placeholder="Work Email">
-    <input class="su-input" id="suPhone" type="tel" placeholder="Phone Number">
-    <input class="su-input" id="suPassword" type="password" placeholder="Create Password (min 8 chars)">
+    <input class="su-input" id="suEmail" type="email" placeholder="Work Email *" required>
+    <div style="position:relative">
+      <input class="su-input" id="suPhone" type="tel" placeholder="WhatsApp Number (optional)" style="width:100%;box-sizing:border-box">
+      <span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:10px;color:var(--text2);pointer-events:none">Optional</span>
+    </div>
+    <input class="su-input" id="suPassword" type="password" placeholder="Password (8+ chars, letter &amp; special char) *" required>
+    <div id="suPwdHint" style="font-size:11px;color:var(--text2);margin-top:-8px;margin-bottom:4px">Must be 8+ characters with at least one letter and one special character (!@#$%^&amp;*)</div>
     <div style="margin-bottom:12px">
       <label style="display:block;font-size:12px;font-weight:700;color:var(--text2);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px">Account Type</label>
       <select class="su-input" id="suAccountType" style="width:100%;background:#080f24;border:1px solid rgba(255,58,45,0.2);color:#e8edf5;padding:10px 14px;border-radius:8px;font-size:14px;outline:none;">
@@ -1071,8 +1099,8 @@ function renderStaticGallery(){
       </div>
     </div>
     <div class="footer-bottom">
-      <p>&copy; 2025 IronForge. All rights reserved. AACG Platform is not a law firm and does not provide legal advice. Lien filing services are automated document preparation only.</p>
-      <p style="margin-top:6px;color:var(--text2);font-size:0.78rem">Built with AI for American Builders 🏗️</p>
+      <p>&copy; 2026 IronForge · AACG Platform. All rights reserved. Not a law firm. Lien filing services are automated document preparation only.</p>
+      <p style="margin-top:6px;color:var(--text2);font-size:0.78rem">Built with AACG AI for American Builders 🏗️ &nbsp;·&nbsp; <span style="opacity:0.5">v1.1.0</span></p>
     </div>
   </div>
 </footer>
@@ -1157,16 +1185,17 @@ function openVideo(e,url){
   var modal=document.getElementById('videoModal');
   var iframe=document.getElementById('modalIframe');
   if(!modal||!iframe)return;
-  // Fix YouTube URL: use nocookie domain, force autoplay
-  var src=url;
+  var src=url||'';
+  // Normalize YouTube URL to nocookie, force autoplay
   if(src.indexOf('youtube.com')>-1||src.indexOf('youtu.be')>-1){
-    src=src.replace('youtube.com','youtube-nocookie.com');
-    if(src.indexOf('autoplay')===-1){
-      src+=(src.indexOf('?')>-1?'&':'?')+'autoplay=1&rel=0&modestbranding=1';
-    }
+    src=src.replace('www.youtube.com','www.youtube-nocookie.com').replace('youtube.com','www.youtube-nocookie.com');
+    if(src.indexOf('autoplay')===-1) src+=(src.indexOf('?')>-1?'&':'?')+'autoplay=1&rel=0&modestbranding=1&playsinline=1';
   }
-  iframe.setAttribute('allow','autoplay; fullscreen; encrypted-media');
+  iframe.setAttribute('allow','autoplay; fullscreen; encrypted-media; picture-in-picture');
+  iframe.setAttribute('allowfullscreen','');
   iframe.src=src;
+  modal.style.opacity='1';
+  modal.style.pointerEvents='all';
   modal.classList.add('open');
   document.body.style.overflow='hidden';
 }
@@ -1205,27 +1234,52 @@ function selectPlan(el){
 }
 async function submitSignup(){
   var firstEl=document.getElementById('suFirst');
+  var lastEl=document.getElementById('suLast');
   var emailEl=document.getElementById('suEmail');
   var phoneEl=document.getElementById('suPhone');
   var compEl=document.getElementById('suCompany');
   var acctTypeEl=document.getElementById('suAccountType');
-  if(!firstEl||!firstEl.value.trim()||!emailEl||!emailEl.value.trim()){
-    alert('Please fill in your name and email.');return;
+  var pwdEl=document.getElementById('suPassword');
+
+  // Validate first + last name
+  if(!firstEl||!firstEl.value.trim()){
+    alert('Please enter your first name.');firstEl&&firstEl.focus();return;
   }
+  if(!lastEl||!lastEl.value.trim()){
+    alert('Please enter your last name.');lastEl&&lastEl.focus();return;
+  }
+
+  // Validate email format
+  var emailVal = emailEl ? emailEl.value.trim() : '';
+  var emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if(!emailVal || !emailRe.test(emailVal)){
+    alert('Please enter a valid email address.');emailEl&&emailEl.focus();return;
+  }
+
+  // Validate account type
   var acctType=acctTypeEl?acctTypeEl.value.trim():'';
   if(!acctType){
     alert('Please select your account type.');return;
   }
-  var pwdEl=document.getElementById('suPassword');
-  var name=firstEl.value.trim();
-  var email=emailEl.value.trim();
+
+  // Validate strong password: 8+ chars, at least 1 letter, at least 1 special char
+  var password=pwdEl?pwdEl.value:'';
+  var pwdLetterRe=/[a-zA-Z]/;
+  var pwdSpecialRe=/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/;
+  if(!password||password.length<8){
+    alert('Password must be at least 8 characters.');pwdEl&&pwdEl.focus();return;
+  }
+  if(!pwdLetterRe.test(password)){
+    alert('Password must contain at least one letter.');pwdEl&&pwdEl.focus();return;
+  }
+  if(!pwdSpecialRe.test(password)){
+    alert('Password must contain at least one special character (e.g. ! @ # $ %).');pwdEl&&pwdEl.focus();return;
+  }
+
+  var name=(firstEl.value.trim()+' '+(lastEl?lastEl.value.trim():'')).trim();
+  var email=emailVal;
   var phone=phoneEl?phoneEl.value.trim():'';
   var company=compEl?compEl.value.trim():'';
-  var password=pwdEl?pwdEl.value.trim():'';
-
-  if(!password || password.length < 8){
-    alert('Please create a password of at least 8 characters.');return;
-  }
 
   var btn=document.querySelector('.su-submit');
   if(btn){btn.textContent='Setting up your account...';btn.disabled=true;}
