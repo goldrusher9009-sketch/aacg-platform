@@ -292,6 +292,7 @@ function buildSidebar(){
     <div style="color:var(--muted)">Plan: <span style="color:${tierColor};font-weight:700">${currentTier.charAt(0).toUpperCase()+currentTier.slice(1)}</span></div>
     <div style="color:var(--muted);font-size:.7rem;margin-top:2px">${currentUser.company}</div>
     ${currentTier!=='enterprise' ? `<div class="upgrade-cta" onclick="showUpgradeModal()">⬆ Upgrade Plan</div>` : '<div style="margin-top:8px;color:var(--green);font-size:.72rem">✓ Full Enterprise Access</div>'}
+    <div style="color:var(--muted);font-size:.65rem;margin-top:6px;opacity:.6">IronForge v1.1.0</div>
   </div>`;
 
   document.getElementById('sidebar').innerHTML = html;
@@ -2544,6 +2545,11 @@ function buildSettingsContent(){
   setNotifyChannel(savedCh);
 }
 
+function toggleNotifSetting(key, labelEl){
+  const cb = labelEl && labelEl.querySelector('input[type="checkbox"]');
+  if(cb){ cb.checked = !cb.checked; saveNotifToggle(key, cb.checked); }
+}
+
 function saveNotifToggle(key, enabled){
   localStorage.setItem('notif_'+key, enabled ? '1' : '0');
   addNotification('⚙️ Notification Setting', `${key.replace('_',' ')} ${enabled?'enabled':'disabled'}.`, 'info');
@@ -3835,4 +3841,115 @@ function closeUpgradeModal(){ document.getElementById('upgradeModal').style.disp
 // ────────────────────────────────────────────────
 let _liveLogLastId = null; // track last seen agent_log id to avoid duplicates
 
-fu
+function _injectLogLine(id, agent, type, msg, ts){
+  const el = document.getElementById(id);
+  if(!el) return;
+  const timeStr = ts ? new Date(ts).toLocaleTimeString('en-US',{hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'})
+                     : new Date().toLocaleTimeString('en-US',{hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  el.innerHTML = `<div class="ll-line"><span class="ll-time">${timeStr}</span><span class="ll-agent">[${agent}]</span><span class="ll-msg ${type}">${msg}</span></div>` + el.innerHTML;
+  if(el.children.length > 50) el.lastElementChild.remove();
+}
+
+async function _fetchNewLogs(){
+  if(!USE_SB || !window._sbUserId) return null;
+  try {
+    let q = sbClient.from('agent_logs')
+      .select('id,agent_name,action,result,created_at')
+      .eq('user_id', window._sbUserId)
+      .order('created_at', {ascending: false})
+      .limit(20);
+    if(_liveLogLastId){
+      // Only fetch entries newer than the last seen (by created_at)
+      q = sbClient.from('agent_logs')
+        .select('id,agent_name,action,result,created_at')
+        .eq('user_id', window._sbUserId)
+        .gt('id', _liveLogLastId)
+        .order('created_at', {ascending: false})
+        .limit(20);
+    }
+    const res = await sbQuery(q);
+    if(res && res.data && res.data.length > 0){
+      return res.data;
+    }
+  } catch(e){ /* silently fall through to demo */ }
+  return null;
+}
+
+async function _seedLiveLogFromSB(){
+  // On startup: load last 8 real logs to fill the panel
+  if(!USE_SB || !window._sbUserId) return false;
+  try {
+    const res = await sbQuery(
+      sbClient.from('agent_logs')
+        .select('id,agent_name,action,result,created_at')
+        .eq('user_id', window._sbUserId)
+        .order('created_at', {ascending: false})
+        .limit(8)
+    );
+    if(res && res.data && res.data.length > 0){
+      // Inject oldest-first so newest ends up at top
+      const rows = [...res.data].reverse();
+      rows.forEach(row => {
+        const type = row.action === 'error' ? 'warn' : 'success';
+        const msg  = row.result || row.action || 'Agent run completed';
+        _injectLogLine('dashLog',     row.agent_name || 'Agent', type, msg, row.created_at);
+        _injectLogLine('activityLog', row.agent_name || 'Agent', type, msg, row.created_at);
+      });
+      _liveLogLastId = res.data[0].id; // highest ID = most recent
+      return true;
+    }
+  } catch(e){ /* fall through */ }
+  return false;
+}
+
+async function startLiveLog(){
+  // Seed with real Supabase data; show empty state if no data yet
+  const seeded = await _seedLiveLogFromSB();
+  if(!seeded){
+    // No real data yet — show empty state message
+    const emptyMsg = '<div style="color:var(--muted);font-size:.8rem;padding:12px 0;text-align:center">No activity yet. Run an agent to see logs here.</div>';
+    const dashLog = document.getElementById('dashLog');
+    const actLog  = document.getElementById('activityLog');
+    if(dashLog && !dashLog.children.length) dashLog.innerHTML = emptyMsg;
+    if(actLog  && !actLog.children.length)  actLog.innerHTML  = emptyMsg;
+  }
+
+  // Poll every 10 seconds for new real logs
+  setInterval(async ()=>{
+    const newLogs = await _fetchNewLogs();
+    if(newLogs && newLogs.length > 0){
+      // Update last seen ID
+      _liveLogLastId = newLogs[0].id;
+      // Clear empty state if present
+      const dashLog = document.getElementById('dashLog');
+      const actLog  = document.getElementById('activityLog');
+      if(dashLog && dashLog.querySelector('div[style*="No activity"]')) dashLog.innerHTML = '';
+      if(actLog  && actLog.querySelector('div[style*="No activity"]'))  actLog.innerHTML  = '';
+      // Inject newest-first (already ordered desc)
+      newLogs.forEach(row => {
+        const type = row.action === 'error' ? 'warn' : 'success';
+        const msg  = row.result || row.action || 'Agent run completed';
+        _injectLogLine('dashLog',     row.agent_name || 'Agent', type, msg, row.created_at);
+        _injectLogLine('activityLog', row.agent_name || 'Agent', type, msg, row.created_at);
+      });
+    }
+  }, 10000);
+}
+
+// ────────────────────────────────────────────────
+// SESSION RESTORE ON LOAD
+// ────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', ()=>{
+  // Don't auto-boot if this is a password reset landing page
+  if(window.location.hash && window.location.hash.includes('type=recovery')){
+    showResetView();
+    return;
+  }
+  const saved = sessionStorage.getItem('aacg_subscriber');
+  if(saved){
+    try {
+      const acc = JSON.parse(saved);
+      bootApp(acc);
+    } catch(e) { sessionStorage.removeItem('aacg_subscriber'); }
+  }
+});
