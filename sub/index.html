@@ -588,9 +588,9 @@ async function loadNegotiations(){
 }
 
 async function acceptCounter(negId, gcAmount){
-  if(!sbClient) return;
+  if(!sb) return;
   if(!confirm(`Accept GC counter offer of $${Number(gcAmount).toLocaleString()}?`)) return;
-  const { error } = await sbClient
+  const { error } = await sb
     .from('payment_negotiations')
     .update({
       final_amount: gcAmount,
@@ -613,11 +613,11 @@ function openCounter(negId, subAmt, gcAmt){
 }
 
 async function submitCounter(){
-  if(!sbClient || !_counterNegId) return;
+  if(!sb || !_counterNegId) return;
   const amount = parseFloat(document.getElementById('counterAmount').value)||0;
   const note   = document.getElementById('counterNote').value||'';
   if(amount <= 0){ alert('Please enter a valid counter amount.'); return; }
-  const { error } = await sbClient
+  const { error } = await sb
     .from('payment_negotiations')
     .update({
       sub_requested: amount,
@@ -649,6 +649,66 @@ function showToast(msg, type='info'){
   clearTimeout(t._h);
   t._h = setTimeout(()=>{ t.style.opacity='0'; }, 3200);
 }
-</script>
-</body>
-</html>
+
+function openModal(id){
+
+// ── Page Startup ──
+document.addEventListener('DOMContentLoaded', async function() {
+  initSB();
+
+  // Handle password reset link (hash contains access_token)
+  const hash = window.location.hash || '';
+  const params = new URLSearchParams(window.location.search);
+  if (hash.includes('type=recovery') || params.get('reset') === '1') {
+    showSubReset();
+    return;
+  }
+
+  // Handle fresh signup redirect from homepage (?new=1)
+  // The homepage sbSignUp already created the Supabase user — check for active session
+  if (params.get('new') === '1') {
+    // Try to get session (Supabase may have set it during signUp)
+    const { data: { session } } = await sb.auth.getSession();
+    if (session && session.user) {
+      await bootSubApp(session.user);
+      return;
+    }
+    // If no session (email confirmation required), show auth screen with helpful message
+    const signupName = sessionStorage.getItem('aacg_signup_name') || '';
+    const signupEmail = sessionStorage.getItem('aacg_signup_email') || '';
+    document.getElementById('authScreen').style.display = 'flex';
+    if (signupEmail) {
+      // Pre-fill the signin form with their email
+      const siEmail = document.getElementById('siEmail');
+      if (siEmail) siEmail.value = signupEmail;
+      showAuthOk('✓ Account created! Check your email to confirm, then sign in below.');
+    }
+    return;
+  }
+
+  // Normal page load — check for existing session
+  const { data: { session } } = await sb.auth.getSession();
+  if (session && session.user) {
+    await bootSubApp(session.user);
+    return;
+  }
+
+  // No session — show auth screen
+  document.getElementById('authScreen').style.display = 'flex';
+
+  // Listen for auth state changes (e.g. email confirmation callback)
+  sb.auth.onAuthStateChange(async (event, session) => {
+    if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session && session.user) {
+      if (!currentSub) {
+        await bootSubApp(session.user);
+      }
+    } else if (event === 'PASSWORD_RECOVERY') {
+      showSubReset();
+    } else if (event === 'SIGNED_OUT') {
+      currentSub = null;
+      document.getElementById('app').style.display = 'none';
+      document.getElementById('authScreen').style.display = 'flex';
+    }
+  });
+});
+ 

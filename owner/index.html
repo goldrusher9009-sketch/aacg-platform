@@ -751,38 +751,73 @@ async function ownerReleaseQuick(negId, gcAmount){
   if(!confirm(`Release payment at ${gcAmount}% (GC-approved amount)?`)) return;
   const { error } = await sbClient
     .from('payment_negotiations')
-    .update({
-      owner_released: gcAmount,
+  .update({
+      final_amount: gcAmount,
+      sub_requested: gcAmount,
       status: 'released',
       payment_status: 'owner_released',
       updated_at: new Date().toISOString()
     })
     .eq('id', negId);
-  if(error){ showNotification('Error: '+(error.message||'Failed to release.'), 'error'); return; }
+  if(error){ alert('Error: '+(error.message||'Failed to release.')); return; }
   await loadAllData();
-  showNotification('✅ Payment released to sub-contractor.', 'success');
+  showNotification('✅ Payment released quickly.', 'success');
 }
 
-function viewOwnerPhoto(id){
-  const s = allSubmissions ? allSubmissions.find(x=>x.id===id) : null;
-  if(!s){ showNotification('Photo not found.', 'error'); return; }
-  const sev = s.severity||'ok';
-  const sevColor = sev==='critical'?'var(--red)':sev==='warning'?'var(--orange)':'var(--green)';
-  document.getElementById('releaseModalTitle').textContent = (s.job_name||'Photo') + ' — AI Analysis';
-  document.getElementById('releaseModal').style.display = 'flex';
-  document.getElementById('releaseModalBody').innerHTML = `
-    ${s.photo_url ? `<img src="${s.photo_url}" style="width:100%;max-height:240px;object-fit:cover;border-radius:8px;margin-bottom:10px">` : ''}
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
-      <span style="background:${sevColor}22;color:${sevColor};padding:4px 10px;border-radius:20px;font-size:.78rem;font-weight:700">● ${sev.toUpperCase()}</span>
-      <span style="background:var(--mid);color:var(--muted);padding:4px 10px;border-radius:20px;font-size:.78rem">${s.trade||'General'}</span>
-    </div>
-    <div style="font-size:.85rem;color:var(--text);line-height:1.6;background:var(--mid);border-radius:8px;padding:12px">
-      ${s.ai_analysis||'No AI analysis available.'}
-    </div>
-    <div style="font-size:.78rem;color:var(--muted);margin-top:8px">${new Date(s.submitted_at||s.created_at).toLocaleString()}</div>
-    <button style="width:100%;margin-top:14px;padding:9px;background:none;border:1px solid var(--border);color:var(--muted);border-radius:8px;cursor:pointer" onclick="closeReleaseModal()">Close</button>
-  `;
-}
+// ── Page Startup ──────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', async function() {
+  await initSB();
+  if (!sbClient) return;
+
+  // Handle password reset link
+  const hash = window.location.hash || '';
+  const params = new URLSearchParams(window.location.search);
+  if (hash.includes('type=recovery') || params.get('reset') === '1') {
+    showOwnerReset();
+    return;
+  }
+
+  // Check for existing session
+  const { data: { session } } = await sbClient.auth.getSession();
+  if (session && session.user) {
+    ownerUser = session.user;
+    await loadOwnerProfile();
+    showApp();
+    return;
+  }
+
+  // Handle fresh signup redirect from homepage (?new=1)
+  if (params.get('new') === '1') {
+    const signupEmail = sessionStorage.getItem('aacg_signup_email') || '';
+    document.getElementById('authScreen').style.display = 'flex';
+    if (signupEmail) {
+      const emailEl = document.getElementById('ownerEmail');
+      if (emailEl) emailEl.value = signupEmail;
+      showAuthMsg('success', '\u2713 Account created! Check your email to confirm, then sign in below.');
+    }
+    return;
+  }
+
+  // No session — show auth screen
+  document.getElementById('authScreen').style.display = 'flex';
+
+  // Listen for auth state changes
+  sbClient.auth.onAuthStateChange(async (event, session) => {
+    if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session && session.user) {
+      if (!ownerUser) {
+        ownerUser = session.user;
+        await loadOwnerProfile();
+        showApp();
+      }
+    } else if (event === 'PASSWORD_RECOVERY') {
+      showOwnerReset();
+    } else if (event === 'SIGNED_OUT') {
+      ownerUser = null; ownerProfile = null;
+      document.getElementById('app').style.display = 'none';
+      document.getElementById('authScreen').style.display = 'flex';
+    }
+  });
+});
 </script>
 </body>
 </html>

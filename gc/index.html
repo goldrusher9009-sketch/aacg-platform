@@ -785,6 +785,62 @@ function showNotification(msg, type='info'){
   clearTimeout(n._hide);
   n._hide = setTimeout(()=>{ n.style.opacity='0'; }, 3500);
 }
+
+// ── Page Startup ──────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', async function() {
+  await initSB();
+  if (!sbClient) return;
+
+  // Handle password reset link
+  const hash = window.location.hash || '';
+  const params = new URLSearchParams(window.location.search);
+  if (hash.includes('type=recovery') || params.get('reset') === '1') {
+    showGCReset();
+    return;
+  }
+
+  // Check for existing session
+  const { data: { session } } = await sbClient.auth.getSession();
+  if (session && session.user) {
+    gcUser = session.user;
+    await loadGCProfile();
+    showApp();
+    return;
+  }
+
+  // Handle fresh signup redirect from homepage (?new=1)
+  if (params.get('new') === '1') {
+    const signupEmail = sessionStorage.getItem('aacg_signup_email') || '';
+    document.getElementById('authScreen').style.display = 'flex';
+    if (signupEmail) {
+      const emailEl = document.getElementById('gcEmail');
+      if (emailEl) emailEl.value = signupEmail;
+      showAuthMsg('success', '✓ Account created! Check your email to confirm, then sign in below.');
+    }
+    return;
+  }
+
+  // No session — show auth screen
+  document.getElementById('authScreen').style.display = 'flex';
+
+  // Listen for auth state changes
+  sbClient.auth.onAuthStateChange(async (event, session) => {
+    if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session && session.user) {
+      if (!gcUser) {
+        gcUser = session.user;
+        await loadGCProfile();
+        showApp();
+      }
+    } else if (event === 'PASSWORD_RECOVERY') {
+      showGCReset();
+    } else if (event === 'SIGNED_OUT') {
+      gcUser = null; gcProfile = null;
+      document.getElementById('app').style.display = 'none';
+      document.getElementById('authScreen').style.display = 'flex';
+    }
+  });
+});
 </script>
 </body>
 </html>
+                                                                                                                                                                                                         

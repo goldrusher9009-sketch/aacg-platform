@@ -18,7 +18,7 @@ const AGENTS = [
   {id:'payroll',    tier:'free',  name:'Payroll Verification',   icon:'💳',  color:'#06b6d4', tags:['Finance','HR'],      desc:'Verifies timesheet data, calculates certified payroll, and detects anomalies.',           steps:['Fetching timesheets','Applying prevailing wage rules','Running anomaly detection','Generating certified PR','Sending to accounting']},
   {id:'rfi',        tier:'free',  name:'RFI Manager',            icon:'❓',  color:'#2a7de1', tags:['PM','Comms'],        desc:'Manages RFI submissions, tracks responses, and escalates overdue items.',                steps:['Pulling open RFIs','Checking due dates','Drafting follow-ups','Sending to subs','Updating RFI log']},
   {id:'schedule',   tier:'free',  name:'Schedule Optimizer',     icon:'📅',  color:'#8b5cf6', tags:['PM','Planning'],     desc:'Analyzes construction schedule for conflicts, delays, and resource bottlenecks.',          steps:['Parsing current schedule','Identifying conflicts','Checking resource loading','Flagging float issues','Generating lookahead']},
-  // ── CLOUD AGENTS: AI-powered by Claude, require API key ──
+  // ── CLOUD AGENTS: AI-powered by AACG AI, require API key ──
   {id:'lien',       tier:'cloud', name:'Lien Protection',       icon:'⚖️',  color:'#ef4444', tags:['Legal','Risk'],      desc:'Generates and tracks mechanic liens, prelim notices, and NOCs automatically.',          steps:['Scanning project data','Generating prelim notice','Filing lien document','Sending notifications','Updating lien tracker']},
   {id:'bid',        tier:'cloud', name:'Bid Estimator',          icon:'💰',  color:'#10b981', tags:['Finance','Bid'],     desc:'AI-powered bidding using material costs, labor rates, and historical project data.',    steps:['Parsing project specs','Pulling material costs','Calculating labor hours','Applying markup','Generating PDF bid']},
   {id:'invoice',    tier:'cloud', name:'Invoice Processing',     icon:'📄',  color:'#2a7de1', tags:['Finance','AR'],      desc:'Automates invoice creation, delivery, and follow-up from approved timesheets.',          steps:['Pulling timesheet data','Matching to purchase order','Generating invoice','Sending to client','Logging in AR']},
@@ -1316,7 +1316,7 @@ async function saveTech(){
 }
 
 // ────────────────────────────────────────────────
-// PHOTO AI — real upload + Claude vision + Supabase queue
+// PHOTO AI — real upload + AACG AI vision + Supabase queue
 // ────────────────────────────────────────────────
 async function buildPhotoAIContent(){
   const el = document.getElementById('photoaiContent');
@@ -3162,7 +3162,7 @@ async function runFreeAgent(agentId){
   sbLogAgent(a.name, 'free_run', noData ? 'no_data' : 'data_summarized');
 }
 
-// ── REAL AI AGENT RUNNER — calls Claude AI via OpenRouter/Anthropic ──
+// ── REAL AI AGENT RUNNER — calls AACG AI via OpenRouter ──
 async function runAgent(agentId){
   const a = AGENTS.find(x=>x.id===agentId);
 
@@ -3368,7 +3368,7 @@ Provide a thorough, actionable report with specific findings, real dollar amount
       resultArea.classList.remove('empty');
       resultArea.innerHTML = `<div class="exec-result-section">${formatted}</div>
         <div style="margin-top:12px;padding:10px 14px;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.25);border-radius:8px;font-size:.8rem;color:var(--green)">
-          ✅ ${a.name} analysis complete — powered by Claude AI
+          ✅ ${a.name} analysis complete — powered by AACG AI
         </div>`;
       resultArea.scrollTop = 0;
     }
@@ -3383,7 +3383,7 @@ Provide a thorough, actionable report with specific findings, real dollar amount
     btn.textContent = '✅ Completed';
     btn.style.background = 'var(--green)';
     // Fire in-app notification
-    addNotification(`🤖 ${a.name} Complete`, `Claude AI analysis finished. Real insights generated — check results below.`, 'success');
+    addNotification(`🤖 ${a.name} Complete`, `AACG AI analysis finished. Real insights generated — check results below.`, 'success');
 
     // SMS to user's phone
     if(currentUser?.phone){
@@ -3839,117 +3839,4 @@ function closeUpgradeModal(){ document.getElementById('upgradeModal').style.disp
 // ────────────────────────────────────────────────
 // LIVE LOG
 // ────────────────────────────────────────────────
-let _liveLogLastId = null; // track last seen agent_log id to avoid duplicates
-
-function _injectLogLine(id, agent, type, msg, ts){
-  const el = document.getElementById(id);
-  if(!el) return;
-  const timeStr = ts ? new Date(ts).toLocaleTimeString('en-US',{hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'})
-                     : new Date().toLocaleTimeString('en-US',{hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'});
-  el.innerHTML = `<div class="ll-line"><span class="ll-time">${timeStr}</span><span class="ll-agent">[${agent}]</span><span class="ll-msg ${type}">${msg}</span></div>` + el.innerHTML;
-  if(el.children.length > 50) el.lastElementChild.remove();
-}
-
-async function _fetchNewLogs(){
-  if(!USE_SB || !window._sbUserId) return null;
-  try {
-    let q = sbClient.from('agent_logs')
-      .select('id,agent_name,action,result,created_at')
-      .eq('user_id', window._sbUserId)
-      .order('created_at', {ascending: false})
-      .limit(20);
-    if(_liveLogLastId){
-      // Only fetch entries newer than the last seen (by created_at)
-      q = sbClient.from('agent_logs')
-        .select('id,agent_name,action,result,created_at')
-        .eq('user_id', window._sbUserId)
-        .gt('id', _liveLogLastId)
-        .order('created_at', {ascending: false})
-        .limit(20);
-    }
-    const res = await sbQuery(q);
-    if(res && res.data && res.data.length > 0){
-      return res.data;
-    }
-  } catch(e){ /* silently fall through to demo */ }
-  return null;
-}
-
-async function _seedLiveLogFromSB(){
-  // On startup: load last 8 real logs to fill the panel
-  if(!USE_SB || !window._sbUserId) return false;
-  try {
-    const res = await sbQuery(
-      sbClient.from('agent_logs')
-        .select('id,agent_name,action,result,created_at')
-        .eq('user_id', window._sbUserId)
-        .order('created_at', {ascending: false})
-        .limit(8)
-    );
-    if(res && res.data && res.data.length > 0){
-      // Inject oldest-first so newest ends up at top
-      const rows = [...res.data].reverse();
-      rows.forEach(row => {
-        const type = row.action === 'error' ? 'warn' : 'success';
-        const msg  = row.result || row.action || 'Agent run completed';
-        _injectLogLine('dashLog',     row.agent_name || 'Agent', type, msg, row.created_at);
-        _injectLogLine('activityLog', row.agent_name || 'Agent', type, msg, row.created_at);
-      });
-      _liveLogLastId = res.data[0].id; // highest ID = most recent
-      return true;
-    }
-  } catch(e){ /* fall through */ }
-  return false;
-}
-
-async function startLiveLog(){
-  // Seed with real Supabase data; show empty state if no data yet
-  const seeded = await _seedLiveLogFromSB();
-  if(!seeded){
-    // No real data yet — show empty state message
-    const emptyMsg = '<div style="color:var(--muted);font-size:.8rem;padding:12px 0;text-align:center">No activity yet. Run an agent to see logs here.</div>';
-    const dashLog = document.getElementById('dashLog');
-    const actLog  = document.getElementById('activityLog');
-    if(dashLog && !dashLog.children.length) dashLog.innerHTML = emptyMsg;
-    if(actLog  && !actLog.children.length)  actLog.innerHTML  = emptyMsg;
-  }
-
-  // Poll every 10 seconds for new real logs
-  setInterval(async ()=>{
-    const newLogs = await _fetchNewLogs();
-    if(newLogs && newLogs.length > 0){
-      // Update last seen ID
-      _liveLogLastId = newLogs[0].id;
-      // Clear empty state if present
-      const dashLog = document.getElementById('dashLog');
-      const actLog  = document.getElementById('activityLog');
-      if(dashLog && dashLog.querySelector('div[style*="No activity"]')) dashLog.innerHTML = '';
-      if(actLog  && actLog.querySelector('div[style*="No activity"]'))  actLog.innerHTML  = '';
-      // Inject newest-first (already ordered desc)
-      newLogs.forEach(row => {
-        const type = row.action === 'error' ? 'warn' : 'success';
-        const msg  = row.result || row.action || 'Agent run completed';
-        _injectLogLine('dashLog',     row.agent_name || 'Agent', type, msg, row.created_at);
-        _injectLogLine('activityLog', row.agent_name || 'Agent', type, msg, row.created_at);
-      });
-    }
-  }, 10000);
-}
-
-// ────────────────────────────────────────────────
-// SESSION RESTORE ON LOAD
-// ────────────────────────────────────────────────
-window.addEventListener('DOMContentLoaded', ()=>{
-  // Don't auto-boot if this is a password reset landing page
-  if(window.location.hash && window.location.hash.includes('type=recovery')){
-    showResetView();
-    return;
-  }
-  const saved = sessionStorage.getItem('aacg_subscriber');
-  if(saved){
-    try {
-      const acc = JSON.parse(saved);
-      bootApp(acc);
-    } catch(e) { sessionStorage.removeItem('aacg_subscriber'); }
-  }
-});
+let _liveLogLastId = null; // track last seen 
