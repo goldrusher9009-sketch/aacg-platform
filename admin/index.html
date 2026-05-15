@@ -360,6 +360,25 @@
       </div>
     </div>
 
+    <!-- ── SET NEW PASSWORD VIEW (password reset landing) ── -->
+    <div id="resetView" style="display:none">
+      <div class="login-sub">Set New Password</div>
+      <p style="font-size:.82rem;color:var(--muted);margin-bottom:16px;text-align:left;">Choose a strong new password for your account.</p>
+      <div class="form-group">
+        <label>New Password</label>
+        <input type="password" id="resetPass" placeholder="Min. 8 characters" autocomplete="new-password" onkeydown="if(event.key==='Enter')doResetPassword()">
+      </div>
+      <div class="form-group">
+        <label>Confirm New Password</label>
+        <input type="password" id="resetPassConfirm" placeholder="Repeat password" autocomplete="new-password" onkeydown="if(event.key==='Enter')doResetPassword()">
+      </div>
+      <button class="login-btn" id="resetBtn" onclick="doResetPassword()">Set New Password</button>
+      <div class="login-err" id="resetErr" style="display:none"></div>
+      <div id="resetSuccess" style="display:none;margin-top:12px;padding:12px;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);border-radius:8px;font-size:.82rem;color:#22c55e;text-align:center;">
+        ✅ Password updated! Redirecting you to sign in…
+      </div>
+    </div>
+
     <!-- ── FORGOT PASSWORD VIEW ── -->
     <div id="forgotView" style="display:none">
       <div class="login-sub">Reset Your Password</div>
@@ -776,15 +795,13 @@ async function sbLogAgent(agentName, action, result) {
 
 // ─── SIGNUP FORM TOGGLE ────────────────────────────────────────────────────
 function showSignupForm() {
-  document.getElementById('loginView').style.display = 'none';
-  document.getElementById('forgotView').style.display = 'none';
+  ['loginView','forgotView','resetView'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
   document.getElementById('signupView').style.display = 'block';
   document.getElementById('signupErr').style.display = 'none';
   document.getElementById('signupSuccess').style.display = 'none';
 }
 function showLoginForm() {
-  document.getElementById('signupView').style.display = 'none';
-  document.getElementById('forgotView').style.display = 'none';
+  ['signupView','forgotView','resetView'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
   document.getElementById('loginView').style.display = 'block';
   document.getElementById('loginErr').style.display = 'none';
 }
@@ -822,74 +839,4 @@ async function doSignup() {
     if (error) {
       errEl.textContent = error.message || 'Sign up failed. Try again.';
       errEl.style.display = 'block';
-      btn.textContent = 'Create Account';
-      btn.disabled = false;
-      return;
-    }
-
-    // If user returned (email confirmation required), show success
-    if (data?.user) {
-      // Try to insert profile row immediately (may already exist via trigger)
-      if (sbClient && data.user.id) {
-        try {
-          await sbClient.from('profiles').upsert({
-            id: data.user.id, email, name, company,
-            plan: 'starter', role: 'subscriber',
-            account_type: type, status: 'trial',
-            trial_start: new Date().toISOString(),
-            trial_end: new Date(Date.now() + 14*86400000).toISOString()
-          }, { onConflict: 'id', ignoreDuplicates: true });
-        } catch(e) {}
-      }
-      // Show success + pre-fill login
-      okEl.innerHTML = '✅ Account created! Check your inbox at <strong>' + email + '</strong> for a confirmation link, then sign in here.';
-      okEl.style.display = 'block';
-      btn.textContent = 'Create Account';
-      btn.disabled = false;
-      // Pre-fill login fields for convenience
-      sessionStorage.setItem('aacg_signup_email', email);
-      sessionStorage.setItem('aacg_signup_name', name);
-    } else {
-      errEl.textContent = 'Unexpected error. Please try again.';
-      errEl.style.display = 'block';
-      btn.textContent = 'Create Account';
-      btn.disabled = false;
-    }
-  } catch(e) {
-    errEl.textContent = 'Network error: ' + e.message;
-    errEl.style.display = 'block';
-    btn.textContent = 'Create Account';
-    btn.disabled = false;
-  }
-}
-
-// Check URL params for new signup (from main site)
-(function checkNewSignup() {
-  const params = new URLSearchParams(window.location.search);
-  const plan = params.get('plan');
-  const isNew = params.get('new');
-  if (isNew === '1' && plan) {
-    const name  = sessionStorage.getItem('aacg_signup_name') || '';
-    const email = sessionStorage.getItem('aacg_signup_email') || '';
-    if (email) {
-      // Pre-fill login form and attempt auto-login with saved password
-      setTimeout(function() {
-        var emailField = document.getElementById('loginEmail');
-        var passField  = document.getElementById('loginPass');
-        var savedPwd   = sessionStorage.getItem('aacg_signup_password') || '';
-        if (emailField) emailField.value = email;
-        if (passField && savedPwd) passField.value = savedPwd;
-        // Don't auto-login — user must confirm email first
-        var banner = document.createElement('div');
-        banner.style.cssText = 'position:fixed;top:0;left:0;right:0;background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;padding:14px;text-align:center;font-weight:700;z-index:99999;font-size:.9rem;';
-        banner.innerHTML = '✅ Account created! Check your email (' + (email||'inbox') + ') for a confirmation link, then log in here.';
-        document.body.prepend(banner);
-        setTimeout(function(){banner.remove();}, 12000);
-      }, 500);
-    }
-  }
-})();
-</script>
-<script src="/admin/app.js"></script>
-</body>
-</html>
+      

@@ -123,6 +123,17 @@
       </div>
     </div>
 
+    <!-- Set New Password (reset landing) -->
+    <div id="resetForm" style="display:none">
+      <p style="font-size:.82rem;color:var(--muted,#888);margin-bottom:14px;">Choose a strong new password for your account.</p>
+      <div class="form-group"><label>New Password</label><input type="password" id="subResetPass" placeholder="Minimum 8 characters" autocomplete="new-password" onkeydown="if(event.key==='Enter')doSubReset()"></div>
+      <div class="form-group"><label>Confirm New Password</label><input type="password" id="subResetConfirm" placeholder="Repeat password" autocomplete="new-password" onkeydown="if(event.key==='Enter')doSubReset()"></div>
+      <button class="btn-primary" id="subResetBtn" onclick="doSubReset()">Set New Password</button>
+      <div id="subResetSuccess" style="display:none;margin-top:12px;padding:10px 14px;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);border-radius:8px;font-size:.82rem;color:#22c55e;text-align:center;">
+        ✅ Password updated! Redirecting you to sign in…
+      </div>
+    </div>
+
     <!-- Forgot Password -->
     <div id="forgotForm" style="display:none">
       <p style="font-size:.82rem;color:var(--muted,#888);margin-bottom:14px;">Enter your email and we'll send a password reset link.</p>
@@ -314,6 +325,7 @@ function switchAuthTab(tab){
   document.getElementById('signinForm').style.display=tab==='signin'?'':'none';
   document.getElementById('signupForm').style.display=tab==='signup'?'':'none';
   document.getElementById('forgotForm').style.display='none';
+  document.getElementById('resetForm').style.display='none';
   document.getElementById('authErr').style.display='none';
   document.getElementById('authSuccess').style.display='none';
 }
@@ -328,8 +340,30 @@ function showSubForgot(){
   document.getElementById('authErr').style.display='none';
 }
 function showSubSignin(){
-  document.getElementById('forgotForm').style.display='none';
+  ['forgotForm','resetForm','signupForm'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
   document.getElementById('signinForm').style.display='block';
+}
+function showSubReset(){
+  ['signinForm','signupForm','forgotForm'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
+  document.getElementById('resetForm').style.display='block';
+}
+async function doSubReset(){
+  initSB();
+  const pass=(document.getElementById('subResetPass').value||'');
+  const confirm=(document.getElementById('subResetConfirm').value||'');
+  const btn=document.getElementById('subResetBtn');
+  const okEl=document.getElementById('subResetSuccess');
+  if(pass.length<8){showAuthErr('Password must be at least 8 characters.');return;}
+  if(pass!==confirm){showAuthErr('Passwords do not match.');return;}
+  btn.textContent='Updating…';btn.disabled=true;
+  try{
+    const {error}=await sb.auth.updateUser({password:pass});
+    btn.textContent='Set New Password';btn.disabled=false;
+    if(error){showAuthErr(error.message||'Failed to update password.');return;}
+    okEl.style.display='block';btn.style.display='none';
+    window.history.replaceState({},'',window.location.pathname);
+    setTimeout(()=>showSubSignin(),2500);
+  }catch(e){btn.textContent='Set New Password';btn.disabled=false;showAuthErr('Network error: '+e.message);}
 }
 async function doSubForgot(){
   initSB();
@@ -552,107 +586,69 @@ async function loadNegotiations(){
     }).join('');
   }catch(e){el.innerHTML='<div class="empty"><div class="empty-icon">⚠️</div><p>Could not load negotiations</p></div>';}
 }
-async function acceptCounter(negId,amount){
-  const {error}=await sb.from('payment_negotiations').update({status:'approved',final_amount:amount}).eq('id',negId);
-  if(error)return toast('Error accepting counter','error');
-  toast('Agreed! Amount: $'+Number(amount).toLocaleString());
-  loadNegotiations();loadKPIs();
+
+async function acceptCounter(negId, gcAmount){
+  if(!sbClient) return;
+  if(!confirm(`Accept GC counter offer of $${Number(gcAmount).toLocaleString()}?`)) return;
+  const { error } = await sbClient
+    .from('payment_negotiations')
+    .update({
+      final_amount: gcAmount,
+      sub_requested: gcAmount,
+      status: 'approved',
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', negId);
+  if(error){ alert('Error: ' + (error.message||'Failed to accept.')); return; }
+  await loadNegotiations();
+  showToast('✅ Counter offer accepted!', 'success');
 }
-function openCounter(negId,subAsk,gcCounter){
-  activeNegId=negId;
-  document.getElementById('counterContext').innerHTML=`<strong>Your ask:</strong> $${Number(subAsk).toLocaleString()} &nbsp;|&nbsp; <strong>GC counter:</strong> $${Number(gcCounter).toLocaleString()}`;
-  document.getElementById('counterAmount').value='';document.getElementById('counterNote').value='';
+
+let _counterNegId = null;
+function openCounter(negId, subAmt, gcAmt){
+  _counterNegId = negId;
+  document.getElementById('counterAmount').value = subAmt||'';
+  document.getElementById('counterNote').value = '';
   openModal('counterModal');
 }
+
 async function submitCounter(){
-  const amount=parseFloat(document.getElementById('counterAmount').value);
-  const note=document.getElementById('counterNote').value.trim();
-  if(!amount||amount<=0)return toast('Enter a valid amount','error');
-  const {error}=await sb.from('payment_negotiations').update({sub_requested:amount,notes:note,status:'pending_gc'}).eq('id',activeNegId);
-  if(error)return toast('Error submitting counter','error');
-  closeModal('counterModal');toast('Counter offer submitted!');loadNegotiations();
+  if(!sbClient || !_counterNegId) return;
+  const amount = parseFloat(document.getElementById('counterAmount').value)||0;
+  const note   = document.getElementById('counterNote').value||'';
+  if(amount <= 0){ alert('Please enter a valid counter amount.'); return; }
+  const { error } = await sbClient
+    .from('payment_negotiations')
+    .update({
+      sub_requested: amount,
+      notes: note,
+      status: 'counter_sub',
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', _counterNegId);
+  if(error){ alert('Error: ' + (error.message||'Failed to submit.')); return; }
+  closeModal('counterModal');
+  _counterNegId = null;
+  await loadNegotiations();
+  showToast('📤 Counter offer sent to GC.', 'info');
 }
 
-// ── Invoices ──
-async function loadInvoices(){
-  const tbody=document.getElementById('invoicesTbody');
-  const empty=document.getElementById('invoicesEmpty');
-  try{
-    const {data}=await sb.from('invoices').select('*').eq('user_id',currentSub.id).order('created_at',{ascending:false});
-    if(!data||data.length===0){document.getElementById('invoicesTable').style.display='none';empty.style.display='block';return;}
-    document.getElementById('invoicesTable').style.display='';empty.style.display='none';
-    tbody.innerHTML=data.map(inv=>`<tr>
-      <td>${inv.invoice_number||inv.id.slice(-8)}</td>
-      <td>${inv.client_name||'—'}</td>
-      <td>$${Number(inv.amount||0).toLocaleString()}</td>
-      <td><span class="badge ${inv.status==='paid'?'badge-complete':inv.status==='approved'?'badge-active':'badge-pending'}">${inv.status||'pending'}</span></td>
-      <td>${inv.created_at?new Date(inv.created_at).toLocaleDateString():'—'}</td>
-    </tr>`).join('');
-  }catch(e){document.getElementById('invoicesTable').style.display='none';empty.style.display='block';}
-}
-async function submitInvoice(){
-  const project=document.getElementById('invProject').value.trim();
-  const number=document.getElementById('invNumber').value.trim();
-  const amount=parseFloat(document.getElementById('invAmount').value);
-  const desc=document.getElementById('invDesc').value.trim();
-  const date=document.getElementById('invDate').value;
-  if(!project||!amount||amount<=0)return toast('Project and amount required','error');
-  const {error}=await sb.from('invoices').insert({
-    user_id:currentSub.id,client_name:project,
-    invoice_number:number||'INV-'+Date.now().toString().slice(-6),
-    amount,due_date:date||null,status:'pending',
-    created_at:new Date().toISOString()
-  });
-  if(error)return toast('Error: '+error.message,'error');
-  closeModal('invoiceModal');toast('Invoice submitted!');loadInvoices();loadKPIs();
-}
-
-// ── Documents ──
-async function loadDocuments(){
-  const tbody=document.getElementById('docsTbody');
-  const empty=document.getElementById('docsEmpty');
-  try{
-    const {data}=await sb.from('project_drawings').select('*').order('created_at',{ascending:false}).limit(50);
-    if(!data||data.length===0){document.getElementById('docsTable').style.display='none';empty.style.display='block';return;}
-    document.getElementById('docsTable').style.display='';empty.style.display='none';
-    tbody.innerHTML=data.map(d=>`<tr>
-      <td>${d.file_name||d.title||'—'}</td>
-      <td>${d.project_name||'—'}</td>
-      <td>${d.file_type||d.type||'—'}</td>
-      <td>${d.created_at?new Date(d.created_at).toLocaleDateString():'—'}</td>
-      <td>${d.file_url?`<a href="${d.file_url}" target="_blank" class="portal-link" style="font-size:.8rem">Download</a>`:'—'}</td>
-    </tr>`).join('');
-  }catch(e){document.getElementById('docsTable').style.display='none';empty.style.display='block';}
-}
-
-// ── UI helpers ──
-function switchTab(tab){
-  const tabs=['work','photos','negotiations','invoices','documents'];
-  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',tabs[i]===tab));
-  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id==='tab-'+tab));
-}
-function openModal(id){document.getElementById(id).classList.add('open');}
-function closeModal(id){document.getElementById(id).classList.remove('open');}
-document.addEventListener('DOMContentLoaded',()=>{
-  document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');}));
-});
-
-// ── Session Restore ──
-document.addEventListener('DOMContentLoaded',async()=>{
-  initSB();
-  // Try Supabase session first (most reliable)
-  const {data:{session}}=await sb.auth.getSession();
-  if(session&&session.user){await bootSubApp(session.user);return;}
-  // Fallback: sessionStorage
-  const stored=sessionStorage.getItem('aacg_sub');
-  if(stored){
-    try{
-      const parsed=JSON.parse(stored);
-      if(parsed.sbUser){const {data:{session:s2}}=await sb.auth.getSession();if(s2){await bootSubApp(s2.user);return;}}
-    }catch(e){}
+function showToast(msg, type='info'){
+  let t = document.getElementById('subToast');
+  if(!t){
+    t = document.createElement('div');
+    t.id = 'subToast';
+    t.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:9999;padding:12px 20px;border-radius:10px;font-size:.87rem;font-weight:600;box-shadow:0 4px 18px rgba(0,0,0,.3);transition:opacity .4s';
+    document.body.appendChild(t);
   }
-  document.getElementById('authScreen').style.display='flex';
-});
+  const colors = { success:'#22c55e', error:'#ef4444', info:'#3b82f6' };
+  t.style.background = colors[type]||colors.info;
+  t.style.color = '#fff';
+  t.style.opacity = '1';
+  t.textContent = msg;
+  clearTimeout(t._h);
+  t._h = setTimeout(()=>{ t.style.opacity='0'; }, 3200);
+}
 </script>
 </body>
 </html>

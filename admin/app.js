@@ -142,6 +142,54 @@ async function doForgotPassword(){
   }
 }
 
+// ── Password Reset (landing page handler) ──────────────────────────────────
+function showResetView(){
+  ['loginView','forgotView','signupView'].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.style.display = 'none';
+  });
+  const rv = document.getElementById('resetView');
+  if(rv) rv.style.display = 'block';
+}
+
+async function doResetPassword(){
+  const pass    = (document.getElementById('resetPass').value || '');
+  const confirm = (document.getElementById('resetPassConfirm').value || '');
+  const btn     = document.getElementById('resetBtn');
+  const errEl   = document.getElementById('resetErr');
+  const okEl    = document.getElementById('resetSuccess');
+  errEl.style.display = 'none';
+  if(pass.length < 8){ errEl.textContent='Password must be at least 8 characters.'; errEl.style.display='block'; return; }
+  if(pass !== confirm){ errEl.textContent='Passwords do not match.'; errEl.style.display='block'; return; }
+  if(!sbClient){ errEl.textContent='Auth service unavailable. Contact support@aacgplatform.com'; errEl.style.display='block'; return; }
+  btn.textContent='Updating…'; btn.disabled=true;
+  try {
+    const { error } = await sbClient.auth.updateUser({ password: pass });
+    btn.textContent='Set New Password'; btn.disabled=false;
+    if(error){ errEl.textContent = error.message||'Failed to update password. Try again.'; errEl.style.display='block'; return; }
+    okEl.style.display = 'block';
+    btn.style.display = 'none';
+    // Clean hash from URL and redirect to login after 2s
+    window.history.replaceState({}, '', window.location.pathname);
+    setTimeout(()=>{ showLoginForm(); }, 2500);
+  } catch(e){
+    btn.textContent='Set New Password'; btn.disabled=false;
+    errEl.textContent='Network error: '+e.message; errEl.style.display='block';
+  }
+}
+
+// Detect Supabase PASSWORD_RECOVERY in URL hash on page load
+(function checkPasswordReset(){
+  const hash = window.location.hash;
+  if(hash && hash.includes('type=recovery')){
+    // Supabase will auto-detect the session from the hash fragment — just show the reset form
+    document.addEventListener('DOMContentLoaded', function(){
+      showResetView();
+    });
+    if(document.readyState !== 'loading') showResetView();
+  }
+})();
+
 async function doLogout(){
   await sbLogout();
   sessionStorage.removeItem('aacg_subscriber');
@@ -3787,108 +3835,4 @@ function closeUpgradeModal(){ document.getElementById('upgradeModal').style.disp
 // ────────────────────────────────────────────────
 let _liveLogLastId = null; // track last seen agent_log id to avoid duplicates
 
-function _injectLogLine(id, agent, type, msg, ts){
-  const el = document.getElementById(id);
-  if(!el) return;
-  const timeStr = ts ? new Date(ts).toLocaleTimeString('en-US',{hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'})
-                     : new Date().toLocaleTimeString('en-US',{hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'});
-  el.innerHTML = `<div class="ll-line"><span class="ll-time">${timeStr}</span><span class="ll-agent">[${agent}]</span><span class="ll-msg ${type}">${msg}</span></div>` + el.innerHTML;
-  if(el.children.length > 50) el.lastElementChild.remove();
-}
-
-async function _fetchNewLogs(){
-  if(!USE_SB || !window._sbUserId) return null;
-  try {
-    let q = sbClient.from('agent_logs')
-      .select('id,agent_name,action,result,created_at')
-      .eq('user_id', window._sbUserId)
-      .order('created_at', {ascending: false})
-      .limit(20);
-    if(_liveLogLastId){
-      // Only fetch entries newer than the last seen (by created_at)
-      q = sbClient.from('agent_logs')
-        .select('id,agent_name,action,result,created_at')
-        .eq('user_id', window._sbUserId)
-        .gt('id', _liveLogLastId)
-        .order('created_at', {ascending: false})
-        .limit(20);
-    }
-    const res = await sbQuery(q);
-    if(res && res.data && res.data.length > 0){
-      return res.data;
-    }
-  } catch(e){ /* silently fall through to demo */ }
-  return null;
-}
-
-async function _seedLiveLogFromSB(){
-  // On startup: load last 8 real logs to fill the panel
-  if(!USE_SB || !window._sbUserId) return false;
-  try {
-    const res = await sbQuery(
-      sbClient.from('agent_logs')
-        .select('id,agent_name,action,result,created_at')
-        .eq('user_id', window._sbUserId)
-        .order('created_at', {ascending: false})
-        .limit(8)
-    );
-    if(res && res.data && res.data.length > 0){
-      // Inject oldest-first so newest ends up at top
-      const rows = [...res.data].reverse();
-      rows.forEach(row => {
-        const type = row.action === 'error' ? 'warn' : 'success';
-        const msg  = row.result || row.action || 'Agent run completed';
-        _injectLogLine('dashLog',     row.agent_name || 'Agent', type, msg, row.created_at);
-        _injectLogLine('activityLog', row.agent_name || 'Agent', type, msg, row.created_at);
-      });
-      _liveLogLastId = res.data[0].id; // highest ID = most recent
-      return true;
-    }
-  } catch(e){ /* fall through */ }
-  return false;
-}
-
-async function startLiveLog(){
-  // Seed with real Supabase data; show empty state if no data yet
-  const seeded = await _seedLiveLogFromSB();
-  if(!seeded){
-    // No real data yet — show empty state message
-    const emptyMsg = '<div style="color:var(--muted);font-size:.8rem;padding:12px 0;text-align:center">No activity yet. Run an agent to see logs here.</div>';
-    const dashLog = document.getElementById('dashLog');
-    const actLog  = document.getElementById('activityLog');
-    if(dashLog && !dashLog.children.length) dashLog.innerHTML = emptyMsg;
-    if(actLog  && !actLog.children.length)  actLog.innerHTML  = emptyMsg;
-  }
-
-  // Poll every 10 seconds for new real logs
-  setInterval(async ()=>{
-    const newLogs = await _fetchNewLogs();
-    if(newLogs && newLogs.length > 0){
-      // Update last seen ID
-      _liveLogLastId = newLogs[0].id;
-      // Clear empty state if present
-      const dashLog = document.getElementById('dashLog');
-      const actLog  = document.getElementById('activityLog');
-      if(dashLog && dashLog.querySelector('div[style*="No activity"]')) dashLog.innerHTML = '';
-      if(actLog  && actLog.querySelector('div[style*="No activity"]'))  actLog.innerHTML  = '';
-      // Inject newest-first (already ordered desc)
-      newLogs.forEach(row => {
-        const type = row.action === 'error' ? 'warn' : 'success';
-        const msg  = row.result || row.action || 'Agent run completed';
-        _injectLogLine('dashLog',     row.agent_name || 'Agent', type, msg, row.created_at);
-        _injectLogLine('activityLog', row.agent_name || 'Agent', type, msg, row.created_at);
-      });
-    }
-  }, 10000);
-}
-
-// ────────────────────────────────────────────────
-// SESSION RESTORE ON LOAD
-// ────────────────────────────────────────────────
-window.addEventListener('DOMContentLoaded', ()=>{
-  const saved = sessionStorage.getItem('aacg_subscriber');
-  if(saved){
-    const acc = JSON.parse(saved);
-    bootApp(acc);
-  }
-});
+fu

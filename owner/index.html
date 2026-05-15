@@ -112,6 +112,23 @@
       </div>
     </div>
 
+    <!-- Set New Password (reset landing) -->
+    <div id="resetForm" style="display:none">
+      <p style="font-size:.82rem;color:var(--muted);margin-bottom:14px;">Choose a strong new password for your account.</p>
+      <div class="form-group">
+        <label>New Password</label>
+        <input type="password" id="ownerResetPass" placeholder="Minimum 8 characters" autocomplete="new-password" onkeydown="if(event.key==='Enter')ownerResetPassword()">
+      </div>
+      <div class="form-group">
+        <label>Confirm New Password</label>
+        <input type="password" id="ownerResetConfirm" placeholder="Repeat password" autocomplete="new-password" onkeydown="if(event.key==='Enter')ownerResetPassword()">
+      </div>
+      <button class="btn-primary" id="ownerResetBtn" onclick="ownerResetPassword()">Set New Password</button>
+      <div id="ownerResetSuccess" style="display:none;margin-top:12px;padding:10px 14px;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);border-radius:8px;font-size:.82rem;color:#22c55e;text-align:center;">
+        ✅ Password updated! Redirecting you to sign in…
+      </div>
+    </div>
+
     <!-- Forgot Password -->
     <div id="forgotForm" style="display:none">
       <p style="font-size:.82rem;color:var(--muted);margin-bottom:14px;">Enter your email and we'll send a password reset link.</p>
@@ -241,6 +258,7 @@ function switchAuthTab(tab){
   document.getElementById('signinForm').style.display  = tab==='signin'  ? 'block':'none';
   document.getElementById('signupForm').style.display  = tab==='signup'  ? 'block':'none';
   document.getElementById('forgotForm').style.display  = 'none';
+  document.getElementById('resetForm').style.display   = 'none';
   document.getElementById('atab_signin').classList.toggle('active', tab==='signin');
   document.getElementById('atab_signup').classList.toggle('active', tab==='signup');
   document.getElementById('authError').style.display   = 'none';
@@ -257,8 +275,37 @@ function showOwnerForgot(){
   document.getElementById('authError').style.display = 'none';
 }
 function showOwnerSignin(){
-  document.getElementById('forgotForm').style.display = 'none';
+  ['forgotForm','resetForm','signupForm'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.style.display='none';
+  });
   document.getElementById('signinForm').style.display = 'block';
+}
+function showOwnerReset(){
+  ['signinForm','signupForm','forgotForm'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.style.display='none';
+  });
+  document.getElementById('resetForm').style.display = 'block';
+}
+async function ownerResetPassword(){
+  const pass    = (document.getElementById('ownerResetPass').value||'');
+  const confirm = (document.getElementById('ownerResetConfirm').value||'');
+  const btn     = document.getElementById('ownerResetBtn');
+  const okEl    = document.getElementById('ownerResetSuccess');
+  if(pass.length<8){ showAuthMsg('error','Password must be at least 8 characters.'); return; }
+  if(pass!==confirm){ showAuthMsg('error','Passwords do not match.'); return; }
+  if(!sbClient){ showAuthMsg('error','Auth unavailable. Contact support@aacgplatform.com'); return; }
+  btn.textContent='Updating…'; btn.disabled=true;
+  try {
+    const {error} = await sbClient.auth.updateUser({password:pass});
+    btn.textContent='Set New Password'; btn.disabled=false;
+    if(error){ showAuthMsg('error',error.message||'Failed to update password.'); return; }
+    okEl.style.display='block'; btn.style.display='none';
+    window.history.replaceState({},'',window.location.pathname);
+    setTimeout(()=>showOwnerSignin(), 2500);
+  } catch(e){
+    btn.textContent='Set New Password'; btn.disabled=false;
+    showAuthMsg('error','Network error: '+e.message);
+  }
 }
 async function ownerForgotPassword(){
   const email = (document.getElementById('ownerForgotEmail').value||'').trim().toLowerCase();
@@ -582,22 +629,24 @@ function renderHistoryTab(){
 
 // ── Release Modal ──────────────────────────────────────────────────────────────
 function openReleaseModal(negId){
-  const n=allNegotiations.find(x=>x.id===negId);
+  const n = allNegotiations.find(x=>x.id===negId);
   if(!n) return;
-  const sub=n.photo_submissions||{};
-  document.getElementById('releaseModalTitle').textContent=`Release — ${sub.job_name||'Payment'}`;
-  document.getElementById('releaseModal').style.display='flex';
-  document.getElementById('releaseModalBody').innerHTML=`
-    ${sub.photo_url?`<img src="${sub.photo_url}" style="width:100%;max-height:200px;object-fit:cover;border-radius:8px">`:''}
-    <div style="background:var(--mid);border-radius:8px;padding:12px;font-size:.83rem;line-height:1.5">${(sub.ai_analysis||'No AI analysis available.').substring(0,400)}…</div>
+  const sub = n.photo_submissions||{};
+  document.getElementById('releaseModalTitle').textContent = 'Release — ' + (sub.job_name||'Payment');
+  document.getElementById('releaseModal').style.display = 'flex';
+  document.getElementById('releaseModalBody').innerHTML = `
+    ${sub.photo_url ? `<img src="${sub.photo_url}" style="width:100%;max-height:200px;object-fit:cover;border-radius:8px;margin-bottom:8px">` : ''}
+    <div style="background:var(--mid);border-radius:8px;padding:12px;font-size:.83rem;line-height:1.5;margin-bottom:6px">
+      ${(sub.ai_analysis||'No AI analysis available.').substring(0,400)}
+    </div>
     <div class="neg-amounts">
       <div class="neg-amount"><div class="neg-amount-val" style="color:var(--blue)">${n.ai_amount||0}%</div><div class="neg-amount-label">🤖 AI</div></div>
       <div class="neg-amount"><div class="neg-amount-val" style="color:var(--orange)">${n.sub_requested||0}%</div><div class="neg-amount-label">👷 Sub</div></div>
       <div class="neg-amount"><div class="neg-amount-val" style="color:var(--green)">${n.gc_approved||0}%</div><div class="neg-amount-label">✅ GC</div></div>
-      <div class="neg-amount" style="border:1px solid var(--gold)55">
+      <div class="neg-amount" style="border:1px solid var(--gold,#f59e0b)55">
         <input type="number" id="rm_owner_amount" value="${n.owner_released||n.gc_approved||n.sub_requested||n.ai_amount||0}" min="0" max="100" step="0.5"
           onchange="updateOwnerDollarPreview()"
-          style="width:100%;background:none;border:none;color:var(--gold);font-size:1.2rem;font-weight:800;text-align:center;outline:none">
+          style="width:100%;background:none;border:none;color:var(--gold,#f59e0b);font-size:1.2rem;font-weight:800;text-align:center;outline:none">
         <div class="neg-amount-label">🏛 Owner (edit)</div>
       </div>
     </div>
@@ -608,17 +657,19 @@ function openReleaseModal(negId){
         style="width:100%;background:var(--mid);border:1px solid var(--border);border-radius:8px;padding:9px 13px;color:var(--text);font-size:.88rem;outline:none">
     </div>
     <div id="rm_owner_dollar_preview" style="background:var(--mid);border-radius:8px;padding:10px;font-size:.82rem;color:var(--muted);display:none;margin-bottom:4px">
-      Releasing <span id="rm_owner_dollar_amt" style="color:var(--gold);font-weight:700"></span> to GC
-      <span style="color:var(--muted)"> · GC pays sub within 7 days (pay-when-paid)</span>
+      Releasing <span id="rm_owner_dollar_amt" style="color:var(--gold,#f59e0b);font-weight:700"></span> of <span id="rm_owner_contract_display" style="color:var(--text)"></span>
+      <span style="color:var(--muted)"> · 10% retainage = </span><span id="rm_owner_retainage_amt" style="color:var(--orange);font-weight:700"></span>
     </div>
     <div class="form-group">
-      <label>Your Note</label>
-      <textarea id="rm_owner_note" rows="2" placeholder="Optional note to GC…">${n.owner_note||''}</textarea>
+      <label>Release Note</label>
+      <textarea id="rm_owner_note" rows="2" placeholder="Optional note…">${n.owner_note||''}</textarea>
     </div>
-    <div style="display:flex;gap:8px">
-      <button class="btn-primary" style="flex:1" onclick="ownerRelease('${negId}','approved')">🏛 Release Payment</button>
-      <button class="btn-danger" style="flex:1" onclick="ownerRejectNeg('${negId}')">✗ Reject</button>
-    </div>`;
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn-green" style="flex:1" onclick="saveOwnerRelease('${n.id}','released')">✅ Release Payment</button>
+      <button class="btn-primary" style="flex:1" onclick="saveOwnerRelease('${n.id}','pending_owner')">💾 Save Draft</button>
+    </div>
+    <button style="width:100%;padding:9px;background:none;border:1px solid var(--red)44;color:var(--red);border-radius:8px;cursor:pointer;font-size:.8rem;margin-top:4px" onclick="ownerRejectNeg('${n.id}')">✗ Reject</button>
+  `;
 }
 
 function closeReleaseModal(){ document.getElementById('releaseModal').style.display='none'; }
@@ -629,101 +680,71 @@ function updateOwnerDollarPreview(){
   const preview = document.getElementById('rm_owner_dollar_preview');
   if(!preview) return;
   if(contractVal > 0){
-    const dollarAmt = (contractVal * pct / 100);
-    document.getElementById('rm_owner_dollar_amt').textContent = '$'+dollarAmt.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+    const dollarAmt  = contractVal * pct / 100;
+    const retainage  = dollarAmt * 0.10;
+    const dEl = document.getElementById('rm_owner_dollar_amt');
+    const cEl = document.getElementById('rm_owner_contract_display');
+    const rEl = document.getElementById('rm_owner_retainage_amt');
+    if(dEl) dEl.textContent = '$'+dollarAmt.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+    if(cEl) cEl.textContent = '$'+contractVal.toLocaleString('en-US');
+    if(rEl) rEl.textContent = '$'+retainage.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
     preview.style.display = 'block';
   } else {
     preview.style.display = 'none';
   }
 }
 
-async function ownerRelease(negId, newStatus){
-  const amount=parseFloat(document.getElementById('rm_owner_amount').value)||0;
-  const note=document.getElementById('rm_owner_note').value;
-  const now=new Date().toISOString();
-  try {
-    const updateFields = {
-      owner_id:           ownerUser.id,    // claim this negotiation for this owner
-      owner_amount:       amount,
-      notes:              note,
-      status:             newStatus,
-      owner_reviewed_at:  now
-    };
-    if(newStatus === 'approved' || newStatus === 'paid'){
-      updateFields.payment_status = 'owner_released';
-      updateFields.paid_at = now;
-    }
-    await sbClient.from('payment_negotiations').update(updateFields).eq('id',negId);
-    closeReleaseModal();
-    await loadAllData();
-    alert(`✅ Payment released: ${amount}% of contract. Sub-contractor will be notified.`);
-  } catch(e){ alert('Error: '+e.message); }
-}
-
-async function ownerReleaseQuick(negId, amount){
-  if(!confirm(`Release payment: ${amount}% of contract?\n\nThis will notify the GC to pay the sub-contractor within 7 days.`)) return;
-  const now=new Date().toISOString();
-  try {
-    await sbClient.from('payment_negotiations').update({
-      owner_id:           ownerUser.id,
-      owner_amount:       amount,
-      final_amount:       amount,
-      status:             'approved',
-      payment_status:     'owner_released',
-      owner_reviewed_at:  now,
-      paid_at:            now
-    }).eq('id',negId);
-    await loadAllData();
-    alert(`✅ Payment released: ${amount}% of contract. GC will pay sub within 7 days.`);
-  } catch(e){ alert('Error: '+e.message); }
+async function saveOwnerRelease(negId, newStatus){
+  if(!sbClient) return;
+  const pct       = parseFloat(document.getElementById('rm_owner_amount')?.value)||0;
+  const note      = document.getElementById('rm_owner_note')?.value||'';
+  const contractV = parseFloat(document.getElementById('rm_owner_contract')?.value)||0;
+  const updateObj = {
+    owner_released: pct,
+    owner_note: note,
+    status: newStatus,
+    updated_at: new Date().toISOString()
+  };
+  if(contractV > 0) updateObj.contract_value = contractV;
+  if(newStatus === 'released') updateObj.payment_status = 'owner_released';
+  const { error } = await sbClient.from('payment_negotiations').update(updateObj).eq('id', negId);
+  if(error){ alert('Save failed: '+(error.message||'Unknown error')); return; }
+  closeReleaseModal();
+  await loadAllData();
+  const msg = newStatus === 'released' ? '✅ Payment released to sub-contractor.' : '💾 Draft saved.';
+  showNotification(msg, newStatus === 'released' ? 'success' : 'info');
 }
 
 async function ownerRejectNeg(negId){
-  if(!confirm('Reject this payment request?')) return;
-  try {
-    await sbClient.from('payment_negotiations').update({
-      owner_id:          ownerUser.id,
-      status:            'rejected',
-      owner_reviewed_at: new Date().toISOString()
-    }).eq('id',negId);
-    closeReleaseModal();
-    await loadAllData();
-  } catch(e){ alert('Error: '+e.message); }
+  if(!sbClient) return;
+  const reason = prompt('Reason for rejection (optional):');
+  if(reason === null) return;
+  const { error } = await sbClient
+    .from('payment_negotiations')
+    .update({ status:'rejected', owner_note: reason||'Rejected by Owner', updated_at: new Date().toISOString() })
+    .eq('id', negId);
+  if(error){ alert('Error: '+(error.message||'Failed.')); return; }
+  closeReleaseModal();
+  await loadAllData();
+  showNotification('❌ Payment rejected.', 'error');
 }
 
-function viewOwnerPhoto(id){
-  const s=allSubmissions.find(x=>x.id===id);
-  if(!s) return;
-  const sev=s.severity||'ok';
-  const sevColor=sev==='critical'?'var(--red)':sev==='warning'?'var(--orange)':'var(--green)';
-  document.getElementById('releaseModalTitle').textContent=`${s.job_name||'Photo'} — AI Analysis`;
-  document.getElementById('releaseModal').style.display='flex';
-  document.getElementById('releaseModalBody').innerHTML=`
-    ${s.photo_url?`<img src="${s.photo_url}" style="width:100%;max-height:220px;object-fit:cover;border-radius:8px">`:''}
-    <div style="display:flex;gap:10px">
-      <div class="neg-amount" style="flex:1"><div class="neg-amount-val" style="color:var(--blue)">${s.ai_progress_pct||0}%</div><div class="neg-amount-label">Progress</div></div>
-      <div class="neg-amount" style="flex:1"><div class="neg-amount-val" style="color:var(--green)">${s.ai_amount||0}%</div><div class="neg-amount-label">AI Suggested</div></div>
-      <div class="neg-amount" style="flex:1"><div class="neg-amount-val" style="color:${sevColor}">${sev.toUpperCase()}</div><div class="neg-amount-label">Severity</div></div>
-    </div>
-    <div style="background:var(--mid);border-radius:8px;padding:14px;font-size:.82rem;line-height:1.6;border-left:3px solid ${sevColor}">${(s.ai_analysis||'No analysis').replace(/\n/g,'<br>')}</div>
-    <button style="width:100%;padding:9px;background:var(--mid);border:1px solid var(--border);color:var(--text);border-radius:8px;cursor:pointer;font-size:.83rem" onclick="closeReleaseModal()">Close</button>`;
+function showNotification(msg, type='info'){
+  let n = document.getElementById('ownerNotification');
+  if(!n){
+    n = document.createElement('div');
+    n.id = 'ownerNotification';
+    n.style.cssText = 'position:fixed;top:22px;right:22px;z-index:9999;padding:13px 22px;border-radius:10px;font-size:.88rem;font-weight:600;box-shadow:0 4px 18px rgba(0,0,0,.35);transition:opacity .4s;max-width:320px';
+    document.body.appendChild(n);
+  }
+  const colors = { success:'#22c55e', error:'#ef4444', info:'#3b82f6' };
+  n.style.background = colors[type]||colors.info;
+  n.style.color = '#fff';
+  n.style.opacity = '1';
+  n.textContent = msg;
+  clearTimeout(n._hide);
+  n._hide = setTimeout(()=>{ n.style.opacity='0'; }, 3500);
 }
-
-// ── Init ───────────────────────────────────────────────────────────────────────
-(async function init(){
-  const s=document.createElement('script');
-  s.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js';
-  s.onload=async()=>{
-    await initSB();
-    const {data:{session}}=await sbClient.auth.getSession();
-    if(session?.user){
-      ownerUser=session.user;
-      await loadOwnerProfile();
-      showApp();
-    }
-  };
-  document.head.appendChild(s);
-})();
 </script>
 </body>
 </html>
