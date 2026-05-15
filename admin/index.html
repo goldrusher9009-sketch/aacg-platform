@@ -340,20 +340,41 @@
       <div class="login-sub">Client Dashboard — Secure Access</div>
       <div class="form-group">
         <label>Email Address</label>
-        <input type="email" id="loginEmail" placeholder="your@company.com">
+        <input type="email" id="loginEmail" placeholder="your@company.com" autocomplete="email">
       </div>
       <div class="form-group">
         <label>Password</label>
-        <input type="password" id="loginPass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
+        <input type="password" id="loginPass" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
       </div>
       <button class="login-btn" onclick="doLogin()">Sign In to Dashboard</button>
       <div class="login-err" id="loginErr">Incorrect email or password. Please try again.</div>
-      <div class="login-footer">
-        <a href="../index.html">← Back to Website</a> &nbsp;|&nbsp;
-        <a href="../superadmin/">Super Admin ↗</a>
+      <div style="text-align:center;margin-top:10px;font-size:.78rem;">
+        <button class="login-toggle-link" onclick="showForgotForm()" style="color:var(--blue);font-size:.78rem;">Forgot your password?</button>
       </div>
-      <div style="margin-top:14px;font-size:.8rem;color:var(--muted)">
+      <div class="login-footer" style="margin-top:12px;">
+        <a href="/platform/">← Back to Website</a> &nbsp;|&nbsp;
+        <a href="/superadmin/">Super Admin ↗</a>
+      </div>
+      <div style="margin-top:10px;font-size:.8rem;color:var(--muted)">
         Don't have an account? <button class="login-toggle-link" onclick="showSignupForm()">Sign Up</button>
+      </div>
+    </div>
+
+    <!-- ── FORGOT PASSWORD VIEW ── -->
+    <div id="forgotView" style="display:none">
+      <div class="login-sub">Reset Your Password</div>
+      <p style="font-size:.82rem;color:var(--muted);margin-bottom:16px;text-align:left;">Enter the email address for your account and we'll send you a password reset link.</p>
+      <div class="form-group">
+        <label>Email Address</label>
+        <input type="email" id="forgotEmail" placeholder="your@company.com" autocomplete="email" onkeydown="if(event.key==='Enter')doForgotPassword()">
+      </div>
+      <button class="login-btn" id="forgotBtn" onclick="doForgotPassword()">Send Reset Link</button>
+      <div class="login-err" id="forgotErr" style="display:none"></div>
+      <div id="forgotSuccess" style="display:none;margin-top:12px;padding:12px;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);border-radius:8px;font-size:.82rem;color:#22c55e;text-align:center;">
+        ✅ Reset link sent! Check your email inbox (and spam folder).
+      </div>
+      <div style="text-align:center;margin-top:16px;font-size:.8rem;color:var(--muted)">
+        <button class="login-toggle-link" onclick="showLoginForm()">← Back to Sign In</button>
       </div>
     </div>
 
@@ -362,19 +383,19 @@
       <div class="login-sub">Create Your Free Account</div>
       <div class="form-group">
         <label>Full Name</label>
-        <input type="text" id="signupName" placeholder="Jane Smith">
+        <input type="text" id="signupName" placeholder="Jane Smith" autocomplete="name">
       </div>
       <div class="form-group">
         <label>Company Name</label>
-        <input type="text" id="signupCompany" placeholder="Smith Construction LLC">
+        <input type="text" id="signupCompany" placeholder="Smith Construction LLC" autocomplete="organization">
       </div>
       <div class="form-group">
         <label>Email Address</label>
-        <input type="email" id="signupEmail" placeholder="your@company.com">
+        <input type="email" id="signupEmail" placeholder="your@company.com" autocomplete="email">
       </div>
       <div class="form-group">
         <label>Password</label>
-        <input type="password" id="signupPass" placeholder="Min. 8 characters" onkeydown="if(event.key==='Enter')doSignup()">
+        <input type="password" id="signupPass" placeholder="Min. 8 characters" autocomplete="new-password" onkeydown="if(event.key==='Enter')doSignup()">
       </div>
       <div class="form-group">
         <label>Account Type</label>
@@ -756,12 +777,14 @@ async function sbLogAgent(agentName, action, result) {
 // ─── SIGNUP FORM TOGGLE ────────────────────────────────────────────────────
 function showSignupForm() {
   document.getElementById('loginView').style.display = 'none';
+  document.getElementById('forgotView').style.display = 'none';
   document.getElementById('signupView').style.display = 'block';
   document.getElementById('signupErr').style.display = 'none';
   document.getElementById('signupSuccess').style.display = 'none';
 }
 function showLoginForm() {
   document.getElementById('signupView').style.display = 'none';
+  document.getElementById('forgotView').style.display = 'none';
   document.getElementById('loginView').style.display = 'block';
   document.getElementById('loginErr').style.display = 'none';
 }

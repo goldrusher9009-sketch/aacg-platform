@@ -56,7 +56,7 @@ let activePanel  = 'dashboard';
 async function doLogin(){
   const email = document.getElementById('loginEmail').value.trim().toLowerCase();
   const pass  = document.getElementById('loginPass').value;
-  const btn = document.querySelector('.login-btn');
+  const btn = document.querySelector('#loginView .login-btn');
   if(btn){btn.textContent='Signing in...';btn.disabled=true;}
 
   // Supabase authentication only — no demo accounts
@@ -87,8 +87,59 @@ async function doLogin(){
     errEl.style.display='block';
     return;
   }
+
+  // Route to correct portal based on account_type
+  const acctType = (acc.account_type || '').toLowerCase();
+  if(acctType === 'gc' || acctType === 'general_contractor' || acctType === 'general contractor'){
+    window.location.href = '/gc/';
+    return;
+  }
+  if(acctType === 'subcontractor' || acctType === 'sub'){
+    window.location.href = '/sub/';
+    return;
+  }
+  if(acctType === 'owner' || acctType === 'project owner' || acctType === 'project owner / developer'){
+    window.location.href = '/owner/';
+    return;
+  }
+
   sessionStorage.setItem('aacg_subscriber', JSON.stringify(acc));
   bootApp(acc);
+}
+
+// ── Forgot Password ──
+function showForgotForm(){
+  document.getElementById('loginView').style.display = 'none';
+  document.getElementById('signupView').style.display = 'none';
+  document.getElementById('forgotView').style.display = 'block';
+  const fe = document.getElementById('forgotEmail');
+  const le = document.getElementById('loginEmail');
+  if(fe && le) fe.value = le.value; // pre-fill from login email
+  document.getElementById('forgotErr').style.display = 'none';
+  document.getElementById('forgotSuccess').style.display = 'none';
+}
+
+async function doForgotPassword(){
+  const email = (document.getElementById('forgotEmail').value || '').trim().toLowerCase();
+  const btn   = document.getElementById('forgotBtn');
+  const errEl = document.getElementById('forgotErr');
+  const okEl  = document.getElementById('forgotSuccess');
+  errEl.style.display = 'none';
+  okEl.style.display  = 'none';
+  if(!email){ errEl.textContent='Please enter your email address.'; errEl.style.display='block'; return; }
+  if(!sbClient){ errEl.textContent='Auth service unavailable. Email support@aacgplatform.com'; errEl.style.display='block'; return; }
+  btn.textContent = 'Sending...'; btn.disabled = true;
+  try {
+    const { error } = await sbClient.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin + '/admin/?reset=1'
+    });
+    btn.textContent = 'Send Reset Link'; btn.disabled = false;
+    if(error){ errEl.textContent = error.message || 'Failed to send reset email. Try again.'; errEl.style.display='block'; return; }
+    okEl.style.display = 'block';
+  } catch(e){
+    btn.textContent = 'Send Reset Link'; btn.disabled = false;
+    errEl.textContent = 'Network error: ' + e.message; errEl.style.display = 'block';
+  }
 }
 
 async function doLogout(){

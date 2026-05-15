@@ -369,7 +369,7 @@ footer{background:var(--navy2);border-top:1px solid var(--border);padding:56px 2
 <div class="modal-overlay" id="videoModal">
   <div class="modal-box">
     <button class="modal-close" onclick="closeVideo()">✕</button>
-    <iframe class="modal-video" id="modalIframe" src="" frameborder="0" allowfullscreen allow="autoplay;encrypted-media"></iframe>
+    <iframe class="modal-video" id="modalIframe" src="" frameborder="0" allowfullscreen allow="autoplay; fullscreen; encrypted-media; picture-in-picture"></iframe>
   </div>
 </div>
 
@@ -1163,7 +1163,16 @@ function openVideo(e,url){
   var modal=document.getElementById('videoModal');
   var iframe=document.getElementById('modalIframe');
   if(!modal||!iframe)return;
-  iframe.src=url;
+  // Fix YouTube URL: use nocookie domain, force autoplay
+  var src=url;
+  if(src.indexOf('youtube.com')>-1||src.indexOf('youtu.be')>-1){
+    src=src.replace('youtube.com','youtube-nocookie.com');
+    if(src.indexOf('autoplay')===-1){
+      src+=(src.indexOf('?')>-1?'&':'?')+'autoplay=1&rel=0&modestbranding=1';
+    }
+  }
+  iframe.setAttribute('allow','autoplay; fullscreen; encrypted-media');
+  iframe.src=src;
   modal.classList.add('open');
   document.body.style.overflow='hidden';
 }
@@ -1176,7 +1185,10 @@ function closeVideo(){
   document.body.style.overflow='';
 }
 var _vm=document.getElementById('videoModal');
-if(_vm){_vm.addEventListener('click',function(e){if(e.target===this)closeVideo();});}
+if(_vm){
+  _vm.addEventListener('click',function(e){if(e.target===this)closeVideo();});
+  document.addEventListener('keydown',function(e){if(e.key==='Escape')closeVideo();});
+}
 
 /* ---- Signup Modal ---- */
 var selectedPlan='pro';

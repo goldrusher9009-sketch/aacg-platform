@@ -115,9 +115,25 @@
     <div id="authSuccess" style="background:#14532d;border:1px solid var(--green);color:#86efac;padding:10px 14px;border-radius:8px;font-size:.82rem;margin-bottom:14px;display:none"></div>
     <!-- Sign In -->
     <div id="signinForm">
-      <div class="form-group"><label>Email</label><input type="email" id="siEmail" placeholder="you@company.com"></div>
-      <div class="form-group"><label>Password</label><input type="password" id="siPass" placeholder="••••••••"></div>
+      <div class="form-group"><label>Email</label><input type="email" id="siEmail" placeholder="you@company.com" autocomplete="email"></div>
+      <div class="form-group"><label>Password</label><input type="password" id="siPass" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doSignIn()"></div>
       <button class="btn-primary" onclick="doSignIn()">Sign In</button>
+      <div style="text-align:center;margin-top:10px;font-size:.78rem;">
+        <button onclick="showSubForgot()" style="background:none;border:none;color:var(--green);cursor:pointer;font-size:.78rem;text-decoration:underline;">Forgot your password?</button>
+      </div>
+    </div>
+
+    <!-- Forgot Password -->
+    <div id="forgotForm" style="display:none">
+      <p style="font-size:.82rem;color:var(--muted,#888);margin-bottom:14px;">Enter your email and we'll send a password reset link.</p>
+      <div class="form-group"><label>Email Address</label><input type="email" id="subForgotEmail" placeholder="you@company.com" autocomplete="email" onkeydown="if(event.key==='Enter')doSubForgot()"></div>
+      <button class="btn-primary" id="subForgotBtn" onclick="doSubForgot()">Send Reset Link</button>
+      <div id="subForgotSuccess" style="display:none;margin-top:12px;padding:10px 14px;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);border-radius:8px;font-size:.82rem;color:#22c55e;text-align:center;">
+        ✅ Reset link sent — check your email inbox.
+      </div>
+      <div style="text-align:center;margin-top:14px;font-size:.78rem;">
+        <button onclick="showSubSignin()" style="background:none;border:none;color:var(--green);cursor:pointer;font-size:.78rem;text-decoration:underline;">← Back to Sign In</button>
+      </div>
     </div>
     <!-- Sign Up -->
     <div id="signupForm" style="display:none">
@@ -139,9 +155,10 @@
     </div>
     <div class="auth-footer">
       <div class="portal-links" style="margin-top:14px">
+        <a href="/platform/" class="portal-link">← Back to Website</a>
         <a href="/gc/" class="portal-link">GC Portal →</a>
-        <a href="/admin/" class="portal-link">Admin →</a>
-        <a href="/" class="portal-link">Main Site →</a>
+        <a href="/owner/" class="portal-link">Owner Portal →</a>
+        <a href="/admin/" class="portal-link">Subscriber Admin →</a>
       </div>
     </div>
   </div>
@@ -296,8 +313,40 @@ function switchAuthTab(tab){
   document.querySelectorAll('.auth-tab').forEach((t,i)=>t.classList.toggle('active',(i===0)===(tab==='signin')));
   document.getElementById('signinForm').style.display=tab==='signin'?'':'none';
   document.getElementById('signupForm').style.display=tab==='signup'?'':'none';
+  document.getElementById('forgotForm').style.display='none';
   document.getElementById('authErr').style.display='none';
   document.getElementById('authSuccess').style.display='none';
+}
+function showSubForgot(){
+  document.getElementById('signinForm').style.display='none';
+  document.getElementById('signupForm').style.display='none';
+  document.getElementById('forgotForm').style.display='block';
+  const fe=document.getElementById('subForgotEmail');
+  const le=document.getElementById('siEmail');
+  if(fe&&le) fe.value=le.value;
+  document.getElementById('subForgotSuccess').style.display='none';
+  document.getElementById('authErr').style.display='none';
+}
+function showSubSignin(){
+  document.getElementById('forgotForm').style.display='none';
+  document.getElementById('signinForm').style.display='block';
+}
+async function doSubForgot(){
+  initSB();
+  const email=(document.getElementById('subForgotEmail').value||'').trim().toLowerCase();
+  const btn=document.getElementById('subForgotBtn');
+  const okEl=document.getElementById('subForgotSuccess');
+  if(!email){showAuthErr('Please enter your email address.');return;}
+  btn.textContent='Sending...';btn.disabled=true;
+  try{
+    const {error}=await sb.auth.resetPasswordForEmail(email,{
+      redirectTo:window.location.origin+'/sub/?reset=1'
+    });
+    btn.textContent='Send Reset Link';btn.disabled=false;
+    if(error){showAuthErr(error.message||'Failed to send reset email.');return;}
+    okEl.style.display='block';
+    document.getElementById('authErr').style.display='none';
+  }catch(e){btn.textContent='Send Reset Link';btn.disabled=false;showAuthErr('Network error: '+e.message);}
 }
 function showAuthErr(msg){const el=document.getElementById('authErr');el.textContent=msg;el.style.display='block';}
 function showAuthOk(msg){const el=document.getElementById('authSuccess');el.textContent=msg;el.style.display='block';}

@@ -103,13 +103,32 @@
     <div id="signinForm">
       <div class="form-group">
         <label>Email</label>
-        <input type="email" id="gcEmail" placeholder="gc@company.com">
+        <input type="email" id="gcEmail" placeholder="gc@company.com" autocomplete="email">
       </div>
       <div class="form-group">
         <label>Password</label>
-        <input type="password" id="gcPassword" placeholder="••••••••" onkeydown="if(event.key==='Enter')gcLogin()">
+        <input type="password" id="gcPassword" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')gcLogin()">
       </div>
       <button class="btn-primary" onclick="gcLogin()">Sign In to GC Portal</button>
+      <div style="text-align:center;margin-top:10px;font-size:.78rem;">
+        <button onclick="showGCForgot()" style="background:none;border:none;color:var(--blue);cursor:pointer;font-size:.78rem;text-decoration:underline;">Forgot your password?</button>
+      </div>
+    </div>
+
+    <!-- Forgot Password -->
+    <div id="forgotForm" style="display:none">
+      <p style="font-size:.82rem;color:var(--muted);margin-bottom:14px;">Enter your email and we'll send a password reset link.</p>
+      <div class="form-group">
+        <label>Email Address</label>
+        <input type="email" id="gcForgotEmail" placeholder="gc@company.com" autocomplete="email" onkeydown="if(event.key==='Enter')gcForgotPassword()">
+      </div>
+      <button class="btn-primary" id="gcForgotBtn" onclick="gcForgotPassword()">Send Reset Link</button>
+      <div id="gcForgotSuccess" style="display:none;margin-top:12px;padding:10px 14px;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);border-radius:8px;font-size:.82rem;color:#22c55e;text-align:center;">
+        ✅ Reset link sent — check your email inbox.
+      </div>
+      <div style="text-align:center;margin-top:14px;font-size:.78rem;">
+        <button onclick="showGCSignin()" style="background:none;border:none;color:var(--blue);cursor:pointer;font-size:.78rem;text-decoration:underline;">← Back to Sign In</button>
+      </div>
     </div>
 
     <!-- Sign Up -->
@@ -138,8 +157,10 @@
     </div>
 
     <div class="portal-links">
+      <a href="/platform/">← Back to Website</a><br>
       Sub-contractor? <a href="/sub/">Sub Portal →</a><br>
-      Property Owner? <a href="/owner/">Owner Portal →</a>
+      Property Owner? <a href="/owner/">Owner Portal →</a><br>
+      General Dashboard? <a href="/admin/">Subscriber Login →</a>
     </div>
   </div>
 </div>
@@ -229,10 +250,41 @@ async function initSB(){
 function switchAuthTab(tab){
   document.getElementById('signinForm').style.display  = tab==='signin'  ? 'block':'none';
   document.getElementById('signupForm').style.display  = tab==='signup'  ? 'block':'none';
+  document.getElementById('forgotForm').style.display  = 'none';
   document.getElementById('atab_signin').classList.toggle('active', tab==='signin');
   document.getElementById('atab_signup').classList.toggle('active', tab==='signup');
   document.getElementById('authError').style.display   = 'none';
   document.getElementById('authSuccess').style.display = 'none';
+}
+function showGCForgot(){
+  document.getElementById('signinForm').style.display = 'none';
+  document.getElementById('signupForm').style.display = 'none';
+  document.getElementById('forgotForm').style.display = 'block';
+  const fe = document.getElementById('gcForgotEmail');
+  const le = document.getElementById('gcEmail');
+  if(fe && le) fe.value = le.value;
+  document.getElementById('gcForgotSuccess').style.display = 'none';
+}
+function showGCSignin(){
+  document.getElementById('forgotForm').style.display = 'none';
+  document.getElementById('signinForm').style.display = 'block';
+}
+async function gcForgotPassword(){
+  const email = (document.getElementById('gcForgotEmail').value||'').trim().toLowerCase();
+  const btn = document.getElementById('gcForgotBtn');
+  const okEl = document.getElementById('gcForgotSuccess');
+  if(!email){ showAuthMsg('error','Please enter your email address.'); return; }
+  if(!sbClient){ showAuthMsg('error','Auth unavailable. Contact support@aacgplatform.com'); return; }
+  btn.textContent='Sending...'; btn.disabled=true;
+  try {
+    const {error} = await sbClient.auth.resetPasswordForEmail(email,{
+      redirectTo: window.location.origin + '/gc/?reset=1'
+    });
+    btn.textContent='Send Reset Link'; btn.disabled=false;
+    if(error){ showAuthMsg('error', error.message||'Failed to send reset email.'); return; }
+    okEl.style.display='block';
+    document.getElementById('authError').style.display='none';
+  } catch(e){ btn.textContent='Send Reset Link'; btn.disabled=false; showAuthMsg('error','Network error: '+e.message); }
 }
 
 // ── Sign In ───────────────────────────────────────────────────────────────────
