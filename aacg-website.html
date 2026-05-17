@@ -12,6 +12,7 @@ const SB_KEY = window.SUPABASE_ANON || '';
 const USE_SB = SB_URL.startsWith('https://') && SB_KEY.length > 10;
 const sb = USE_SB ? supabase.createClient(SB_URL, SB_KEY) : null;
 
+// ══ AUTHENTICATION FUNCTIONS ══
 async function sbSignUp(name, email, phone, company, plan, password, account_type) {
   if (!sb) return null;
   try {
@@ -39,6 +40,58 @@ async function sbSignUp(name, email, phone, company, plan, password, account_typ
     }
     return data;
   } catch(e) { console.error('[SB SignUp]', e); return null; }
+}
+
+async function sbSignIn(email, password) {
+  if (!sb) return null;
+  try {
+    const { data, error } = await sb.auth.signInWithPassword({
+      email: email,
+      password: password
+    });
+    if (error) throw error;
+    if (data.session) {
+      // Fetch user profile to get account type
+      const { data: profile, error: profileError } = await sb
+        .from('profiles')
+        .select('account_type')
+        .eq('id', data.user.id)
+        .single();
+
+      if (!profileError && profile) {
+        // Redirect to appropriate portal
+        const redirectUrl = profile.account_type && profile.account_type.toLowerCase().indexOf('sub') > -1 ? '/sub/' :
+          profile.account_type && (profile.account_type.toLowerCase().indexOf('general') > -1 || profile.account_type.toLowerCase() === 'gc') ? '/gc/' :
+          profile.account_type && profile.account_type.toLowerCase().indexOf('owner') > -1 ? '/owner/' :
+          '/admin/';
+        setTimeout(() => { window.location.href = redirectUrl; }, 500);
+      } else {
+        // Default to admin
+        setTimeout(() => { window.location.href = '/admin/'; }, 500);
+      }
+    }
+    return data;
+  } catch(e) { console.error('[SB SignIn]', e); throw e; }
+}
+
+async function resendConfirmEmail(email, accountType, plan) {
+  if (!sb) { alert('Supabase not configured'); return; }
+  try {
+    const { error } = await sb.auth.resend({
+      type: 'signup',
+      email: email,
+      options: {
+        emailRedirectTo: window.location.origin + (
+          accountType && accountType.toLowerCase().indexOf('sub') > -1 ? '/sub/' :
+          accountType && (accountType.toLowerCase().indexOf('general') > -1 || accountType.toLowerCase() === 'gc') ? '/gc/' :
+          accountType && accountType.toLowerCase().indexOf('owner') > -1 ? '/owner/' :
+          '/admin/'
+        )
+      }
+    });
+    if (error) throw error;
+    alert('✅ Confirmation email resent! Check your inbox and spam folder.');
+  } catch(e) { console.error('[Resend Error]', e); alert('Error: ' + e.message); }
 }
 </script>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><polygon points='50,2 93,26 93,74 50,98 7,74 7,26' fill='%23ff3a2d'/><text y='.9em' font-size='55' x='26' fill='white' font-weight='900'>⚡</text></svg>">
@@ -402,6 +455,21 @@ footer{background:var(--navy2);border-top:1px solid var(--border);padding:56px 2
   </div>
 </div>
 
+<!-- ═══ SIGNIN MODAL ═══ -->
+<div class="signup-overlay" id="signinModal">
+  <div class="signup-box" style="max-width:380px">
+    <button class="su-close" onclick="closeSignin()">✕</button>
+    <div class="signup-title">Welcome Back 🔐</div>
+    <p class="signup-sub">Sign in to your IronForge account.</p>
+    <input class="su-input" id="siEmail" type="email" placeholder="Email Address *" required style="margin-top:16px">
+    <input class="su-input" id="siPassword" type="password" placeholder="Password *" required>
+    <button class="su-submit" onclick="submitSignin()" style="margin-top:4px">Sign In →</button>
+    <div id="siError" style="color:#ef4444;font-size:.85rem;margin-top:8px;text-align:center;display:none;"></div>
+    <div class="su-divider" style="margin-top:16px">Don't have an account? <span class="su-login-link" onclick="goToSignup()">Sign up here</span></div>
+    <div class="su-note" style="margin-top:8px">🔒 Your login is secure and encrypted.</div>
+  </div>
+</div>
+
 <!-- ═══ SIGNUP MODAL ═══ -->
 <div class="signup-overlay" id="signupModal">
   <div class="signup-box">
@@ -533,7 +601,7 @@ footer{background:var(--navy2);border-top:1px solid var(--border);padding:56px 2
       <a href="#faq" class="nav-link">Q&amp;A</a>
       <a href="#contact" class="nav-link">Contact</a>
       <div class="nav-sep"></div>
-      <a href="/admin/" class="nav-login">Sign In</a>
+      <button onclick="openSignin()" class="nav-login" style="background:none;border:1px solid var(--border);cursor:pointer;">Sign In</button>
       <button class="nav-signup" onclick="openSignup('starter')">Sign Up</button>
     </div>
     <a href="tel:9298882848" class="nav-cta">📞 929-888-2848</a>
@@ -1365,12 +1433,95 @@ async function resendConfirmEmail(email, acctType, plan) {
     if(btn) { btn.textContent = '✓ Sent!'; btn.disabled = true; setTimeout(()=>{btn.textContent='Resend Email';btn.disabled=false;}, 5000); }
   } catch(e) { alert('Could not resend: ' + (e.message||'Unknown error')); }
 }
+function openSignin(){
+  var modal=document.getElementById('signinModal');
+  if(modal){modal.style.opacity='1';modal.style.pointerEvents='all';document.body.style.overflow='hidden';}
+  // Clear error and inputs
+  document.getElementById('siError').style.display='none';
+  document.getElementById('siEmail').value='';
+  document.getElementById('siPassword').value='';
+  document.getElementById('siEmail').focus();
+}
+
+function closeSignin(){
+  var modal=document.getElementById('signinModal');
+  if(modal){modal.style.opacity='0';modal.style.pointerEvents='none';document.body.style.overflow='';}
+}
+
 function goToLogin(){
   closeSignup();
-  window.location.href='/admin/';
+  openSignin();
 }
+
+function goToSignup(){
+  closeSignin();
+  openSignup('pro');
+}
+
+async function submitSignin(){
+  var emailEl=document.getElementById('siEmail');
+  var pwdEl=document.getElementById('siPassword');
+  var errEl=document.getElementById('siError');
+
+  var email = emailEl ? emailEl.value.trim() : '';
+  var password = pwdEl ? pwdEl.value : '';
+
+  // Validate email
+  if(!email) {
+    errEl.textContent = 'Please enter your email address.';
+    errEl.style.display='block';
+    emailEl.focus();
+    return;
+  }
+
+  var emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if(!emailRe.test(email)) {
+    errEl.textContent = 'Please enter a valid email address.';
+    errEl.style.display='block';
+    emailEl.focus();
+    return;
+  }
+
+  if(!password) {
+    errEl.textContent = 'Please enter your password.';
+    errEl.style.display='block';
+    pwdEl.focus();
+    return;
+  }
+
+  var btn = document.querySelector('#signinModal .su-submit');
+  if(btn) { btn.textContent = 'Signing in...'; btn.disabled = true; }
+
+  try {
+    if(!USE_SB || !sb) {
+      throw new Error('Authentication service not configured. Please try again later.');
+    }
+
+    await sbSignIn(email, password);
+    // sbSignIn redirects on success, so we won't reach here
+  } catch(e) {
+    errEl.textContent = e.message || 'Sign in failed. Please check your email and password.';
+    errEl.style.display='block';
+    console.error('[SignIn Error]', e);
+    if(btn) { btn.textContent = 'Sign In →'; btn.disabled = false; }
+  }
+}
+
+// Modal click-to-close
 var _sm=document.getElementById('signupModal');
 if(_sm){_sm.addEventListener('click',function(e){if(e.target===this)closeSignup();});}
+var _sim=document.getElementById('signinModal');
+if(_sim){_sim.addEventListener('click',function(e){if(e.target===this)closeSignin();});}
+
+// Allow Enter key to submit signin form
+document.addEventListener('DOMContentLoaded', function() {
+  var siPassword = document.getElementById('siPassword');
+  if(siPassword) {
+    siPassword.addEventListener('keypress', function(e) {
+      if(e.key === 'Enter') { submitSignin(); }
+    });
+  }
+});
 async function submitContact(e){
   e.preventDefault();
   var btn = e.target.querySelector('button[type=submit]');

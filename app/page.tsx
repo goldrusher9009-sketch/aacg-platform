@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   Droplet, Zap, Home, Wind, Wrench, UtensilsCrossed, Briefcase, HardHat,
   ArrowRight, Award, TrendingUp, Users, Zap as ZapIcon
@@ -67,7 +68,20 @@ const VERTICALS = [
 ];
 
 export default function Home() {
+  const router = useRouter();
   const [hoveredVertical, setHoveredVertical] = useState<string | null>(null);
+
+  const handleGetQuote = () => {
+    router.push('/signup');
+  };
+
+  const handleStartProject = () => {
+    router.push('/signup');
+  };
+
+  const handleCall = () => {
+    window.location.href = 'tel:1-800-2224-776';
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
@@ -85,7 +99,7 @@ export default function Home() {
               <a href="#verticals" className="text-slate-300 hover:text-white">Services</a>
               <a href="#features" className="text-slate-300 hover:text-white">Why Us</a>
             </div>
-            <button className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold">Get Quote</button>
+            <button onClick={handleGetQuote} className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold">Get Quote</button>
           </div>
         </div>
       </nav>
@@ -97,10 +111,10 @@ export default function Home() {
           Complete trade solutions across 8 verticals. Your trusted partner for quality service.
         </p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <button className="px-8 py-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold flex items-center justify-center gap-2">
+          <button onClick={handleStartProject} className="px-8 py-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold flex items-center justify-center gap-2">
             Start Project <ArrowRight className="w-5 h-5" />
           </button>
-          <button className="px-8 py-4 bg-slate-700 text-white rounded-lg hover:bg-slate-600 font-semibold">
+          <button onClick={handleCall} className="px-8 py-4 bg-slate-700 text-white rounded-lg hover:bg-slate-600 font-semibold">
             Call 1-800-AACG-PRO
           </button>
         </div>
@@ -153,7 +167,7 @@ export default function Home() {
       {/* CTA */}
       <div className="max-w-4xl mx-auto px-4 py-20 text-center">
         <h2 className="text-4xl font-bold text-white mb-6">Ready to Get Started?</h2>
-        <button className="px-8 py-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold text-lg">Get Free Quote</button>
+        <button onClick={handleGetQuote} className="px-8 py-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold text-lg">Get Free Quote</button>
       </div>
     </div>
   );

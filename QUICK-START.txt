@@ -1,0 +1,176 @@
+================================================================================
+  AACG SUPERADMIN PORTAL - QUICK START GUIDE
+================================================================================
+
+YOUR FILES ARE READY TO DEPLOY!
+
+What you have:
+  ✓ push-to-github.sh        - Automated deployment script
+  ✓ superadmin-portal.html   - Your portal application
+  ✓ DEPLOYMENT-INSTRUCTIONS.md - Complete setup guide
+  ✓ QUICK-START.txt          - This file
+
+================================================================================
+  FASTEST PATH TO DEPLOYMENT (3 STEPS)
+================================================================================
+
+STEP 1: Create GitHub Personal Access Token
+  → Go to: https://github.com/settings/tokens
+  → Click: Generate new token (classic)
+  → Scopes: Check "repo"
+  → Save: Copy the token string
+
+STEP 2: Run the Deployment Script
+  Open Terminal/PowerShell in the folder with push-to-github.sh
+
+  macOS/Linux:
+    chmod +x push-to-github.sh
+    ./push-to-github.sh
+
+  Windows (PowerShell or Git Bash):
+    bash push-to-github.sh
+
+  When prompted:
+    Username: goldrusher9009-sketch
+    Password: [Your Personal Access Token from Step 1]
+
+STEP 3: Enable GitHub Pages
+  → Go to: https://github.com/goldrusher9009-sketch/aacg-superadmin/settings/pages
+  → Source: Deploy from a branch
+  → Branch: main
+  → Folder: / (root)
+  → Save
+
+DONE! Your portal is live at:
+  https://goldrusher9009-sketch.github.io/aacg-superadmin/
+
+================================================================================
+  CONFIGURE SUPABASE CREDENTIALS
+================================================================================
+
+Once deployed, set your Supabase credentials:
+
+1. Visit your portal: https://goldrusher9009-sketch.github.io/aacg-superadmin/
+2. Open Developer Console: F12 (or Cmd+Option+J on Mac)
+3. Go to Console tab
+4. Paste these commands (with your actual values):
+
+   localStorage.setItem('SB_URL', 'https://your-project.supabase.co');
+   localStorage.setItem('SB_KEY', 'your-anon-key-here');
+
+5. Press Enter
+6. Refresh the page
+
+You should see: "✓ Connected to Supabase"
+
+================================================================================
+  IMPORTANT URLS
+================================================================================
+
+Your Portal:
+  https://goldrusher9009-sketch.github.io/aacg-superadmin/
+
+GitHub Repository:
+  https://github.com/goldrusher9009-sketch/aacg-superadmin
+
+Repository Settings (Pages):
+  https://github.com/goldrusher9009-sketch/aacg-superadmin/settings/pages
+
+Personal Access Tokens:
+  https://github.com/settings/tokens
+
+================================================================================
+  COMMON ISSUES & FIXES
+================================================================================
+
+"bash: command not found"
+  → Install Git for Windows: https://git-scm.com/download/win
+  → Then try the script again
+
+"Permission denied"
+  → Run: chmod +x push-to-github.sh
+  → Then: ./push-to-github.sh
+
+"fatal: Authentication failed"
+  → Your Personal Access Token is wrong or expired
+  → Create a new one: https://github.com/settings/tokens
+  → Try the script again
+
+"Credentials not configured" error in portal
+  → Follow the "Configure Supabase Credentials" section above
+  → Make sure to use YOUR actual Supabase URL and key
+  → Refresh the page
+
+Portal doesn't load
+  → Check GitHub Pages is enabled: go to Settings → Pages
+  → Verify branch is "main" and folder is "/"
+  → Wait a minute and refresh again
+
+================================================================================
+  WHAT THE SCRIPT DOES
+================================================================================
+
+The push-to-github.sh script automatically:
+
+  1. Creates a temporary directory for the project
+  2. Initializes a git repository
+  3. Configures git with your email: goldrusher9009@gmail.com
+  4. Creates README.md (complete documentation)
+  5. Creates index.html (your superadmin portal)
+  6. Commits both files with a descriptive message
+  7. Adds GitHub as the remote repository
+  8. Pushes everything to the main branch
+  9. Provides next steps for enabling GitHub Pages
+
+All you need to do is provide your GitHub credentials when prompted!
+
+================================================================================
+  SECURITY NOTES
+================================================================================
+
+✓ Your repository is PRIVATE
+✓ All traffic uses HTTPS encryption
+✓ Supabase credentials stored only in browser localStorage
+✓ No credentials visible in the code
+✓ All actions logged to Supabase
+
+⚠ Only share the portal URL with trusted team members
+
+================================================================================
+  DEPLOYMENT COMPLETE CHECKLIST
+================================================================================
+
+After running the script and enabling GitHub Pages, verify:
+
+  [ ] Script ran successfully without errors
+  [ ] GitHub Pages is enabled in Settings
+  [ ] Portal loads at: https://goldrusher9009-sketch.github.io/aacg-superadmin/
+  [ ] Portal shows "AACG Superadmin Portal" heading
+  [ ] "Credentials not configured" message is visible (expected)
+  [ ] Set Supabase credentials in browser console
+  [ ] Refresh page and see "✓ Connected to Supabase"
+
+================================================================================
+  NEXT STEPS
+================================================================================
+
+1. Run the push-to-github.sh script
+2. Enable GitHub Pages (see STEP 3 above)
+3. Set your Supabase credentials in the browser console
+4. Verify the portal connects successfully
+5. Share the URL with your team (only if they should have access)
+6. Start using your superadmin portal!
+
+================================================================================
+  NEED MORE HELP?
+================================================================================
+
+For detailed instructions, see: DEPLOYMENT-INSTRUCTIONS.md
+
+For questions about the portal itself, check the README.md in your GitHub
+repository: https://github.com/goldrusher9009-sketch/aacg-superadmin/
+
+================================================================================
+Created: 2026-05-16
+Status: Ready for Deployment ✓
+================================================================================
